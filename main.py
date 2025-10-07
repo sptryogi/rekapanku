@@ -13,24 +13,32 @@ with col1:
     order_all = st.file_uploader("1️⃣ Upload file order-all.xlsx", type=["xlsx"])
     income_file = st.file_uploader("2️⃣ Upload file income dilepas.xlsx", type=["xlsx"])
 with col2:
-    iklan_file = st.file_uploader("3️⃣ Upload file iklan produk.xlsx", type=["xlsx"])
-    seller_file = st.file_uploader("4️⃣ Upload file seller conversion.xlsx", type=["xlsx"])
+    iklan_file = st.file_uploader("3️⃣ Upload file iklan produk (CSV atau Excel)", type=["csv", "xlsx"])
+    seller_file = st.file_uploader("4️⃣ Upload file seller conversion (CSV atau Excel)", type=["csv", "xlsx"])
 
 katalog_file = st.file_uploader("📁 Upload file katalog.xlsx (untuk lookup Harga Beli)", type=["xlsx"])
 
-# Helper function to read Excel with flexible header
-def read_excel_flexible(file, skiprows_guess=0):
+# Fungsi helper universal untuk membaca CSV/XLSX
+def read_flexible(file, skiprows_guess=0):
     if not file:
         return None
     try:
-        df = pd.read_excel(file, skiprows=skiprows_guess)
-        unnamed_cols = [c for c in df.columns if 'Unnamed' in str(c)]
-        if len(unnamed_cols) > len(df.columns) / 2:
-            df = pd.read_excel(file, skiprows=skiprows_guess+1)
+        if file.name.lower().endswith('.csv'):
+            # Deteksi encoding umum biar gak error
+            try:
+                df = pd.read_csv(file)
+            except UnicodeDecodeError:
+                df = pd.read_csv(file, encoding='latin1')
+        else:
+            df = pd.read_excel(file, skiprows=skiprows_guess)
+            unnamed_cols = [c for c in df.columns if 'Unnamed' in str(c)]
+            if len(unnamed_cols) > len(df.columns) / 2:
+                df = pd.read_excel(file, skiprows=skiprows_guess + 1)
         return df
     except Exception as e:
         st.warning(f"Gagal membaca {file.name}: {e}")
         return None
+
 
 # Button to start processing
 if st.button("🚀 Mulai Proses"):
@@ -43,11 +51,13 @@ if st.button("🚀 Mulai Proses"):
 
     # Step 1: Load all data
     status.text("Memuat semua file...")
-    df_order = read_excel_flexible(order_all)
-    df_income = read_excel_flexible(income_file, skiprows_guess=5)
-    df_iklan = read_excel_flexible(iklan_file, skiprows_guess=7)
-    df_seller = read_excel_flexible(seller_file)
-    df_katalog = pd.read_excel(katalog_file)
+
+    df_order = read_flexible(order_all)
+    df_income = read_flexible(income_file, skiprows_guess=5)
+    df_iklan = read_flexible(iklan_file, skiprows_guess=7)      # bisa CSV atau XLSX
+    df_seller = read_flexible(seller_file)                      # bisa CSV atau XLSX
+    df_katalog = read_flexible(katalog_file)
+
     progress.progress(10)
 
     # Step 2: Create REKAP sheet (simplified core)
@@ -71,8 +81,8 @@ if st.button("🚀 Mulai Proses"):
     # Tambah kolom biaya dari file lain
     rekap['Voucher Ditanggung Penjual'] = df_income['Voucher dari Penjual']
     rekap['Biaya Adm 8%'] = df_income['Biaya Administrasi']
-    rekap['Biaya Layanan 2%'] = rekap['Total Harga Produk'] * 0.065 * 0.02
-    rekap['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap['Total Harga Produk'] * 0.065 * 0.045
+    rekap['Biaya Layanan 2%'] = rekap['Total Harga Produk'] * 0.02
+    rekap['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap['Total Harga Produk'] * 0.045
     rekap['Biaya Proses Pesanan'] = df_income['Biaya Proses Pesanan'] / rekap['Jumlah Terjual'].replace(0, np.nan)
 
     # Biaya Komisi AMS + PPN Shopee dari seller conversion
