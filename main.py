@@ -39,7 +39,32 @@ def process_rekap(order_df, income_df, seller_conv_df):
     # Buat ringkasan biaya iklan per pesanan
     iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
-    rekap_df['Pengeluaran(Rp)'].fillna(0, inplace=True)
+    
+    # --- PERUBAIKAN 1: Mengganti inplace=True untuk menghindari warning ---
+    # rekap_df['Pengeluaran(Rp)'].fillna(0, inplace=True) # Baris lama
+    rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0) # Baris baru
+
+    # --- PERUBAIKAN 2: Cek dan buat kolom yang mungkin hilang dari file income ---
+    # Daftar kolom penting dari file income yang digunakan dalam perhitungan
+    kolom_penting_income = [
+        'Voucher Ditanggung Penjual', 
+        'Biaya Administrasi', 
+        'Biaya Proses Pesanan',
+        'Waktu Pesanan Dibuat', # Tambahkan kolom lain yang mungkin hilang
+        'Tanggal Dana Dilepaskan',
+        'Metode Pembayaran Pembeli'
+    ]
+    
+    for kolom in kolom_penting_income:
+        if kolom not in rekap_df.columns:
+            # Jika kolom tidak ada, buat kolom baru dan isi dengan 0 atau None
+            if kolom in ['Waktu Pesanan Dibuat', 'Tanggal Dana Dilepaskan', 'Metode Pembayaran Pembeli']:
+                 rekap_df[kolom] = None # Untuk kolom non-numerik
+            else:
+                 rekap_df[kolom] = 0 # Untuk kolom numerik/finansial
+            st.warning(f"Peringatan: Kolom '{kolom}' tidak ditemukan. Diasumsikan bernilai 0 atau kosong.")
+    # --- AKHIR PERBAIKAN 2 ---
+
 
     # Membuat kolom-kolom baru sesuai aturan
     rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
@@ -51,7 +76,7 @@ def process_rekap(order_df, income_df, seller_conv_df):
         axis=1
     )
 
-    # Kalkulasi Penjualan Netto
+    # Kalkulasi Penjualan Netto (Sekarang sudah aman dari KeyError)
     rekap_df['Penjualan Netto'] = (
         rekap_df['Total Harga Produk'] -
         rekap_df['Voucher Ditanggung Penjual'].fillna(0) -
