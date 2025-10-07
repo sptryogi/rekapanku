@@ -25,16 +25,41 @@ def read_flexible(file, skiprows_guess=0):
         return None
     try:
         if file.name.lower().endswith('.csv'):
-            # Deteksi delimiter otomatis
-            sample = file.read(2048).decode('utf-8', errors='ignore')
-            file.seek(0)
-            dialect = csv.Sniffer().sniff(sample, delimiters=[',',';','\t'])
-            df = pd.read_csv(file, delimiter=dialect.delimiter)
+            # Modifikasi: Coba beberapa delimiter umum dan encoding berbeda
+            try:
+                # 1. Coba deteksi otomatis
+                sample = file.read(2048).decode('utf-8', errors='ignore')
+                file.seek(0)
+                dialect = csv.Sniffer().sniff(sample, delimiters=[',',';','\t'])
+                df = pd.read_csv(file, delimiter=dialect.delimiter, encoding='utf-8')
+            except Exception:
+                file.seek(0) # Reset pointer
+                # 2. Coba delimiter Tab (\t)
+                try:
+                    df = pd.read_csv(file, delimiter='\t', encoding='utf-8')
+                except:
+                    file.seek(0) # Reset pointer
+                    # 3. Coba delimiter Semicolon (;)
+                    try:
+                        df = pd.read_csv(file, delimiter=';', encoding='utf-8')
+                    except:
+                        file.seek(0) # Reset pointer
+                        # 4. Coba encoding latin1/ISO-8859-1 (umum untuk laporan)
+                        try:
+                            df = pd.read_csv(file, encoding='latin1')
+                        except:
+                            file.seek(0) # Reset pointer
+                            df = pd.read_csv(file, encoding='ISO-8859-1')
+
         else:
+            # Logika membaca Excel (tetap)
             df = pd.read_excel(file, skiprows=skiprows_guess)
             unnamed_cols = [c for c in df.columns if 'Unnamed' in str(c)]
             if len(unnamed_cols) > len(df.columns) / 2:
                 df = pd.read_excel(file, skiprows=skiprows_guess + 1)
+        
+        # Tambahkan pembersihan kolom di sini juga untuk memastikan
+        df.columns = df.columns.astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
         return df
     except Exception as e:
         st.warning(f"Gagal membaca {file.name}: {e}")
@@ -60,6 +85,12 @@ if st.button("🚀 Mulai Proses"):
     df_katalog = read_flexible(katalog_file)
 
     progress.progress(10)
+    # NEW: Standardize column names across all DataFrames 💡
+    dfs_to_clean = [df_order, df_income, df_iklan, df_seller, df_katalog]
+    for df in dfs_to_clean:
+        if df is not None:
+            # Clean up column names: remove leading/trailing spaces and normalize
+            df.columns = df.columns.astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
 
     # Step 2: Create REKAP sheet (simplified core)
     status.text("Memproses sheet REKAP...")
