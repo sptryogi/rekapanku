@@ -47,7 +47,7 @@ def process_rekap(order_df, income_df, seller_conv_df):
     
     # Menghindari pembagian dengan nol
     rekap_df['Biaya Proses Pesanan (Per Produk)'] = rekap_df.apply(
-        lambda row: row['Biaya Pelepasan Dana'] / row['Jumlah Terjual'] if row['Jumlah Terjual'] != 0 else 0,
+        lambda row: row['Biaya Proses Pesanan'] / row['Jumlah Terjual'] if row['Jumlah Terjual'] != 0 else 0,
         axis=1
     )
 
