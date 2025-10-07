@@ -52,9 +52,8 @@ def process_rekap(order_df, income_df, seller_conv_df):
     
     # CATATAN: Rumus ini sesuai permintaan, tapi tidak umum.
     # Biasanya: Total Harga * Persentase.
-    # Permintaan: (Total Harga * 6.5%) * 2%
-    rekap_df['Biaya Layanan 2%'] = (rekap_df['Total Harga Produk'] * 0.065) * 0.02
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = (rekap_df['Total Harga Produk'] * 0.065) * 0.045
+    rekap_df['Biaya Layanan 2%'] = (rekap_df['Total Harga Produk'] * 1) * 0.02
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = (rekap_df['Total Harga Produk'] * 1) * 0.045
     
     # Menghindari pembagian dengan nol
     rekap_df['Biaya Proses Pesanan (Per Produk)'] = rekap_df.apply(
