@@ -272,7 +272,7 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
                 order_all_df[col] = clean_and_convert_to_numeric(order_all_df[col])
         
         # Kolom dari income_dilepas_df
-        cols_to_clean_income = ['Voucher Ditanggung Penjual', 'Biaya Administrasi', 'Biaya Pelepasan Dana']
+        cols_to_clean_income = ['Voucher Ditanggung Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan']
         for col in cols_to_clean_income:
             if col in income_dilepas_df.columns:
                 income_dilepas_df[col] = clean_and_convert_to_numeric(income_dilepas_df[col])
