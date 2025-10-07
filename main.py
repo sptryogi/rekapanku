@@ -6,7 +6,15 @@ import time
 import re
 
 # --- FUNGSI-FUNGSI PEMROSESAN ---
-
+# Tambahkan fungsi ini di bawah baris import Anda
+def clean_and_convert_to_numeric(column):
+    """Menghapus semua karakter non-digit dan mengubah kolom menjadi numerik."""
+    # Pastikan data adalah string sebelum menggunakan .str
+    if column.dtype == 'object':
+        column = column.str.replace(r'[^\d]', '', regex=True)
+    # Ubah ke numerik, ganti error (misal: sel kosong) dengan 0
+    return pd.to_numeric(column, errors='coerce').fillna(0)
+    
 def process_rekap(order_df, income_df, seller_conv_df):
     """
     Fungsi untuk memproses dan membuat sheet 'REKAP'.
@@ -250,9 +258,37 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
         time.sleep(1)
         order_all_df = pd.read_excel(uploaded_order)
         income_dilepas_df = pd.read_excel(uploaded_income, skiprows=5)
-        # Menggunakan pd.read_csv untuk file iklan dan seller conversion
         iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
         seller_conversion_df = pd.read_csv(uploaded_seller)
+        
+        # --- MULAI BAGIAN BARU ---
+        # Bersihkan dan konversi semua kolom keuangan menjadi numerik
+        status_text.text("Membersihkan format angka... (1.5/5)")
+        
+        # Kolom dari order_all_df
+        cols_to_clean_order = ['Harga Setelah Diskon', 'Total Harga Produk']
+        for col in cols_to_clean_order:
+            if col in order_all_df.columns:
+                order_all_df[col] = clean_and_convert_to_numeric(order_all_df[col])
+        
+        # Kolom dari income_dilepas_df
+        cols_to_clean_income = ['Voucher Ditanggung Penjual', 'Biaya Administrasi', 'Biaya Pelepasan Dana']
+        for col in cols_to_clean_income:
+            if col in income_dilepas_df.columns:
+                income_dilepas_df[col] = clean_and_convert_to_numeric(income_dilepas_df[col])
+        
+        # Kolom dari iklan_produk_df
+        cols_to_clean_iklan = ['Biaya', 'Omzet Penjualan']
+        for col in cols_to_clean_iklan:
+            if col in iklan_produk_df.columns:
+                iklan_produk_df[col] = clean_and_convert_to_numeric(iklan_produk_df[col])
+                
+        # Kolom dari seller_conversion_df
+        if 'Pengeluaran(Rp)' in seller_conversion_df.columns:
+            seller_conversion_df['Pengeluaran(Rp)'] = clean_and_convert_to_numeric(seller_conversion_df['Pengeluaran(Rp)'])
+        
+        # --- AKHIR BAGIAN BARU ---
+        
         progress_bar.progress(20)
 
         # Step 2: Proses sheet REKAP
