@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from io import BytesIO
+import csv
 
 st.title("📊 Rekapanku - Otomatisasi Rekapan Shopee")
 
@@ -24,11 +25,11 @@ def read_flexible(file, skiprows_guess=0):
         return None
     try:
         if file.name.lower().endswith('.csv'):
-            # Deteksi encoding umum biar gak error
-            try:
-                df = pd.read_csv(file)
-            except UnicodeDecodeError:
-                df = pd.read_csv(file, encoding='latin1')
+            # Deteksi delimiter otomatis
+            sample = file.read(2048).decode('utf-8', errors='ignore')
+            file.seek(0)
+            dialect = csv.Sniffer().sniff(sample, delimiters=[',',';','\t'])
+            df = pd.read_csv(file, delimiter=dialect.delimiter)
         else:
             df = pd.read_excel(file, skiprows=skiprows_guess)
             unnamed_cols = [c for c in df.columns if 'Unnamed' in str(c)]
