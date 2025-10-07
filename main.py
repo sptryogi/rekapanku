@@ -34,8 +34,8 @@ def process_rekap(order_df, income_df, seller_conv_df):
     rekap_df['Pengeluaran(Rp)'].fillna(0, inplace=True)
 
     # Membuat kolom-kolom baru sesuai aturan
-    rekap_df['Biaya Layanan 2%'] = (rekap_df['Total Harga Produk'] * 0.02)
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = (rekap_df['Total Harga Produk'] * 0.02)
+    rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
     
     # Menghindari pembagian dengan nol
     rekap_df['Biaya Proses Pesanan (Per Produk)'] = rekap_df.apply(
