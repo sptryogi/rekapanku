@@ -269,18 +269,22 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
             iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
             seller_conversion_df = pd.read_csv(uploaded_seller)
             progress_bar.progress(20, text="File berhasil dimuat. Membersihkan format angka...")
-
-            # --- Membersihkan semua kolom keuangan menjadi numerik ---
-            financial_cols = {
-                order_all_df: ['Harga Setelah Diskon', 'Total Harga Produk'],
-                income_dilepas_df: ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan'],
-                iklan_produk_df: ['Biaya', 'Omzet Penjualan'],
-                seller_conversion_df: ['Pengeluaran(Rp)']
-            }
-            for df, cols in financial_cols.items():
+    
+            # --- PERBAIKAN: Mengubah struktur dari dictionary menjadi list of tuples ---
+            # Struktur ini aman dan tidak akan menyebabkan error 'unhashable type'
+            financial_data_to_clean = [
+                (order_all_df, ['Harga Setelah Diskon', 'Total Harga Produk']),
+                (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan']),
+                (iklan_produk_df, ['Biaya', 'Omzet Penjualan']),
+                (seller_conversion_df, ['Pengeluaran(Rp)'])
+            ]
+    
+            # Loop melalui list of tuples untuk membersihkan data
+            for df, cols in financial_data_to_clean:
                 for col in cols:
                     if col in df.columns:
                         df[col] = clean_and_convert_to_numeric(df[col])
+            # --- AKHIR PERBAIKAN ---
             
             # Step 2: Proses sheet REKAP (40%)
             status_text.text("Menyusun sheet 'REKAP'...")
@@ -291,12 +295,12 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
             status_text.text("Menyusun sheet 'IKLAN'...")
             iklan_processed = process_iklan(iklan_produk_df)
             progress_bar.progress(60, text="Sheet 'IKLAN' selesai.")
-
+    
             # Step 4: Proses sheet SUMMARY (80%)
             status_text.text("Menyusun sheet 'SUMMARY'...")
             summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df)
             progress_bar.progress(80, text="Sheet 'SUMMARY' selesai.")
-
+    
             # Step 5: Membuat file Excel output (100%)
             status_text.text("Menyiapkan file output untuk diunduh...")
             output = io.BytesIO()
@@ -312,7 +316,7 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
             output.seek(0)
             progress_bar.progress(100, text="Proses Selesai!")
             status_text.success("✅ Proses Selesai! File Anda siap diunduh.")
-
+    
             # Area Download
             st.header("3. Download Hasil")
             st.download_button(
