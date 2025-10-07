@@ -1,226 +1,298 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from io import BytesIO
-import csv
+import io
+import time
+import re
 
-st.title("📊 Rekapanku - Otomatisasi Rekapan Shopee")
+# --- FUNGSI-FUNGSI PEMROSESAN ---
 
-st.markdown("Unggah keempat file laporan Shopee berikut untuk diproses menjadi satu file Excel rekap otomatis.")
+def process_rekap(order_df, income_df, seller_conv_df):
+    """
+    Fungsi untuk memproses dan membuat sheet 'REKAP'.
+    """
+    # Menggabungkan Nama Produk yang sama dalam satu No. Pesanan di file order-all
+    order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk']).agg({
+        'Jumlah': 'sum',
+        'Harga Setelah Diskon': 'first',
+        'Total Harga Produk': 'sum'
+    }).reset_index()
+    order_agg.rename(columns={'Jumlah': 'Jumlah Terjual'}, inplace=True)
 
-# Upload section
+    # Menggabungkan data order yang sudah di-agregasi dengan data income
+    # 'No. Pesanan' harus memiliki tipe data yang sama
+    income_df['No. Pesanan'] = income_df['No. Pesanan'].astype(str)
+    order_agg['No. Pesanan'] = order_agg['No. Pesanan'].astype(str)
+    seller_conv_df['Kode Pesanan'] = seller_conv_df['Kode Pesanan'].astype(str)
+    
+    rekap_df = pd.merge(order_agg, income_df, on='No. Pesanan', how='left')
+
+    # Menggabungkan dengan data seller conversion
+    # Buat ringkasan biaya iklan per pesanan
+    iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
+    rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
+    rekap_df['Pengeluaran(Rp)'].fillna(0, inplace=True)
+
+    # Membuat kolom-kolom baru sesuai aturan
+    rekap_df['Biaya Layanan 2%'] = (rekap_df['Total Harga Produk'] * 0.02)
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = (rekap_df['Total Harga Produk'] * 0.02)
+    
+    # Menghindari pembagian dengan nol
+    rekap_df['Biaya Proses Pesanan (Per Produk)'] = rekap_df.apply(
+        lambda row: row['Biaya Pelepasan Dana'] / row['Jumlah Terjual'] if row['Jumlah Terjual'] != 0 else 0,
+        axis=1
+    )
+
+    # Kalkulasi Penjualan Netto
+    rekap_df['Penjualan Netto'] = (
+        rekap_df['Total Harga Produk'] -
+        rekap_df['Voucher Ditanggung Penjual'].fillna(0) -
+        rekap_df['Pengeluaran(Rp)'].fillna(0) -
+        rekap_df['Biaya Administrasi'].fillna(0) -
+        rekap_df['Biaya Layanan 2%'].fillna(0) -
+        rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'].fillna(0) -
+        rekap_df['Biaya Proses Pesanan (Per Produk)'].fillna(0)
+    )
+
+    # Memilih dan menamai ulang kolom untuk output akhir
+    rekap_final = pd.DataFrame({
+        'No.': np.arange(1, len(rekap_df) + 1),
+        'No. Pesanan': rekap_df['No. Pesanan'],
+        'Waktu Pesanan Dibuat': rekap_df['Waktu Pesanan Dibuat'],
+        'Waktu Dana Dilepas': rekap_df['Tanggal Dana Dilepaskan'],
+        'Nama Produk': rekap_df['Nama Produk'],
+        'Jumlah Terjual': rekap_df['Jumlah Terjual'],
+        'Harga Satuan': rekap_df['Harga Setelah Diskon'],
+        'Total Harga Produk': rekap_df['Total Harga Produk'],
+        'Voucher Ditanggung Penjual': rekap_df['Voucher Ditanggung Penjual'],
+        'Biaya Komisi AMS + PPN Shopee': rekap_df['Pengeluaran(Rp)'],
+        'Biaya Adm 8%': rekap_df['Biaya Administrasi'],
+        'Biaya Layanan 2%': rekap_df['Biaya Layanan 2%'],
+        'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
+        'Biaya Proses Pesanan': rekap_df['Biaya Proses Pesanan (Per Produk)'],
+        'Penjualan Netto': rekap_df['Penjualan Netto'],
+        'Metode Pembayaran': rekap_df['Metode Pembayaran Pembeli']
+    })
+
+    return rekap_final
+
+def process_iklan(iklan_df):
+    """
+    Fungsi untuk memproses dan membuat sheet 'IKLAN'.
+    """
+    # Membersihkan nama iklan dari akhiran 'baris [angka]'
+    iklan_df['Nama Iklan Clean'] = iklan_df['Nama Iklan'].str.replace(r'\s*baris\s*\[\d+\]$', '', regex=True).str.strip()
+    
+    # Agregasi data berdasarkan nama iklan yang sudah dibersihkan
+    iklan_agg = iklan_df.groupby('Nama Iklan Clean').agg({
+        'Dilihat': 'sum',
+        'Jumlah Klik': 'sum',
+        'Biaya': 'sum',
+        'Produk Terjual': 'sum',
+        'Omzet Penjualan': 'sum'
+    }).reset_index()
+    iklan_agg.rename(columns={'Nama Iklan Clean': 'Nama Iklan'}, inplace=True)
+
+    # Menambahkan baris Total
+    total_row = pd.DataFrame({
+        'Nama Iklan': ['TOTAL'],
+        'Dilihat': [iklan_agg['Dilihat'].sum()],
+        'Jumlah Klik': [iklan_agg['Jumlah Klik'].sum()],
+        'Biaya': [iklan_agg['Biaya'].sum()],
+        'Produk Terjual': [iklan_agg['Produk Terjual'].sum()],
+        'Omzet Penjualan': [iklan_agg['Omzet Penjualan'].sum()]
+    })
+    
+    iklan_final = pd.concat([iklan_agg, total_row], ignore_index=True)
+    return iklan_final
+
+def get_harga_beli(nama_produk, katalog_df):
+    """
+    Mencocokkan nama produk dengan katalog untuk mendapatkan harga beli.
+    Aturan: Cocokkan kata pertama dari JUDUL, JENIS KERTAS, dan UKURAN.
+    """
+    try:
+        parts = nama_produk.split()
+        judul_key = parts[0]
+        
+        # Ekstraksi Jenis Kertas dan Ukuran dari Nama Produk
+        kertas_key = next((k for k in ['HVS', 'KORAN', 'QPP'] if k in nama_produk.upper()), None)
+        ukuran_key = next((u for u in ['A4', 'A5', 'B5'] if u in nama_produk.upper()), None)
+
+        if not kertas_key or not ukuran_key:
+            return 0
+
+        # Filter katalog berdasarkan kriteria
+        match = katalog_df[
+            (katalog_df["JUDUL AL QUR'AN"].str.startswith(judul_key)) &
+            (katalog_df["JENIS KERTAS"] == kertas_key) &
+            (katalog_df["UKURAN"].str.startswith(ukuran_key))
+        ]
+        
+        if not match.empty:
+            return match['KATALOG HARGA'].iloc[0]
+        return 0 # Jika tidak ditemukan
+    except Exception:
+        return 0
+
+def process_summary(rekap_df, iklan_final_df, katalog_df):
+    """
+    Fungsi untuk memproses dan membuat sheet 'SUMMARY'.
+    """
+    summary_df = rekap_df.groupby('Nama Produk').agg({
+        'Jumlah Terjual': 'sum',
+        'Harga Satuan': 'first',
+        'Total Harga Produk': 'sum',
+        'Voucher Ditanggung Penjual': 'sum',
+        'Biaya Komisi AMS + PPN Shopee': 'sum',
+        'Biaya Adm 8%': 'sum',
+        'Biaya Layanan 2%': 'sum',
+        'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum',
+        'Biaya Proses Pesanan': 'sum',
+        'Penjualan Netto': 'sum'
+    }).reset_index()
+
+    # Gabungkan dengan data iklan
+    iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']]
+    summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk', right_on='Nama Iklan', how='left')
+    summary_df.rename(columns={'Biaya': 'Iklan Klik'}, inplace=True)
+    summary_df['Iklan Klik'].fillna(0, inplace=True)
+    summary_df.drop('Nama Iklan', axis=1, inplace=True)
+
+    # Kalkulasi ulang Penjualan Netto setelah dikurangi biaya iklan
+    summary_df['Penjualan Netto'] = summary_df['Penjualan Netto'] - summary_df['Iklan Klik']
+
+    # Kalkulasi kolom baru
+    summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
+    summary_df['Biaya Ekspedisi'] = 0
+    
+    # Dapatkan Harga Beli dari Katalog
+    summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(lambda x: get_harga_beli(x, katalog_df))
+    
+    summary_df['Harga Custom TLJ'] = 0
+    summary_df['Total Pembelian'] = summary_df['Jumlah Terjual'] * summary_df['Harga Beli']
+    summary_df['Margin Kotor'] = summary_df['Penjualan Netto'] - summary_df['Biaya Packing'] - summary_df['Biaya Ekspedisi'] - summary_df['Total Pembelian']
+    
+    summary_df['Persentase'] = summary_df.apply(
+        lambda row: row['Margin Kotor'] / row['Total Harga Produk'] if row['Total Harga Produk'] != 0 else 0, axis=1)
+    
+    summary_df['Jumlah Pesanan'] = summary_df.apply(
+        lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
+    
+    summary_df['Penjualan Per Hari'] = summary_df['Penjualan Netto'] / 7
+    
+    summary_df['Jumlah buku per pesanan'] = summary_df.apply(
+        lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row['Jumlah Pesanan'] != 0 else 0, axis=1)
+
+    # Re-order dan format kolom
+    summary_final = pd.DataFrame({
+        'No': np.arange(1, len(summary_df) + 1),
+        'Nama Produk': summary_df['Nama Produk'],
+        'Jumlah Terjual': summary_df['Jumlah Terjual'],
+        'Harga Satuan': summary_df['Harga Satuan'],
+        'Total Harga Produk': summary_df['Total Harga Produk'],
+        'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
+        'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'],
+        'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
+        'Biaya Layanan 2%': summary_df['Biaya Layanan 2%'],
+        'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
+        'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
+        'Iklan Klik': summary_df['Iklan Klik'],
+        'Penjualan Netto': summary_df['Penjualan Netto'],
+        'Biaya Packing': summary_df['Biaya Packing'],
+        'Biaya Ekspedisi': summary_df['Biaya Ekspedisi'],
+        'Harga Beli': summary_df['Harga Beli'],
+        'Harga Custom TLJ': summary_df['Harga Custom TLJ'],
+        'Total Pembelian': summary_df['Total Pembelian'],
+        'Margin Kotor': summary_df['Margin Kotor'],
+        'Persentase': summary_df['Persentase'],
+        'Jumlah Pesanan': summary_df['Jumlah Pesanan'],
+        'Penjualan Per Hari': summary_df['Penjualan Per Hari'],
+        'Jumlah buku per pesanan': summary_df['Jumlah buku per pesanan']
+    })
+    
+    return summary_final
+
+# --- TAMPILAN STREAMLIT ---
+
+st.set_page_config(layout="wide")
+st.title("📊 Rekapanku - Sistem Otomatisasi Laporan")
+
+# Load dataset 'katalog'
+try:
+    katalog_df = pd.read_excel('HARGA ONLINE.xlsx')
+except FileNotFoundError:
+    st.error("Error: File 'HARGA ONLINE.xlsx' tidak ditemukan. Pastikan file tersebut berada di direktori yang sama dengan aplikasi ini.")
+    st.stop()
+
+
+# Area Upload File
+st.header("1. Impor File Anda")
 col1, col2 = st.columns(2)
 with col1:
-    order_all = st.file_uploader("1️⃣ Upload file order-all.xlsx", type=["xlsx"])
-    income_file = st.file_uploader("2️⃣ Upload file income dilepas.xlsx", type=["xlsx"])
+    uploaded_order = st.file_uploader("1. Import file order-all.xlsx", type="xlsx")
+    uploaded_income = st.file_uploader("2. Import file income dilepas.xlsx", type="xlsx")
 with col2:
-    iklan_file = st.file_uploader("3️⃣ Upload file iklan produk (CSV atau Excel)", type=["csv", "xlsx"])
-    seller_file = st.file_uploader("4️⃣ Upload file seller conversion (CSV atau Excel)", type=["csv", "xlsx"])
+    uploaded_iklan = st.file_uploader("3. Import file iklan produk", type="csv")
+    uploaded_seller = st.file_uploader("4. Import file seller conversion", type="csv")
 
-katalog_file = st.file_uploader("📁 Upload file katalog.xlsx (untuk lookup Harga Beli)", type=["xlsx"])
+st.markdown("---")
 
-# Fungsi helper universal untuk membaca CSV/XLSX
-def read_flexible(file, skiprows_guess=0):
-    if not file:
-        return None
-    try:
-        if file.name.lower().endswith('.csv'):
-            # Modifikasi: Coba beberapa delimiter umum dan encoding berbeda
-            try:
-                # 1. Coba deteksi otomatis
-                sample = file.read(2048).decode('utf-8', errors='ignore')
-                file.seek(0)
-                dialect = csv.Sniffer().sniff(sample, delimiters=[',',';','\t'])
-                df = pd.read_csv(file, delimiter=dialect.delimiter, encoding='utf-8')
-            except Exception:
-                file.seek(0) # Reset pointer
-                # 2. Coba delimiter Tab (\t)
-                try:
-                    df = pd.read_csv(file, delimiter='\t', encoding='utf-8')
-                except:
-                    file.seek(0) # Reset pointer
-                    # 3. Coba delimiter Semicolon (;)
-                    try:
-                        df = pd.read_csv(file, delimiter=';', encoding='utf-8')
-                    except:
-                        file.seek(0) # Reset pointer
-                        # 4. Coba encoding latin1/ISO-8859-1 (umum untuk laporan)
-                        try:
-                            df = pd.read_csv(file, encoding='latin1')
-                        except:
-                            file.seek(0) # Reset pointer
-                            df = pd.read_csv(file, encoding='ISO-8859-1')
-
-        else:
-            # Logika membaca Excel (tetap)
-            df = pd.read_excel(file, skiprows=skiprows_guess)
-            unnamed_cols = [c for c in df.columns if 'Unnamed' in str(c)]
-            if len(unnamed_cols) > len(df.columns) / 2:
-                df = pd.read_excel(file, skiprows=skiprows_guess + 1)
+# Tombol Proses
+if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
+    st.header("2. Mulai Proses")
+    if st.button("🚀 Mulai Proses"):
+        progress_bar = st.progress(0)
+        status_text = st.empty()
         
-        # Tambahkan pembersihan kolom di sini juga untuk memastikan
-        df.columns = df.columns.astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
-        return df
-    except Exception as e:
-        st.warning(f"Gagal membaca {file.name}: {e}")
-        return None
+        # Step 1: Memuat dan membersihkan data
+        status_text.text("Membaca dan membersihkan file... (1/5)")
+        time.sleep(1)
+        order_all_df = pd.read_excel(uploaded_order)
+        income_dilepas_df = pd.read_excel(uploaded_income, skiprows=5)
+        # Menggunakan pd.read_csv untuk file iklan dan seller conversion
+        iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
+        seller_conversion_df = pd.read_csv(uploaded_seller)
+        progress_bar.progress(20)
 
+        # Step 2: Proses sheet REKAP
+        status_text.text("Menyusun sheet 'REKAP'... (2/5)")
+        rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df)
+        progress_bar.progress(40)
+        
+        # Step 3: Proses sheet IKLAN
+        status_text.text("Menyusun sheet 'IKLAN'... (3/5)")
+        iklan_processed = process_iklan(iklan_produk_df)
+        progress_bar.progress(60)
 
-# Button to start processing
-if st.button("🚀 Mulai Proses"):
-    progress = st.progress(0)
-    status = st.empty()
+        # Step 4: Proses sheet SUMMARY
+        status_text.text("Menyusun sheet 'SUMMARY'... (4/5)")
+        summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df)
+        progress_bar.progress(80)
 
-    if not all([order_all, income_file, iklan_file, seller_file, katalog_file]):
-        st.error("Mohon unggah semua file terlebih dahulu.")
-        st.stop()
+        # Step 5: Membuat file Excel output
+        status_text.text("Menyiapkan file output untuk diunduh... (5/5)")
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            summary_processed.to_excel(writer, sheet_name='SUMMARY', index=False)
+            rekap_processed.to_excel(writer, sheet_name='REKAP', index=False)
+            iklan_processed.to_excel(writer, sheet_name='IKLAN', index=False)
+            order_all_df.to_excel(writer, sheet_name='sheet order-all', index=False)
+            income_dilepas_df.to_excel(writer, sheet_name='sheet income dilepas', index=False)
+            iklan_produk_df.to_excel(writer, sheet_name='sheet biaya iklan', index=False)
+            seller_conversion_df.to_excel(writer, sheet_name='sheet seller conversion', index=False)
+        
+        output.seek(0)
+        progress_bar.progress(100)
+        status_text.success("✅ Proses Selesai! File Anda siap diunduh.")
 
-    # Step 1: Load all data
-    status.text("Memuat semua file...")
-
-    df_order = read_flexible(order_all)
-    df_income = read_flexible(income_file, skiprows_guess=5)
-    df_iklan = read_flexible(iklan_file, skiprows_guess=7)      # bisa CSV atau XLSX
-    df_seller = read_flexible(seller_file)                      # bisa CSV atau XLSX
-    df_katalog = read_flexible(katalog_file)
-
-    progress.progress(10)
-    # NEW: Standardize column names across all DataFrames 💡
-    dfs_to_clean = [df_order, df_income, df_iklan, df_seller, df_katalog]
-    for df in dfs_to_clean:
-        if df is not None:
-            # Clean up column names: remove leading/trailing spaces and normalize
-            df.columns = df.columns.astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
-
-    # Step 2: Create REKAP sheet (simplified core)
-    status.text("Memproses sheet REKAP...")
-    rekap = pd.DataFrame()
-    rekap['No'] = range(1, len(df_income) + 1)
-    rekap['No. Pesanan'] = df_income['No. Pesanan']
-    rekap['Waktu Pesanan Dibuat'] = df_income['Waktu Pesanan Dibuat']
-    rekap['Waktu Dana Dilepas'] = df_income['Tanggal Dana Dilepaskan']
-    rekap['Metode Pembayaran'] = df_income['Metode pembayaran pembeli']
-    
-    # Merge with order file for product info
-    merged = df_order.groupby(['No. Pesanan','Nama Produk'], as_index=False).agg({
-        'Jumlah Terjual':'sum',
-        'Harga Setelah Diskon':'mean',
-        'Total Harga Produk':'sum'
-    })
-
-    rekap = pd.merge(rekap, merged, on='No. Pesanan', how='left')
-
-    # Tambah kolom biaya dari file lain
-    rekap['Voucher Ditanggung Penjual'] = df_income['Voucher dari Penjual']
-    rekap['Biaya Adm 8%'] = df_income['Biaya Administrasi']
-    rekap['Biaya Layanan 2%'] = rekap['Total Harga Produk'] * 0.02
-    rekap['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap['Total Harga Produk'] * 0.045
-    rekap['Biaya Proses Pesanan'] = df_income['Biaya Proses Pesanan'] / rekap['Jumlah Terjual'].replace(0, np.nan)
-
-    # Biaya Komisi AMS + PPN Shopee dari seller conversion
-    df_seller_sum = df_seller.groupby(['Kode Pesanan','Nama Produk'], as_index=False)['Pengeluaran(Rp)'].sum()
-    rekap = pd.merge(rekap, df_seller_sum, left_on=['No. Pesanan','Nama Produk'], right_on=['Kode Pesanan','Nama Produk'], how='left')
-    rekap.rename(columns={'Pengeluaran(Rp)':'Biaya Komisi AMS + PPN Shopee'}, inplace=True)
-
-    # Hitung Penjualan Netto
-    rekap['Penjualan Netto'] = (
-        rekap['Total Harga Produk'] - rekap['Voucher Ditanggung Penjual'] - rekap['Biaya Komisi AMS + PPN Shopee'] -
-        rekap['Biaya Adm 8%'] - rekap['Biaya Layanan 2%'] - rekap['Biaya Layanan Gratis Ongkir Xtra 4,5%'] - rekap['Biaya Proses Pesanan']
-    )
-    progress.progress(50)
-
-    # Step 3: Sheet IKLAN
-    status.text("Memproses sheet IKLAN...")
-    df_iklan['Nama Iklan'] = df_iklan['Nama Iklan'].str.replace(r'baris \d+', '', regex=True).str.strip()
-    iklan_group = df_iklan.groupby('Nama Iklan', as_index=False).agg({
-        'Dilihat':'sum','Jumlah Klik':'sum','Biaya':'sum','Produk Terjual':'sum','Omzet Penjualan':'sum'
-    })
-    total_row = pd.DataFrame([{
-        'Nama Iklan':'TOTAL',
-        'Dilihat':iklan_group['Dilihat'].sum(),
-        'Jumlah Klik':iklan_group['Jumlah Klik'].sum(),
-        'Biaya':iklan_group['Biaya'].sum(),
-        'Produk Terjual':iklan_group['Produk Terjual'].sum(),
-        'Omzet Penjualan':iklan_group['Omzet Penjualan'].sum()
-    }])
-    iklan_final = pd.concat([iklan_group, total_row], ignore_index=True)
-    progress.progress(70)
-
-    # Step 4: Sheet SUMMARY dengan sistem lookup Harga Beli dari katalog
-    status.text("Membangun sheet SUMMARY dengan lookup katalog...")
-    summary = rekap.groupby('Nama Produk', as_index=False).agg({
-        'Jumlah Terjual':'sum',
-        'Harga Setelah Diskon':'mean',
-        'Total Harga Produk':'sum',
-        'Voucher Ditanggung Penjual':'sum',
-        'Biaya Komisi AMS + PPN Shopee':'sum',
-        'Biaya Adm 8%':'sum',
-        'Biaya Layanan 2%':'sum',
-        'Biaya Layanan Gratis Ongkir Xtra 4,5%':'sum',
-        'Biaya Proses Pesanan':'sum',
-        'Penjualan Netto':'sum'
-    })
-    summary.insert(0,'No',range(1,len(summary)+1))
-
-    # ==== Sistem Lookup Harga Beli (multi kolom) ====
-    def lookup_harga_beli(nama_produk):
-        if pd.isna(nama_produk):
-            return 0
-        nama_upper = str(nama_produk).upper()
-        kata_depan = nama_upper.split()[0]
-
-        # Filter awal berdasar kata depan
-        match = df_katalog[df_katalog['JUDUL AL QUR\'AN'].str.upper().str.contains(kata_depan, na=False)]
-        if match.empty:
-            return 0
-
-        # Filter tambahan: cek JENIS KERTAS dan UKURAN di nama produk
-        jenis_filter = match['JENIS KERTAS'].apply(lambda x: str(x).upper() in nama_upper)
-        ukuran_filter = match['UKURAN'].apply(lambda x: str(x).upper() in nama_upper)
-
-        match_final = match[jenis_filter & ukuran_filter]
-        if match_final.empty:
-            # fallback ke match awal jika tidak ketemu spesifik
-            match_final = match
-
-        # Ambil harga pertama yang valid
-        val = match_final['KATALOG HARGA'].iloc[0]
-        try:
-            return float(val)
-        except:
-            return 0
-
-    summary['Harga Beli'] = summary['Nama Produk'].apply(lookup_harga_beli)
-
-    # Hitung kolom tambahan
-    summary['Harga Custom TLJ'] = 0
-    summary['Total Pembelian'] = summary['Jumlah Terjual'] * summary['Harga Beli']
-    summary['Margin Kotor'] = summary['Penjualan Netto'] - (summary['Jumlah Terjual']*200) - summary['Total Pembelian']
-    summary['Persentase'] = summary['Margin Kotor'] / summary['Total Harga Produk'].replace(0,np.nan)
-    summary['Jumlah Pesanan'] = summary['Biaya Proses Pesanan'] / 1250
-    summary['Penjualan Per Hari'] = summary['Penjualan Netto'] / 7
-    summary['Jumlah buku per pesanan'] = summary['Jumlah Terjual'] / summary['Jumlah Pesanan'].replace(0,np.nan)
-
-    progress.progress(90)
-
-    # Step 5: Save all sheets to Excel
-    status.text("Menyimpan hasil akhir ke Excel...")
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        summary.to_excel(writer, index=False, sheet_name='SUMMARY')
-        rekap.to_excel(writer, index=False, sheet_name='REKAP')
-        iklan_final.to_excel(writer, index=False, sheet_name='IKLAN')
-        df_order.to_excel(writer, index=False, sheet_name='sheet order-all')
-        df_income.to_excel(writer, index=False, sheet_name='sheet income dilepas')
-        df_iklan.to_excel(writer, index=False, sheet_name='sheet biaya iklan')
-        df_seller.to_excel(writer, index=False, sheet_name='sheet seller conversion')
-
-    progress.progress(100)
-    status.text("✅ Selesai! File siap diunduh.")
-
-    st.download_button(
-        label="📥 Download Hasil Rekapan (Excel)",
-        data=output.getvalue(),
-        file_name="Rekapanku_output.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        # Area Download
+        st.header("3. Download Hasil")
+        st.download_button(
+            label="📥 Download File Output (Rekapanku.xlsx)",
+            data=output,
+            file_name="Rekapanku_Output.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+else:
+    st.info("Silakan unggah semua 4 file yang diperlukan untuk memulai proses.")
