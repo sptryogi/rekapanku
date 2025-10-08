@@ -71,12 +71,6 @@ def process_rekap(order_df, income_df, seller_conv_df):
     rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
     rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
     
-    # Biaya proses pesanan sekarang dihitung per produk (sudah diatur di atas menjadi 0 untuk produk kedua dst)
-    rekap_df['Biaya Proses Pesanan (Per Produk)'] = rekap_df.apply(
-        lambda row: row.get('Biaya Proses Pesanan', 0) / row.get('Jumlah Terjual', 1) if row.get('Jumlah Terjual', 0) != 0 else 0,
-        axis=1
-    )
-
     # --- PERUBAIKAN 3: Memastikan semua biaya bernilai positif (absolut) ---
     cost_columns_to_abs = [
         'Voucher dari Penjual', 'Pengeluaran(Rp)', 'Biaya Administrasi', 
