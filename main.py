@@ -149,28 +149,61 @@ def process_iklan(iklan_df):
     return iklan_final
 
 def get_harga_beli(nama_produk, katalog_df):
-    """Mencocokkan nama produk dengan katalog untuk mendapatkan harga beli."""
+    """
+    Mencocokkan nama produk dengan katalog berdasarkan KESAMAAN JUDUL dan UKURAN
+    dengan logika pencocokan yang lebih cerdas.
+    """
     try:
         if not isinstance(nama_produk, str): return 0
+
+        # --- LANGKAH 1: Ekstrak UKURAN dari Nama Produk ---
         nama_produk_upper = nama_produk.upper()
-        parts = nama_produk.split()
-        judul_key = parts[0]
-        
-        kertas_key = next((k for k in ['HVS', 'KORAN', 'QPP'] if k in nama_produk_upper), None)
-        ukuran_key = next((u for u in ['A4', 'A5', 'B5'] if u in nama_produk_upper), None)
+        # Regex mencari format seperti A5, B5, A7 atau (19X19 CM)
+        ukuran_match = re.search(r'\b(A\d|B\d)\b', nama_produk_upper)
+        if not ukuran_match:
+            # Jika tidak ketemu, cari format (19X19 CM) atau sejenisnya
+            ukuran_match = re.search(r'(\(\d+X\d+\s*CM\))', nama_produk_upper)
 
-        if not kertas_key or not ukuran_key or not judul_key:
-            return 0
-
-        match = katalog_df[
-            (katalog_df["JUDUL AL QUR'AN"].str.startswith(judul_key, na=False)) &
-            (katalog_df["JENIS KERTAS"] == kertas_key) &
-            (katalog_df["UKURAN"].str.startswith(ukuran_key, na=False))
-        ]
+        if not ukuran_match:
+            return 0  # Jika tidak ada info ukuran, sulit untuk mencocokkan
         
-        if not match.empty:
-            return match['KATALOG HARGA'].iloc[0]
-        return 0
+        ukuran_key = ukuran_match.group(1)
+
+        # --- LANGKAH 2: Filter Awal Katalog berdasarkan UKURAN ---
+        possible_matches = katalog_df[katalog_df['UKURAN'].str.startswith(ukuran_key, na=False)].copy()
+
+        if possible_matches.empty:
+            return 0  # Tidak ada produk di katalog dengan ukuran tersebut
+
+        # --- LANGKAH 3: Cari Judul yang Paling Cocok dari Hasil Filter ---
+        best_match_score = 0
+        best_price = 0
+
+        # Standarisasi 'Nama Produk' untuk pencocokan (hapus tanda hubung, spasi ganda)
+        nama_produk_clean = ' '.join(nama_produk_upper.replace('-', ' ').split())
+
+        for index, row in possible_matches.iterrows():
+            judul_katalog = row["JUDUL AL QUR'AN"]
+            
+            # Standarisasi 'JUDUL AL QUR'AN' dari katalog (menangani jika ada nilai kosong)
+            if pd.isna(judul_katalog): continue
+            judul_katalog_clean = ' '.join(str(judul_katalog).upper().replace('-', ' ').split())
+            
+            # Pecah judul katalog menjadi kata-kata kunci
+            keywords = judul_katalog_clean.split()
+            
+            # Cek apakah SEMUA kata kunci dari katalog ada di dalam Nama Produk
+            if all(keyword in nama_produk_clean for keyword in keywords):
+                # Semakin panjang (semakin spesifik) judul katalog yang cocok,
+                # semakin tinggi skornya. Ini akan memilih 'AL-AQEEL HVS' daripada hanya 'AL-AQEEL'.
+                score = len(judul_katalog_clean)
+                
+                if score > best_match_score:
+                    best_match_score = score
+                    best_price = row['KATALOG HARGA']
+        
+        return best_price
+
     except Exception:
         return 0
 
