@@ -370,15 +370,11 @@ st.markdown("---")
 
 if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
     st.header("2. Mulai Proses")
-    
-    # Tombol ini sekarang HANYA bertugas untuk memproses dan menyimpan hasil ke session_state
     if st.button("🚀 Mulai Proses"):
         progress_bar = st.progress(0, text="Mempersiapkan proses...")
         status_text = st.empty()
         
         try:
-            # ... (semua logika pemrosesan Anda dari 'status_text.text(...)' hingga 'output.seek(0)' tetap SAMA)
-            # Salin-tempel semua kode pemrosesan Anda ke sini
             status_text.text("Membaca dan membersihkan file...")
             order_all_df = pd.read_excel(uploaded_order)
             income_dilepas_df = pd.read_excel(uploaded_income, sheet_name='Income', skiprows=5)
@@ -387,63 +383,56 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
             seller_conversion_df = pd.read_csv(uploaded_seller)
             progress_bar.progress(20, text="File berhasil dimuat. Membersihkan format angka...")
 
-            # ... (lanjutan proses pembersihan dan pemanggilan fungsi)
-            
-            rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, service_fee_df)
-            iklan_processed = process_iklan(iklan_produk_df)
-            summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df)
+            financial_data_to_clean = [
+                (order_all_df, ['Harga Setelah Diskon', 'Total Harga Produk']),
+                (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan']),
+                (iklan_produk_df, ['Biaya', 'Omzet Penjualan']),
+                (seller_conversion_df, ['Pengeluaran(Rp)'])
+            ]
 
+            for df, cols in financial_data_to_clean:
+                for col in cols:
+                    if col in df.columns:
+                        df[col] = clean_and_convert_to_numeric(df[col])
+            
+            status_text.text("Menyusun sheet 'REKAP'...")
+            rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, service_fee_df)
+            progress_bar.progress(40, text="Sheet 'REKAP' selesai.")
+            
+            status_text.text("Menyusun sheet 'IKLAN'...")
+            iklan_processed = process_iklan(iklan_produk_df)
+            progress_bar.progress(60, text="Sheet 'IKLAN' selesai.")
+
+            status_text.text("Menyusun sheet 'SUMMARY'...")
+            summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df)
+            progress_bar.progress(80, text="Sheet 'SUMMARY' selesai.")
+
+            status_text.text("Menyiapkan file output untuk diunduh...")
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 summary_processed.to_excel(writer, sheet_name='SUMMARY', index=False)
                 rekap_processed.to_excel(writer, sheet_name='REKAP', index=False)
                 iklan_processed.to_excel(writer, sheet_name='IKLAN', index=False)
-                # ... (penyimpanan sheet lainnya)
-            output.seek(0)
+                order_all_df.to_excel(writer, sheet_name='sheet order-all', index=False)
+                income_dilepas_df.to_excel(writer, sheet_name='sheet income dilepas', index=False)
+                iklan_produk_df.to_excel(writer, sheet_name='sheet biaya iklan', index=False)
+                seller_conversion_df.to_excel(writer, sheet_name='sheet seller conversion', index=False)
+                service_fee_df.to_excel(writer, sheet_name='sheet service fee', index=False)
             
-            # --- PERUBAHAN PENTING 1: Simpan hasil ke session_state ---
-            st.session_state.processed_data = output
-            st.session_state.process_complete = True
-            # --------------------------------------------------------
-
+            output.seek(0)
             progress_bar.progress(100, text="Proses Selesai!")
-            status_text.success("✅ Proses Selesai! Silakan pilih tanggal dan unduh file di bawah.")
+            status_text.success("✅ Proses Selesai! File Anda siap diunduh.")
 
+            st.header("3. Download Hasil")
+            st.download_button(
+                label="📥 Download File Output (Rekapanku.xlsx)",
+                data=output,
+                file_name="Rekapanku_Output.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
         except Exception as e:
             st.error(f"Terjadi kesalahan saat pemrosesan: {e}")
             st.exception(e)
-            # Jika error, pastikan state dihapus
-            if 'process_complete' in st.session_state:
-                del st.session_state.process_complete
-            if 'processed_data' in st.session_state:
-                del st.session_state.processed_data
-
-    # --- PERUBAHAN PENTING 2: Logika tampilan download dipindah ke luar ---
-    # Blok ini akan ditampilkan jika 'process_complete' ada dan True di session_state
-    if st.session_state.get('process_complete', False):
-        st.header("3. Download Hasil")
-
-        st.subheader("Pilih Rentang Tanggal untuk Nama File")
-        col_tgl1, col_tgl2 = st.columns(2)
-        with col_tgl1:
-            start_date = st.date_input("Tanggal Mulai", datetime.now().date().replace(day=1))
-        with col_tgl2:
-            end_date = st.date_input("Tanggal Selesai", datetime.now().date())
-        
-        dynamic_filename = f"Rekapanku_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.xlsx"
-
-        st.download_button(
-            label="📥 Download File Output",
-            data=st.session_state.processed_data, # Ambil data dari session_state
-            file_name=dynamic_filename,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    # -----------------------------------------------------------------
-
 else:
     st.info("Silakan unggah semua 4 file yang diperlukan untuk memulai proses.")
-    # Bersihkan state jika file di-un-upload
-    if 'process_complete' in st.session_state:
-        del st.session_state.process_complete
-    if 'processed_data' in st.session_state:
-        del st.session_state.processed_data
+
