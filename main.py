@@ -4,7 +4,7 @@ st.set_page_config(
     page_icon="📊",                   # emoji atau file ikon (.png/.ico)
     layout="wide"
 )
-
+from datetime import datetime
 import pandas as pd
 import numpy as np
 import io
@@ -424,10 +424,25 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
             status_text.success("✅ Proses Selesai! File Anda siap diunduh.")
 
             st.header("3. Download Hasil")
+
+            # === TAMBAHKAN BLOK KODE INI ===
+            st.subheader("Pilih Rentang Tanggal untuk Nama File")
+            col_tgl1, col_tgl2 = st.columns(2)
+            with col_tgl1:
+                # Widget untuk memilih tanggal mulai, defaultnya tanggal 1 bulan ini
+                start_date = st.date_input("Tanggal Mulai", datetime.now().date().replace(day=1))
+            with col_tgl2:
+                # Widget untuk memilih tanggal selesai, defaultnya hari ini
+                end_date = st.date_input("Tanggal Selesai", datetime.now().date())
+            
+            # Buat nama file dinamis berdasarkan tanggal yang dipilih
+            dynamic_filename = f"Rekapanku_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.xlsx"
+            # ===============================
+
             st.download_button(
-                label="📥 Download File Output (Rekapanku.xlsx)",
+                label="📥 Download File Output", # <-- Label bisa disingkat
                 data=output,
-                file_name="Rekapanku_Output.xlsx",
+                file_name=dynamic_filename, # <-- DIUBAH DI SINI
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         except Exception as e:
