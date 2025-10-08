@@ -125,6 +125,7 @@ def process_rekap(order_df, income_df, seller_conv_df):
 def process_iklan(iklan_df):
     """Fungsi untuk memproses dan membuat sheet 'IKLAN'."""
     iklan_df['Nama Iklan Clean'] = iklan_df['Nama Iklan'].str.replace(r'\s*baris\s*\[\d+\]$', '', regex=True).str.strip()
+    iklan_df['Nama Iklan Clean'] = iklan_df['Nama Iklan Clean'].str.replace(r'\s*\[\d+\]$', '', regex=True).str.strip()
     
     iklan_agg = iklan_df.groupby('Nama Iklan Clean').agg({
         'Dilihat': 'sum',
