@@ -9,59 +9,76 @@ import re
 
 def clean_and_convert_to_numeric(column):
     """Menghapus semua karakter non-digit (kecuali titik dan minus) dan mengubah kolom menjadi numerik."""
-    # Pastikan data adalah string sebelum menggunakan .str
     if column.dtype == 'object':
-        # Menghapus 'Rp', spasi, dan titik ribuan. Mempertahankan koma desimal jika ada.
         column = column.astype(str).str.replace(r'[^\d,\-]', '', regex=True)
-        # Mengganti koma desimal dengan titik
         column = column.str.replace(',', '.', regex=False)
-    # Ubah ke numerik, ganti error (misal: sel kosong) dengan 0
     return pd.to_numeric(column, errors='coerce').fillna(0)
 
 def process_rekap(order_df, income_df, seller_conv_df):
     """
     Fungsi untuk memproses dan membuat sheet 'REKAP' dengan file 'income' sebagai data utama.
     """
-    # 1. Agregasi data dari order-all
-    # Menggabungkan Nama Produk yang sama dalam satu No. Pesanan
-    order_agg = order_df.groupby('No. Pesanan').agg({
-        'Nama Produk': lambda x: ' | '.join(x.unique()), # Gabungkan nama produk jika beda
+    # --- PERUBAIKAN 1: Mengubah agregasi untuk memisahkan produk per pesanan ---
+    # Agregasi data dari order-all berdasarkan No. Pesanan DAN Nama Produk
+    order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk']).agg({
         'Jumlah': 'sum',
-        'Harga Setelah Diskon': 'first', # Ambil harga satuan pertama
+        'Harga Setelah Diskon': 'first',
         'Total Harga Produk': 'sum'
     }).reset_index()
     order_agg.rename(columns={'Jumlah': 'Jumlah Terjual'}, inplace=True)
 
-    # 2. Jadikan income_df sebagai tabel utama (LEFT table)
     # Pastikan tipe data 'No. Pesanan' sama untuk merge
     income_df['No. Pesanan'] = income_df['No. Pesanan'].astype(str)
     order_agg['No. Pesanan'] = order_agg['No. Pesanan'].astype(str)
     seller_conv_df['Kode Pesanan'] = seller_conv_df['Kode Pesanan'].astype(str)
     
-    # Gabungkan income_df dengan order_agg. Semua pesanan di income akan ada.
+    # Gabungkan income_df dengan order_agg. Ini akan membuat duplikasi baris income untuk setiap produk.
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
 
-    # 3. Gabungkan dengan data seller conversion
+    # Gabungkan dengan data seller conversion
     iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
     rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
+
+    # --- PERUBAIKAN 2: Distribusikan biaya per-pesanan HANYA ke baris produk pertama ---
+    # Biaya per-pesanan (Voucher, Adm, Iklan, Proses) hanya boleh dihitung sekali per pesanan.
+    # Kita akan menampilkannya di baris pertama dan 0 di baris berikutnya untuk pesanan yang sama.
     
-    # 4. Buat kolom-kolom baru sesuai aturan
-    # Menggunakan .get() untuk keamanan jika kolom tidak ada setelah merge
+    # Tandai baris mana yang merupakan produk pertama untuk setiap pesanan
+    is_first_item_mask = ~rekap_df.duplicated(subset='No. Pesanan', keep='first')
+    
+    # Kolom biaya yang berlaku per pesanan
+    order_level_costs = ['Voucher dari Penjual', 'Biaya Administrasi', 'Pengeluaran(Rp)', 'Biaya Proses Pesanan']
+    
+    for col in order_level_costs:
+        if col in rekap_df.columns:
+            # Jika bukan baris pertama, jadikan 0
+            rekap_df[col] = rekap_df[col] * is_first_item_mask
+
+    # Buat kolom-kolom baru sesuai aturan
     rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0)
     
-    # CATATAN: Rumus ini sesuai permintaan, tapi tidak umum.
-    # Biasanya: Total Harga * Persentase.
-    rekap_df['Biaya Layanan 2%'] = (rekap_df['Total Harga Produk'] * 1) * 0.02
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = (rekap_df['Total Harga Produk'] * 1) * 0.045
+    # Biaya per-produk dihitung untuk setiap baris
+    rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
     
-    # Menghindari pembagian dengan nol
+    # Biaya proses pesanan sekarang dihitung per produk (sudah diatur di atas menjadi 0 untuk produk kedua dst)
     rekap_df['Biaya Proses Pesanan (Per Produk)'] = rekap_df.apply(
         lambda row: row.get('Biaya Proses Pesanan', 0) / row.get('Jumlah Terjual', 1) if row.get('Jumlah Terjual', 0) != 0 else 0,
         axis=1
     )
 
-    # 5. Kalkulasi Penjualan Netto
+    # --- PERUBAIKAN 3: Memastikan semua biaya bernilai positif (absolut) ---
+    cost_columns_to_abs = [
+        'Voucher dari Penjual', 'Pengeluaran(Rp)', 'Biaya Administrasi', 
+        'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
+        'Biaya Proses Pesanan (Per Produk)'
+    ]
+    for col in cost_columns_to_abs:
+        if col in rekap_df.columns:
+            rekap_df[col] = rekap_df[col].abs()
+
+    # Kalkulasi Penjualan Netto per baris produk
     rekap_df['Penjualan Netto'] = (
         rekap_df.get('Total Harga Produk', 0) -
         rekap_df.get('Voucher dari Penjual', 0) -
@@ -72,7 +89,11 @@ def process_rekap(order_df, income_df, seller_conv_df):
         rekap_df.get('Biaya Proses Pesanan (Per Produk)', 0)
     )
 
-    # 6. Pilih, ganti nama, dan urutkan kolom untuk output akhir
+    # Urutkan berdasarkan No. Pesanan untuk memastikan produk dalam pesanan yang sama berkelompok
+    rekap_df.sort_values(by='No. Pesanan', inplace=True)
+    rekap_df.reset_index(drop=True, inplace=True)
+    
+    # Buat DataFrame Final
     rekap_final = pd.DataFrame({
         'No.': np.arange(1, len(rekap_df) + 1),
         'No. Pesanan': rekap_df['No. Pesanan'],
@@ -82,24 +103,26 @@ def process_rekap(order_df, income_df, seller_conv_df):
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
         'Harga Satuan': rekap_df['Harga Setelah Diskon'],
         'Total Harga Produk': rekap_df['Total Harga Produk'],
-        'Voucher Ditanggung Penjual': rekap_df['Voucher dari Penjual'],
-        'Biaya Komisi AMS + PPN Shopee': rekap_df['Pengeluaran(Rp)'],
-        'Biaya Adm 8%': rekap_df['Biaya Administrasi'],
+        'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual', 0),
+        'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
+        'Biaya Adm 8%': rekap_df.get('Biaya Administrasi', 0),
         'Biaya Layanan 2%': rekap_df['Biaya Layanan 2%'],
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
         'Biaya Proses Pesanan': rekap_df['Biaya Proses Pesanan (Per Produk)'],
         'Penjualan Netto': rekap_df['Penjualan Netto'],
-        'Metode Pembayaran': rekap_df['Metode pembayaran pembeli']
+        'Metode Pembayaran': rekap_df.get('Metode pembayaran pembeli', '')
     })
 
-    return rekap_final.fillna(0) # Ganti semua NaN yang mungkin tersisa dengan 0
+    # --- PERUBAIKAN 4: Mengosongkan sel duplikat untuk pesanan multi-produk ---
+    cols_to_blank = ['No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas']
+    rekap_final.loc[rekap_final['No. Pesanan'].duplicated(), cols_to_blank] = ''
+
+    return rekap_final.fillna(0)
 
 def process_iklan(iklan_df):
     """Fungsi untuk memproses dan membuat sheet 'IKLAN'."""
-    # Membersihkan nama iklan dari akhiran 'baris [angka]'
     iklan_df['Nama Iklan Clean'] = iklan_df['Nama Iklan'].str.replace(r'\s*baris\s*\[\d+\]$', '', regex=True).str.strip()
     
-    # Agregasi data berdasarkan nama iklan yang sudah dibersihkan
     iklan_agg = iklan_df.groupby('Nama Iklan Clean').agg({
         'Dilihat': 'sum',
         'Jumlah Klik': 'sum',
@@ -109,7 +132,6 @@ def process_iklan(iklan_df):
     }).reset_index()
     iklan_agg.rename(columns={'Nama Iklan Clean': 'Nama Iklan'}, inplace=True)
 
-    # Menambahkan baris Total
     total_row = pd.DataFrame({
         'Nama Iklan': ['TOTAL'],
         'Dilihat': [iklan_agg['Dilihat'].sum()],
@@ -125,18 +147,17 @@ def process_iklan(iklan_df):
 def get_harga_beli(nama_produk, katalog_df):
     """Mencocokkan nama produk dengan katalog untuk mendapatkan harga beli."""
     try:
+        if not isinstance(nama_produk, str): return 0
         nama_produk_upper = nama_produk.upper()
         parts = nama_produk.split()
         judul_key = parts[0]
         
-        # Ekstraksi Jenis Kertas dan Ukuran dari Nama Produk
         kertas_key = next((k for k in ['HVS', 'KORAN', 'QPP'] if k in nama_produk_upper), None)
         ukuran_key = next((u for u in ['A4', 'A5', 'B5'] if u in nama_produk_upper), None)
 
         if not kertas_key or not ukuran_key or not judul_key:
             return 0
 
-        # Filter katalog berdasarkan kriteria
         match = katalog_df[
             (katalog_df["JUDUL AL QUR'AN"].str.startswith(judul_key, na=False)) &
             (katalog_df["JENIS KERTAS"] == kertas_key) &
@@ -151,10 +172,15 @@ def get_harga_beli(nama_produk, katalog_df):
 
 def process_summary(rekap_df, iklan_final_df, katalog_df):
     """Fungsi untuk memproses dan membuat sheet 'SUMMARY'."""
-    # Agregasi data dari sheet REKAP berdasarkan Nama Produk
-    summary_df = rekap_df.groupby('Nama Produk').agg({
+    # Karena rekap_df sudah dipecah per produk, groupby('Nama Produk') akan bekerja dengan benar.
+    # Kita perlu membuat salinan rekap_df untuk diproses agar tidak mengubah data aslinya
+    rekap_copy = rekap_df.copy()
+    # Isi kembali No. Pesanan yang kosong agar groupby bisa bekerja jika diperlukan
+    rekap_copy['No. Pesanan'] = rekap_copy['No. Pesanan'].replace('', np.nan).ffill()
+
+    summary_df = rekap_copy.groupby('Nama Produk').agg({
         'Jumlah Terjual': 'sum',
-        'Harga Satuan': 'first', # Harga satuan diasumsikan sama untuk produk yang sama
+        'Harga Satuan': 'first',
         'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum',
         'Biaya Komisi AMS + PPN Shopee': 'sum',
@@ -165,17 +191,13 @@ def process_summary(rekap_df, iklan_final_df, katalog_df):
         'Penjualan Netto': 'sum'
     }).reset_index()
 
-    # Gabungkan dengan data iklan untuk mendapatkan 'Iklan Klik'
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']]
     summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk', right_on='Nama Iklan', how='left')
     summary_df.rename(columns={'Biaya': 'Iklan Klik'}, inplace=True)
     summary_df['Iklan Klik'].fillna(0, inplace=True)
     summary_df.drop('Nama Iklan', axis=1, inplace=True, errors='ignore')
 
-    # Kalkulasi ulang Penjualan Netto setelah dikurangi biaya iklan klik
     summary_df['Penjualan Netto (Setelah Iklan)'] = summary_df['Penjualan Netto'] - summary_df['Iklan Klik']
-
-    # Kalkulasi kolom-kolom baru
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
     summary_df['Biaya Ekspedisi'] = 0
     summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(lambda x: get_harga_beli(x, katalog_df))
@@ -200,7 +222,6 @@ def process_summary(rekap_df, iklan_final_df, katalog_df):
     summary_df['Jumlah buku per pesanan'] = summary_df.apply(
         lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1)
 
-    # Susun ulang kolom untuk output final
     summary_final = pd.DataFrame({
         'No': np.arange(1, len(summary_df) + 1),
         'Nama Produk': summary_df['Nama Produk'],
@@ -234,14 +255,12 @@ def process_summary(rekap_df, iklan_final_df, katalog_df):
 st.set_page_config(layout="wide")
 st.title("📊 Rekapanku - Sistem Otomatisasi Laporan")
 
-# Load dataset 'katalog' dari file lokal
 try:
     katalog_df = pd.read_excel('HARGA ONLINE.xlsx')
 except FileNotFoundError:
     st.error("Error: File 'HARGA ONLINE.xlsx' tidak ditemukan. Pastikan file tersebut berada di direktori yang sama dengan aplikasi ini.")
     st.stop()
 
-# Area Upload File
 st.header("1. Impor File Anda")
 col1, col2 = st.columns(2)
 with col1:
@@ -253,7 +272,6 @@ with col2:
 
 st.markdown("---")
 
-# Tombol Proses
 if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
     st.header("2. Mulai Proses")
     if st.button("🚀 Mulai Proses"):
@@ -261,46 +279,37 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
         status_text = st.empty()
         
         try:
-            # Step 1: Memuat dan membersihkan data (20%)
             status_text.text("Membaca dan membersihkan file...")
             order_all_df = pd.read_excel(uploaded_order)
             income_dilepas_df = pd.read_excel(uploaded_income, skiprows=5)
             iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
             seller_conversion_df = pd.read_csv(uploaded_seller)
             progress_bar.progress(20, text="File berhasil dimuat. Membersihkan format angka...")
-    
-            # --- PERBAIKAN: Mengubah struktur dari dictionary menjadi list of tuples ---
-            # Struktur ini aman dan tidak akan menyebabkan error 'unhashable type'
+
             financial_data_to_clean = [
                 (order_all_df, ['Harga Setelah Diskon', 'Total Harga Produk']),
                 (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan']),
                 (iklan_produk_df, ['Biaya', 'Omzet Penjualan']),
                 (seller_conversion_df, ['Pengeluaran(Rp)'])
             ]
-    
-            # Loop melalui list of tuples untuk membersihkan data
+
             for df, cols in financial_data_to_clean:
                 for col in cols:
                     if col in df.columns:
                         df[col] = clean_and_convert_to_numeric(df[col])
-            # --- AKHIR PERBAIKAN ---
             
-            # Step 2: Proses sheet REKAP (40%)
             status_text.text("Menyusun sheet 'REKAP'...")
             rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df)
             progress_bar.progress(40, text="Sheet 'REKAP' selesai.")
             
-            # Step 3: Proses sheet IKLAN (60%)
             status_text.text("Menyusun sheet 'IKLAN'...")
             iklan_processed = process_iklan(iklan_produk_df)
             progress_bar.progress(60, text="Sheet 'IKLAN' selesai.")
-    
-            # Step 4: Proses sheet SUMMARY (80%)
+
             status_text.text("Menyusun sheet 'SUMMARY'...")
             summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df)
             progress_bar.progress(80, text="Sheet 'SUMMARY' selesai.")
-    
-            # Step 5: Membuat file Excel output (100%)
+
             status_text.text("Menyiapkan file output untuk diunduh...")
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -315,8 +324,7 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
             output.seek(0)
             progress_bar.progress(100, text="Proses Selesai!")
             status_text.success("✅ Proses Selesai! File Anda siap diunduh.")
-    
-            # Area Download
+
             st.header("3. Download Hasil")
             st.download_button(
                 label="📥 Download File Output (Rekapanku.xlsx)",
@@ -326,6 +334,6 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
             )
         except Exception as e:
             st.error(f"Terjadi kesalahan saat pemrosesan: {e}")
-            st.exception(e) # Menampilkan traceback untuk debugging
+            st.exception(e)
 else:
     st.info("Silakan unggah semua 4 file yang diperlukan untuk memulai proses.")
