@@ -43,16 +43,25 @@ def process_rekap(order_df, income_df, seller_conv_df):
     # --- PERUBAIKAN 2: Distribusikan biaya per-pesanan HANYA ke baris produk pertama ---
     # Biaya per-pesanan (Voucher, Adm, Iklan, Proses) hanya boleh dihitung sekali per pesanan.
     # Kita akan menampilkannya di baris pertama dan 0 di baris berikutnya untuk pesanan yang sama.
-    
-    # Tandai baris mana yang merupakan produk pertama untuk setiap pesanan
+    # 1. Hitung jumlah baris (produk) untuk setiap No. Pesanan.
+    #    Ini akan membuat kolom baru berisi angka (misal: 2 jika ada 2 produk).
+    jumlah_produk_per_pesanan = rekap_df.groupby('No. Pesanan')['Nama Produk'].transform('count')
+
+    # 2. Bagi 'Biaya Proses Pesanan' asli dengan jumlah produk di atas.
+    #    Kita langsung buat kolom 'Biaya Proses Pesanan (Per Produk)' dengan nilai yang sudah dibagi.
+    #    .get('Biaya Proses Pesanan', 0) mengambil biaya asli sebelum di-nol-kan.
+    rekap_df['Biaya Proses Pesanan (Per Produk)'] = rekap_df.get('Biaya Proses Pesanan', 0) / jumlah_produk_per_pesanan
+
+    # 3. Lanjutkan logika untuk membuat biaya per-pesanan LAINNYA menjadi 0 di baris kedua dst.
+    #    'Biaya Proses Pesanan' DIHAPUS dari list ini agar nilainya tidak diubah menjadi 0.
     is_first_item_mask = ~rekap_df.duplicated(subset='No. Pesanan', keep='first')
     
     # Kolom biaya yang berlaku per pesanan
-    order_level_costs = ['Voucher dari Penjual', 'Biaya Administrasi', 'Pengeluaran(Rp)', 'Biaya Proses Pesanan']
+    order_level_costs = ['Voucher dari Penjual', 'Biaya Administrasi', 'Pengeluaran(Rp)'] # <-- 'Biaya Proses Pesanan' dihapus dari sini
     
     for col in order_level_costs:
         if col in rekap_df.columns:
-            # Jika bukan baris pertama, jadikan 0
+            # Biaya lain selain Biaya Proses Pesanan akan tetap 0 di baris duplikat
             rekap_df[col] = rekap_df[col] * is_first_item_mask
 
     # Buat kolom-kolom baru sesuai aturan
