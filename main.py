@@ -1,4 +1,10 @@
 import streamlit as st
+st.set_page_config(
+    page_title="Rekapanku",           # judul di tab browser
+    page_icon="📊",                   # emoji atau file ikon (.png/.ico)
+    layout="wide"
+)
+
 import pandas as pd
 import numpy as np
 import io
