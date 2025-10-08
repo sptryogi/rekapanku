@@ -281,7 +281,7 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
         try:
             status_text.text("Membaca dan membersihkan file...")
             order_all_df = pd.read_excel(uploaded_order)
-            income_dilepas_df = pd.read_excel(uploaded_income, skiprows=5)
+            income_dilepas_df = pd.read_excel(uploaded_income, sheet_name='Income', skiprows=5)
             iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
             seller_conversion_df = pd.read_csv(uploaded_seller)
             progress_bar.progress(20, text="File berhasil dimuat. Membersihkan format angka...")
