@@ -4,6 +4,8 @@ import numpy as np
 import io
 import time
 import re
+from rapidfuzz import fuzz
+
 
 # --- FUNGSI-FUNGSI PEMROSESAN ---
 
@@ -148,67 +150,87 @@ def process_iklan(iklan_df):
     iklan_final = pd.concat([iklan_agg, total_row], ignore_index=True)
     return iklan_final
 
-def get_harga_beli(nama_produk, katalog_df):
+def get_harga_beli_fuzzy(nama_produk, katalog_df, score_threshold_primary=80, score_threshold_fallback=75):
     """
-    Mencocokkan nama produk dengan katalog berdasarkan KESAMAAN JUDUL dan UKURAN
-    dengan logika pencocokan 'fuzzy' (berdasarkan persentase kemiripan).
+    Cari harga beli dari katalog menggunakan kombinasi filter ukuran + jenis kertas
+    dan fuzzy matching pada judul. Kembalikan angka (0 jika tidak menemukan).
     """
     try:
-        if not isinstance(nama_produk, str): return 0
-
-        # --- LANGKAH 1: Ekstrak UKURAN dari Nama Produk (Tetap sama) ---
-        nama_produk_upper = nama_produk.upper()
-        ukuran_match = re.search(r'\b(A\d|B\d)\b', nama_produk_upper)
-        if not ukuran_match:
-            ukuran_match = re.search(r'(\(\d+X\d+\s*CM\))', nama_produk_upper)
-        
-        if not ukuran_match: return 0
-        ukuran_key = ukuran_match.group(1)
-
-        # --- LANGKAH 2: Filter Awal Katalog berdasarkan UKURAN (Tetap sama) ---
-        possible_matches = katalog_df[katalog_df['UKURAN'].str.startswith(ukuran_key, na=False)].copy()
-        if possible_matches.empty: return 0
-
-        # --- LANGKAH 3: Cari Judul yang Paling Mirip (Logika Baru) ---
-        best_match_ratio = 0.0
-        best_price = 0
-        # Digunakan jika ada rasio yang sama, pilih judul yang lebih panjang (lebih spesifik)
-        best_score_tiebreaker = 0 
-
-        # Siapkan set kata dari Nama Produk untuk pencarian yang sangat cepat
-        nama_produk_words = set(' '.join(nama_produk_upper.replace('-', ' ').split()).split())
-
-        for index, row in possible_matches.iterrows():
-            judul_katalog = row["JUDUL AL QUR'AN"]
-            if pd.isna(judul_katalog): continue
-
-            judul_katalog_clean = ' '.join(str(judul_katalog).upper().replace('-', ' ').split())
-            keywords = judul_katalog_clean.split()
-            if not keywords: continue
-
-            # Hitung berapa banyak kata kunci katalog yang ada di nama produk
-            matched_keywords_count = sum(1 for keyword in keywords if keyword in nama_produk_words)
-            
-            # Hitung rasio kecocokan
-            match_ratio = matched_keywords_count / len(keywords)
-            
-            # Jika rasio saat ini adalah yang terbaik...
-            if match_ratio > best_match_ratio:
-                best_match_ratio = match_ratio
-                best_price = row['KATALOG HARGA']
-                best_score_tiebreaker = len(judul_katalog_clean)
-            # Jika rasio sama, pilih yang judulnya lebih panjang (lebih spesifik)
-            elif match_ratio == best_match_ratio and len(judul_katalog_clean) > best_score_tiebreaker:
-                best_price = row['KATALOG HARGA']
-                best_score_tiebreaker = len(judul_katalog_clean)
-
-        # Syarat minimal: Hanya kembalikan harga jika tingkat kecocokan lebih dari 70%
-        # Ini mencegah kecocokan yang lemah dan tidak akurat.
-        if best_match_ratio > 0.7:
-            return best_price
-        else:
+        if not isinstance(nama_produk, str) or nama_produk.strip() == "":
             return 0
 
+        s = nama_produk.upper()
+        # bersihkan tanda baca untuk matching
+        s_clean = re.sub(r'[^A-Z0-9\s×xX\-]', ' ', s)
+        s_clean = re.sub(r'\s+', ' ', s_clean).strip()
+
+        # 1) deteksi ukuran (pattern umum)
+        ukuran_found = None
+        ukuran_patterns = [
+            r'\bA[0-9]\b',         # A3 A4 A5
+            r'\bB[0-9]\b',         # B4 B5
+            r'\b\d{1,3}\s*[x×X]\s*\d{1,3}\b',  # e.g. 21x29, 30 x 21
+            r'\b\d{1,3}\s*CM\b'    # e.g. 21 CM
+        ]
+        for pat in ukuran_patterns:
+            m = re.search(pat, s_clean)
+            if m:
+                ukuran_found = m.group(0).replace(' ', '').upper()
+                break
+
+        # 2) deteksi jenis kertas dari kata kunci umum
+        jenis_kertas_tokens = ['HVS','KORAN','GLOSSY','DUPLEX','ART','COVER','MATT','MATTE','CTP','BOOK PAPER']
+        jenis_found = None
+        for jt in jenis_kertas_tokens:
+            if jt in s_clean:
+                jenis_found = jt
+                break
+
+        # 3) filter kandidat katalog: coba filter ukuran dulu, lalu jenis kertas
+        candidates = katalog_df.copy()
+        if ukuran_found:
+            # matching kasar: apakah UKURAN_NORM mengandung ukuran_found (contoh A4 atau 21x29)
+            candidates = candidates[candidates['UKURAN_NORM'].str.contains(re.escape(ukuran_found), na=False)]
+        if jenis_found and not candidates.empty:
+            candidates = candidates[candidates['JENIS_KERTAS_NORM'].str.contains(jenis_found, na=False)]
+
+        # jika tidak ada kandidat setelah filter, fallback ke seluruh katalog
+        if candidates.empty:
+            candidates = katalog_df.copy()
+
+        # 4) fuzzy matching di kandidat (token_set_ratio lebih toleran terhadap urutan)
+        best_score = 0
+        best_price = 0
+        best_title = ""
+        for _, row in candidates.iterrows():
+            title = str(row['JUDUL_NORM'])
+            score = fuzz.token_set_ratio(s_clean, title)
+            # prefer skor tertinggi; tiebreaker: judul lebih panjang (lebih spesifik)
+            if score > best_score or (score == best_score and len(title) > len(best_title)):
+                best_score = score
+                best_price = row.get('KATALOG_HARGA_NUM', 0)
+                best_title = title
+
+        # 5) keputusan: terima bila skor cukup tinggi
+        if best_score >= score_threshold_primary and best_price and best_price > 0:
+            return float(best_price)
+
+        # 6) fallback: scan seluruh katalog untuk skor terbaik jika belum cukup
+        best_score2 = best_score
+        best_price2 = best_price
+        for _, row in katalog_df.iterrows():
+            title = str(row['JUDUL_NORM'])
+            score = fuzz.token_set_ratio(s_clean, title)
+            if score > best_score2 or (score == best_score2 and len(title) > len(best_title)):
+                best_score2 = score
+                best_price2 = row.get('KATALOG_HARGA_NUM', 0)
+                best_title = title
+
+        if best_score2 >= score_threshold_fallback and best_price2 and best_price2 > 0:
+            return float(best_price2)
+
+        # kalau masih tidak cukup, kembalikan 0
+        return 0
     except Exception:
         return 0
 
@@ -242,7 +264,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df):
     summary_df['Penjualan Netto (Setelah Iklan)'] = summary_df['Penjualan Netto'] - summary_df['Iklan Klik']
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
     summary_df['Biaya Ekspedisi'] = 0
-    summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(lambda x: get_harga_beli(x, katalog_df))
+    summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(lambda x: get_harga_beli_fuzzy(x, katalog_df))
     summary_df['Harga Custom TLJ'] = 0
     summary_df['Total Pembelian'] = summary_df['Jumlah Terjual'] * summary_df['Harga Beli']
     
@@ -302,6 +324,27 @@ try:
 except FileNotFoundError:
     st.error("Error: File 'HARGA ONLINE.xlsx' tidak ditemukan. Pastikan file tersebut berada di direktori yang sama dengan aplikasi ini.")
     st.stop()
+    
+# ---------- PREPROCESS KATALOG ----------
+# normalisasi nama kolom ke uppercase untuk menghindari kasus sensitif
+katalog_df.columns = [str(c).strip().upper() for c in katalog_df.columns]
+
+# pastikan kolom yang kita butuhkan ada
+# contoh kolom: "JUDUL AL QUR'AN", "JENIS KERTAS", "UKURAN", "KATALOG HARGA"
+for col in ["JUDUL AL QUR'AN","JENIS KERTAS","UKURAN","KATALOG HARGA"]:
+    if col not in katalog_df.columns:
+        katalog_df[col] = ""
+
+# buat versi normalisasi untuk pencocokan cepat
+katalog_df['JUDUL_NORM'] = katalog_df["JUDUL AL QUR'AN"].astype(str).str.upper().str.replace(r'[^A-Z0-9\s]', ' ', regex=True)
+katalog_df['JENIS_KERTAS_NORM'] = katalog_df['JENIS KERTAS'].astype(str).str.upper().str.replace(r'[^A-Z0-9\s]', ' ', regex=True)
+katalog_df['UKURAN_NORM'] = katalog_df['UKURAN'].astype(str).str.upper().str.replace(r'\s+', '', regex=True)
+
+# konversi KATALOG HARGA jadi numeric (bersihkan koma / titik / Rp)
+katalog_df['KATALOG_HARGA_NUM'] = pd.to_numeric(
+    katalog_df['KATALOG HARGA'].astype(str).str.replace(r'[^0-9\.]', '', regex=True),
+    errors='coerce'
+).fillna(0)
 
 st.header("1. Import File Anda")
 col1, col2 = st.columns(2)
