@@ -22,7 +22,7 @@ def clean_and_convert_to_numeric(column):
         column = column.str.replace(',', '.', regex=False)
     return pd.to_numeric(column, errors='coerce').fillna(0)
 
-def process_rekap(order_df, income_df, seller_conv_df):
+def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     """
     Fungsi untuk memproses dan membuat sheet 'REKAP' dengan file 'income' sebagai data utama.
     """
@@ -48,42 +48,47 @@ def process_rekap(order_df, income_df, seller_conv_df):
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
     rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
 
-    # --- PERUBAIKAN 2: Distribusikan biaya per-pesanan HANYA ke baris produk pertama ---
-    # Biaya per-pesanan (Voucher, Adm, Iklan, Proses) hanya boleh dihitung sekali per pesanan.
-    # Kita akan menampilkannya di baris pertama dan 0 di baris berikutnya untuk pesanan yang sama.
-    # 1. Hitung jumlah baris (produk) untuk setiap No. Pesanan.
-    #    Ini akan membuat kolom baru berisi angka (misal: 2 jika ada 2 produk).
-    jumlah_produk_per_pesanan = rekap_df.groupby('No. Pesanan')['Nama Produk'].transform('count')
-
-    # 2. Bagi 'Biaya Proses Pesanan' asli dengan jumlah produk di atas.
-    #    Kita langsung buat kolom 'Biaya Proses Pesanan (Per Produk)' dengan nilai yang sudah dibagi.
-    #    .get('Biaya Proses Pesanan', 0) mengambil biaya asli sebelum di-nol-kan.
-    rekap_df['Biaya Proses Pesanan (Per Produk)'] = rekap_df.get('Biaya Proses Pesanan', 0) / jumlah_produk_per_pesanan
-
-    # 3. Lanjutkan logika untuk membuat biaya per-pesanan LAINNYA menjadi 0 di baris kedua dst.
-    #    'Biaya Proses Pesanan' DIHAPUS dari list ini agar nilainya tidak diubah menjadi 0.
-    is_first_item_mask = ~rekap_df.duplicated(subset='No. Pesanan', keep='first')
+    # 1. Siapkan data dari 'Service Fee Details'
+    # Pilih kolom yang relevan dan pastikan tipe data No. Pesanan cocok
+    service_fee_data = service_fee_df[['No. Pesanan', 'Biaya Layanan Promo XTRA', 'Biaya Layanan Gratis Ongkir XTRA']].copy()
+    service_fee_data['No. Pesanan'] = service_fee_data['No. Pesanan'].astype(str)
     
-    # Kolom biaya yang berlaku per pesanan
-    order_level_costs = ['Voucher dari Penjual', 'Biaya Administrasi', 'Pengeluaran(Rp)'] # <-- 'Biaya Proses Pesanan' dihapus dari sini
+    # Bersihkan dan ubah nama kolom agar sesuai target
+    service_fee_data['Biaya Layanan 2%'] = clean_and_convert_to_numeric(service_fee_data['Biaya Layanan Promo XTRA'])
+    service_fee_data['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = clean_and_convert_to_numeric(service_fee_data['Biaya Layanan Gratis Ongkir XTRA'])
+
+    # 2. Gabungkan data biaya layanan baru ini ke rekap_df
+    rekap_df = pd.merge(rekap_df, service_fee_data[['No. Pesanan', 'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%']], on='No. Pesanan', how='left')
+
+    # 3. Kembalikan logika biaya per-pesanan ke awal (tidak dibagi)
+    #    Daftar ini sekarang berisi SEMUA biaya yang hanya berlaku sekali per pesanan.
+    order_level_costs = [
+        'Voucher dari Penjual', 
+        'Biaya Administrasi', 
+        'Pengeluaran(Rp)', 
+        'Biaya Proses Pesanan', # <-- Dikembalikan ke sini
+        'Biaya Layanan 2%', # <-- Kolom baru
+        'Biaya Layanan Gratis Ongkir Xtra 4,5%' # <-- Kolom baru
+    ]
+    
+    is_first_item_mask = ~rekap_df.duplicated(subset='No. Pesanan', keep='first')
     
     for col in order_level_costs:
         if col in rekap_df.columns:
-            # Biaya lain selain Biaya Proses Pesanan akan tetap 0 di baris duplikat
+            # Isi nilai NaN dengan 0 sebelum perkalian
+            rekap_df[col] = rekap_df[col].fillna(0)
+            # Jadikan 0 untuk baris produk kedua, ketiga, dst. dalam satu pesanan
             rekap_df[col] = rekap_df[col] * is_first_item_mask
 
-    # Buat kolom-kolom baru sesuai aturan
+    # 4. Hapus logika perhitungan lama yang tidak lagi digunakan
+    #    (perkalian 2% dan 4.5% serta pembagian Biaya Proses Pesanan sudah tidak relevan)
     rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0)
-    
-    # Biaya per-produk dihitung untuk setiap baris
-    rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
-    
-    # --- PERUBAIKAN 3: Memastikan semua biaya bernilai positif (absolut) ---
+
+    # 5. Pastikan semua biaya bernilai positif (menghilangkan tanda minus)
     cost_columns_to_abs = [
         'Voucher dari Penjual', 'Pengeluaran(Rp)', 'Biaya Administrasi', 
         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
-        'Biaya Proses Pesanan (Per Produk)'
+        'Biaya Proses Pesanan' # <-- Cukup kolom asli
     ]
     for col in cost_columns_to_abs:
         if col in rekap_df.columns:
@@ -97,7 +102,7 @@ def process_rekap(order_df, income_df, seller_conv_df):
         rekap_df.get('Biaya Administrasi', 0) -
         rekap_df.get('Biaya Layanan 2%', 0) -
         rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
-        rekap_df.get('Biaya Proses Pesanan (Per Produk)', 0)
+        rekap_df.get('Biaya Proses Pesanan', 0) # <-- Diubah kembali ke kolom asli
     )
 
     # Urutkan berdasarkan No. Pesanan untuk memastikan produk dalam pesanan yang sama berkelompok
@@ -117,9 +122,9 @@ def process_rekap(order_df, income_df, seller_conv_df):
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
         'Biaya Adm 8%': rekap_df.get('Biaya Administrasi', 0),
-        'Biaya Layanan 2%': rekap_df['Biaya Layanan 2%'],
-        'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
-        'Biaya Proses Pesanan': rekap_df['Biaya Proses Pesanan (Per Produk)'],
+        'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
+        'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
+        'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan', 0), # <-- Diubah ke kolom asli
         'Penjualan Netto': rekap_df['Penjualan Netto'],
         'Metode Pembayaran': rekap_df.get('Metode pembayaran pembeli', '')
     })
@@ -373,6 +378,7 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
             status_text.text("Membaca dan membersihkan file...")
             order_all_df = pd.read_excel(uploaded_order)
             income_dilepas_df = pd.read_excel(uploaded_income, sheet_name='Income', skiprows=5)
+            service_fee_df = pd.read_excel(uploaded_income, sheet_name='Service Fee Details', skiprows_guess=1)  # sheet 'Service Fee Details'
             iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
             seller_conversion_df = pd.read_csv(uploaded_seller)
             progress_bar.progress(20, text="File berhasil dimuat. Membersihkan format angka...")
@@ -390,7 +396,7 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
                         df[col] = clean_and_convert_to_numeric(df[col])
             
             status_text.text("Menyusun sheet 'REKAP'...")
-            rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df)
+            rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, service_fee_df)
             progress_bar.progress(40, text="Sheet 'REKAP' selesai.")
             
             status_text.text("Menyusun sheet 'IKLAN'...")
@@ -411,6 +417,7 @@ if uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller:
                 income_dilepas_df.to_excel(writer, sheet_name='sheet income dilepas', index=False)
                 iklan_produk_df.to_excel(writer, sheet_name='sheet biaya iklan', index=False)
                 seller_conversion_df.to_excel(writer, sheet_name='sheet seller conversion', index=False)
+                service_fee_df.to_excel(writer, sheet_name='sheet service fee', index=False)
             
             output.seek(0)
             progress_bar.progress(100, text="Proses Selesai!")
