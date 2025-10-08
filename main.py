@@ -265,7 +265,7 @@ except FileNotFoundError:
     st.error("Error: File 'HARGA ONLINE.xlsx' tidak ditemukan. Pastikan file tersebut berada di direktori yang sama dengan aplikasi ini.")
     st.stop()
 
-st.header("1. Impor File Anda")
+st.header("1. Import File Anda")
 col1, col2 = st.columns(2)
 with col1:
     uploaded_order = st.file_uploader("1. Import file order-all.xlsx", type="xlsx")
