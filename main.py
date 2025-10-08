@@ -151,58 +151,63 @@ def process_iklan(iklan_df):
 def get_harga_beli(nama_produk, katalog_df):
     """
     Mencocokkan nama produk dengan katalog berdasarkan KESAMAAN JUDUL dan UKURAN
-    dengan logika pencocokan yang lebih cerdas.
+    dengan logika pencocokan 'fuzzy' (berdasarkan persentase kemiripan).
     """
     try:
         if not isinstance(nama_produk, str): return 0
 
-        # --- LANGKAH 1: Ekstrak UKURAN dari Nama Produk ---
+        # --- LANGKAH 1: Ekstrak UKURAN dari Nama Produk (Tetap sama) ---
         nama_produk_upper = nama_produk.upper()
-        # Regex mencari format seperti A5, B5, A7 atau (19X19 CM)
         ukuran_match = re.search(r'\b(A\d|B\d)\b', nama_produk_upper)
         if not ukuran_match:
-            # Jika tidak ketemu, cari format (19X19 CM) atau sejenisnya
             ukuran_match = re.search(r'(\(\d+X\d+\s*CM\))', nama_produk_upper)
-
-        if not ukuran_match:
-            return 0  # Jika tidak ada info ukuran, sulit untuk mencocokkan
         
+        if not ukuran_match: return 0
         ukuran_key = ukuran_match.group(1)
 
-        # --- LANGKAH 2: Filter Awal Katalog berdasarkan UKURAN ---
+        # --- LANGKAH 2: Filter Awal Katalog berdasarkan UKURAN (Tetap sama) ---
         possible_matches = katalog_df[katalog_df['UKURAN'].str.startswith(ukuran_key, na=False)].copy()
+        if possible_matches.empty: return 0
 
-        if possible_matches.empty:
-            return 0  # Tidak ada produk di katalog dengan ukuran tersebut
-
-        # --- LANGKAH 3: Cari Judul yang Paling Cocok dari Hasil Filter ---
-        best_match_score = 0
+        # --- LANGKAH 3: Cari Judul yang Paling Mirip (Logika Baru) ---
+        best_match_ratio = 0.0
         best_price = 0
+        # Digunakan jika ada rasio yang sama, pilih judul yang lebih panjang (lebih spesifik)
+        best_score_tiebreaker = 0 
 
-        # Standarisasi 'Nama Produk' untuk pencocokan (hapus tanda hubung, spasi ganda)
-        nama_produk_clean = ' '.join(nama_produk_upper.replace('-', ' ').split())
+        # Siapkan set kata dari Nama Produk untuk pencarian yang sangat cepat
+        nama_produk_words = set(' '.join(nama_produk_upper.replace('-', ' ').split()).split())
 
         for index, row in possible_matches.iterrows():
             judul_katalog = row["JUDUL AL QUR'AN"]
-            
-            # Standarisasi 'JUDUL AL QUR'AN' dari katalog (menangani jika ada nilai kosong)
             if pd.isna(judul_katalog): continue
+
             judul_katalog_clean = ' '.join(str(judul_katalog).upper().replace('-', ' ').split())
-            
-            # Pecah judul katalog menjadi kata-kata kunci
             keywords = judul_katalog_clean.split()
+            if not keywords: continue
+
+            # Hitung berapa banyak kata kunci katalog yang ada di nama produk
+            matched_keywords_count = sum(1 for keyword in keywords if keyword in nama_produk_words)
             
-            # Cek apakah SEMUA kata kunci dari katalog ada di dalam Nama Produk
-            if all(keyword in nama_produk_clean for keyword in keywords):
-                # Semakin panjang (semakin spesifik) judul katalog yang cocok,
-                # semakin tinggi skornya. Ini akan memilih 'AL-AQEEL HVS' daripada hanya 'AL-AQEEL'.
-                score = len(judul_katalog_clean)
-                
-                if score > best_match_score:
-                    best_match_score = score
-                    best_price = row['KATALOG HARGA']
-        
-        return best_price
+            # Hitung rasio kecocokan
+            match_ratio = matched_keywords_count / len(keywords)
+            
+            # Jika rasio saat ini adalah yang terbaik...
+            if match_ratio > best_match_ratio:
+                best_match_ratio = match_ratio
+                best_price = row['KATALOG HARGA']
+                best_score_tiebreaker = len(judul_katalog_clean)
+            # Jika rasio sama, pilih yang judulnya lebih panjang (lebih spesifik)
+            elif match_ratio == best_match_ratio and len(judul_katalog_clean) > best_score_tiebreaker:
+                best_price = row['KATALOG HARGA']
+                best_score_tiebreaker = len(judul_katalog_clean)
+
+        # Syarat minimal: Hanya kembalikan harga jika tingkat kecocokan lebih dari 70%
+        # Ini mencegah kecocokan yang lemah dan tidak akurat.
+        if best_match_ratio > 0.7:
+            return best_price
+        else:
+            return 0
 
     except Exception:
         return 0
