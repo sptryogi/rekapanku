@@ -22,16 +22,18 @@ def clean_and_convert_to_numeric(column):
         column = column.str.replace(',', '.', regex=False)
     return pd.to_numeric(column, errors='coerce').fillna(0)
 
-def clean_to_numeric_universal(column):
+def clean_order_all_numeric(column):
+    """Fungsi khusus untuk membersihkan kolom di file order-all.
+    Hanya menghapus titik (.) sebagai pemisah ribuan.
     """
-    Membersihkan kolom menjadi numerik dengan menghapus SEMUA karakter non-digit.
-    Ini akan menangani titik dan koma sebagai pemisah ribuan secara universal.
-    Contoh: 'Rp 16.808' -> 16808 | '16,808' -> 16808
-    """
-    if column.dtype == 'object' or pd.api.types.is_string_dtype(column):
-        # Regex [^\d] berarti "cocokkan semua karakter yang BUKAN digit".
-        # Lalu ganti dengan string kosong (hapus).
-        column = column.astype(str).str.replace(r'[^\d]', '', regex=True)
+    if column.dtype == 'object':
+        # 1. Hapus titik (.)
+        column = column.astype(str).str.replace('.', '', regex=False)
+        # 2. Jika ada koma (untuk desimal), ubah jadi titik agar bisa jadi angka
+        # column = column.str.replace(',', '.', regex=False)
+    
+    # Ubah ke tipe data angka
+    return pd.to_numeric(column, errors='coerce').fillna(0)
     
     # Ubah string angka yang sudah bersih ke tipe data numerik.
     # errors='coerce' akan mengubah teks kosong menjadi NaN, lalu .fillna(0) mengubahnya jadi 0.
@@ -500,14 +502,14 @@ if store_choice:
                 #             df[col] = clean_and_convert_to_numeric(df[col])
                 financial_data_to_clean = [
                     (order_all_df, ['Harga Setelah Diskon', 'Total Harga Produk']),
-                    (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan', 'Harga Awal', 'Harga Setelah Diskon', 'Total Harga Produk']),
+                    (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan']),
                     (iklan_produk_df, ['Biaya', 'Omzet Penjualan']),
                     (seller_conversion_df, ['Pengeluaran(Rp)'])
                 ]
                 for df, cols in financial_data_to_clean:
                     for col in cols:
                         if col in df.columns:
-                            df[col] = clean_to_numeric_universal(df[col])
+                            df[col] = clean_order_all_numeric(df[col])
                 
                 # --- LOGIKA PEMROSESAN BERDASARKAN TOKO ---
                 status_text.text("Menyusun sheet 'REKAP'...")
