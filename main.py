@@ -19,6 +19,7 @@ def clean_and_convert_to_numeric(column):
     """Menghapus semua karakter non-digit (kecuali titik dan minus) dan mengubah kolom menjadi numerik."""
     if column.dtype == 'object':
         column = column.astype(str).str.replace(r'[^\d,\-]', '', regex=True)
+        column = column.astype(str).str.replace('.', '', regex=False)
         column = column.str.replace(',', '.', regex=False)
     return pd.to_numeric(column, errors='coerce').fillna(0)
 
@@ -509,7 +510,7 @@ if store_choice:
                 for df, cols in financial_data_to_clean:
                     for col in cols:
                         if col in df.columns:
-                            df[col] = clean_order_all_numeric(df[col])
+                            df[col] = clean_and_convert_to_numeric(df[col])
                 
                 # --- LOGIKA PEMROSESAN BERDASARKAN TOKO ---
                 status_text.text("Menyusun sheet 'REKAP'...")
