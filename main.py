@@ -22,15 +22,19 @@ def clean_and_convert_to_numeric(column):
         column = column.str.replace(',', '.', regex=False)
     return pd.to_numeric(column, errors='coerce').fillna(0)
 
-def clean_order_all_numeric(column):
-    """Fungsi khusus untuk membersihkan kolom di file order-all.
-    Hanya menghapus titik (.) sebagai pemisah ribuan.
+def clean_to_numeric_universal(column):
     """
-    if column.dtype == 'object':
-        column = column.astype(str).str.replace('.', '', regex=False)
-        column = column.str.replace(',', '.', regex=False)
-        
-    # Ubah ke tipe data angka
+    Membersihkan kolom menjadi numerik dengan menghapus SEMUA karakter non-digit.
+    Ini akan menangani titik dan koma sebagai pemisah ribuan secara universal.
+    Contoh: 'Rp 16.808' -> 16808 | '16,808' -> 16808
+    """
+    if column.dtype == 'object' or pd.api.types.is_string_dtype(column):
+        # Regex [^\d] berarti "cocokkan semua karakter yang BUKAN digit".
+        # Lalu ganti dengan string kosong (hapus).
+        column = column.astype(str).str.replace(r'[^\d]', '', regex=True)
+    
+    # Ubah string angka yang sudah bersih ke tipe data numerik.
+    # errors='coerce' akan mengubah teks kosong menjadi NaN, lalu .fillna(0) mengubahnya jadi 0.
     return pd.to_numeric(column, errors='coerce').fillna(0)
     
 def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
@@ -494,25 +498,16 @@ if store_choice:
                 #     for col in cols:
                 #         if col in df.columns:
                 #             df[col] = clean_and_convert_to_numeric(df[col])
-                # --- Langkah 1: Bersihkan file order-all secara khusus ---
-                cols_to_clean_order = ['Harga Setelah Diskon', 'Total Harga Produk']
-                for col in cols_to_clean_order:
-                    if col in order_all_df.columns:
-                      # Gunakan fungsi baru yang spesifik
-                      order_all_df[col] = clean_order_all_numeric(order_all_df[col])
-    
-                # --- Langkah 2: Bersihkan file-file lainnya dengan fungsi lama ---
-                other_financial_data_to_clean = [
-                    (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan']),
+                financial_data_to_clean = [
+                    (order_all_df, ['Harga Setelah Diskon', 'Total Harga Produk']),
+                    (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan', 'Harga Awal', 'Harga Setelah Diskon', 'Total Harga Produk']),
                     (iklan_produk_df, ['Biaya', 'Omzet Penjualan']),
                     (seller_conversion_df, ['Pengeluaran(Rp)'])
                 ]
-        
-                for df, cols in other_financial_data_to_clean:
+                for df, cols in financial_data_to_clean:
                     for col in cols:
                         if col in df.columns:
-                            # Gunakan fungsi lama yang umum
-                            df[col] = clean_and_convert_to_numeric(df[col])
+                            df[col] = clean_to_numeric_universal(df[col])
                 
                 # --- LOGIKA PEMROSESAN BERDASARKAN TOKO ---
                 status_text.text("Menyusun sheet 'REKAP'...")
