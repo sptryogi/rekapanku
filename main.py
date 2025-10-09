@@ -27,8 +27,8 @@ def clean_order_all_numeric(column):
     Hanya menghapus titik (.) sebagai pemisah ribuan.
     """
     if column.dtype == 'object':
-        # 1. Hapus titik (.)
         column = column.astype(str).str.replace('.', '', regex=False)
+        column = column.str.replace(',', '.', regex=False)
         
     # Ubah ke tipe data angka
     return pd.to_numeric(column, errors='coerce').fillna(0)
