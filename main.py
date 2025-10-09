@@ -475,7 +475,7 @@ if store_choice:
                 # ... (Kode pembersihan data keuangan Anda tetap di sini) ...
                 financial_data_to_clean = [
                     (order_all_df, ['Harga Setelah Diskon', 'Total Harga Produk']),
-                    (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan']),
+                    (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan', 'Harga Awal', 'Harga Setelah Diskon', 'Total Harga Produk']),
                     (iklan_produk_df, ['Biaya', 'Omzet Penjualan']),
                     (seller_conversion_df, ['Pengeluaran(Rp)'])
                 ]
