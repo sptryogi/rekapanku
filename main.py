@@ -22,6 +22,17 @@ def clean_and_convert_to_numeric(column):
         column = column.str.replace(',', '.', regex=False)
     return pd.to_numeric(column, errors='coerce').fillna(0)
 
+def clean_order_all_numeric(column):
+    """Fungsi khusus untuk membersihkan kolom di file order-all.
+    Hanya menghapus titik (.) sebagai pemisah ribuan.
+    """
+    if column.dtype == 'object':
+        # 1. Hapus titik (.)
+        column = column.astype(str).str.replace('.', '', regex=False)
+        
+    # Ubah ke tipe data angka
+    return pd.to_numeric(column, errors='coerce').fillna(0)
+    
 def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     """
     Fungsi untuk memproses dan membuat sheet 'REKAP' dengan file 'income' sebagai data utama.
@@ -137,7 +148,7 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
 
 def process_rekap_pacific(order_df, income_df, seller_conv_df):
     """
-    Fungsi untuk memproses sheet 'REKAP' KHUSUS untuk PacificStore.
+    Fungsi untuk memproses sheet 'REKAP' KHUSUS untuk PacificBookStore.
     Perbedaan utama: Biaya Layanan dihitung dari Total Harga Produk.
     """
     # Bagian ini sama persis dengan fungsi rekap sebelumnya
@@ -158,7 +169,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
     rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
 
-    # --- LOGIKA BARU UNTUK PACIFICSTORE ---
+    # --- LOGIKA BARU UNTUK PACIFICBOOKSTORE ---
     # Hitung biaya layanan langsung dari Total Harga Produk.
     # Biaya ini bersifat per-produk, bukan per-pesanan.
     rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0)
@@ -364,7 +375,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
     # --- LOGIKA BARU UNTUK BIAYA KIRIM ---
-    if store_type == 'PacificStore':
+    if store_type == 'PacificBookStore':
         summary_df['Biaya Kirim ke Sby'] = summary_df['Jumlah Terjual'] * 733
         biaya_ekspedisi_final = summary_df['Biaya Kirim ke Sby']
     else: # Default untuk HumanStore
@@ -399,7 +410,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
         'Penjualan Netto': summary_df['Penjualan Netto (Setelah Iklan)'], 'Biaya Packing': summary_df['Biaya Packing'],
     }
     # Tambahkan kolom ekspedisi sesuai pilihan toko
-    if store_type == 'PacificStore':
+    if store_type == 'PacificBookStore':
         summary_final_data['Biaya Kirim ke Sby'] = biaya_ekspedisi_final
     else:
         summary_final_data['Biaya Ekspedisi'] = biaya_ekspedisi_final
@@ -421,7 +432,7 @@ st.title("📊 Rekapanku - Sistem Otomatisasi Laporan")
 # --- LANGKAH 1: PILIH TOKO ---
 store_choice = st.selectbox(
     "Pilih Toko untuk Diproses:",
-    ("", "HumanStore", "PacificStore")
+    ("", "HumanStore", "PacificBookStore")
 )
 
 # Hanya tampilkan uploader jika toko sudah dipilih
@@ -473,15 +484,34 @@ if store_choice:
                 progress_bar.progress(20, text="File dimuat. Membersihkan format angka...")
 
                 # ... (Kode pembersihan data keuangan Anda tetap di sini) ...
-                financial_data_to_clean = [
-                    (order_all_df, ['Harga Setelah Diskon', 'Total Harga Produk']),
-                    (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan', 'Harga Awal', 'Harga Setelah Diskon', 'Total Harga Produk']),
+                # financial_data_to_clean = [
+                #     (order_all_df, ['Harga Setelah Diskon', 'Total Harga Produk']),
+                #     (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan', 'Harga Awal', 'Harga Setelah Diskon', 'Total Harga Produk']),
+                #     (iklan_produk_df, ['Biaya', 'Omzet Penjualan']),
+                #     (seller_conversion_df, ['Pengeluaran(Rp)'])
+                # ]
+                # for df, cols in financial_data_to_clean:
+                #     for col in cols:
+                #         if col in df.columns:
+                #             df[col] = clean_and_convert_to_numeric(df[col])
+                # --- Langkah 1: Bersihkan file order-all secara khusus ---
+                cols_to_clean_order = ['Harga Setelah Diskon', 'Total Harga Produk']
+                for col in cols_to_clean_order:
+                    if col in order_all_df.columns:
+                      # Gunakan fungsi baru yang spesifik
+                      order_all_df[col] = clean_order_all_numeric(order_all_df[col])
+    
+                # --- Langkah 2: Bersihkan file-file lainnya dengan fungsi lama ---
+                other_financial_data_to_clean = [
+                    (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan']),
                     (iklan_produk_df, ['Biaya', 'Omzet Penjualan']),
                     (seller_conversion_df, ['Pengeluaran(Rp)'])
                 ]
-                for df, cols in financial_data_to_clean:
+        
+                for df, cols in other_financial_data_to_clean:
                     for col in cols:
                         if col in df.columns:
+                            # Gunakan fungsi lama yang umum
                             df[col] = clean_and_convert_to_numeric(df[col])
                 
                 # --- LOGIKA PEMROSESAN BERDASARKAN TOKO ---
@@ -489,9 +519,9 @@ if store_choice:
                 if store_choice == "HumanStore":
                     rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, service_fee_df)
                     file_name_output = f"Rekapanku_HumanStore.xlsx"
-                else: # PacificStore
+                else: # PacificBookStore
                     rekap_processed = process_rekap_pacific(order_all_df, income_dilepas_df, seller_conversion_df)
-                    file_name_output = f"Rekapanku_PacificStore.xlsx"
+                    file_name_output = f"Rekapanku_PacificBookStore.xlsx"
                 
                 progress_bar.progress(40, text="Sheet 'REKAP' selesai.")
                 
