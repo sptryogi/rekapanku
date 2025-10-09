@@ -23,22 +23,21 @@ def clean_and_convert_to_numeric(column):
     return pd.to_numeric(column, errors='coerce').fillna(0)
 
 def clean_order_all_numeric(column):
-    """Fungsi khusus untuk membersihkan kolom di file order-all.
-    Hanya menghapus titik (.) sebagai pemisah ribuan.
     """
-    if column.dtype == 'object':
-        # 1. Hapus titik (.)
-        column = column.astype(str).str.replace('.', '', regex=False)
-        column = column.astype(str).str.replace(',', '', regex=False)
-        # 2. Jika ada koma (untuk desimal), ubah jadi titik agar bisa jadi angka
-        # column = column.str.replace(',', '.', regex=False)
+    Fungsi khusus untuk membersihkan kolom di file order-all.
+    Menghapus titik (.) sebagai pemisah ribuan dan koma (,).
+    """
+    # 1. Paksa kolom menjadi tipe string untuk memastikan .str.replace() bekerja
+    #    Ini penting jika pandas salah membaca angka sebagai float (misal: 16.808)
+    cleaned_column = column.astype(str)
     
-    # Ubah ke tipe data angka
-    return pd.to_numeric(column, errors='coerce').fillna(0)
+    # 2. Hapus titik (.) dan koma (,) dari string
+    cleaned_column = cleaned_column.str.replace('.', '', regex=False)
+    cleaned_column = cleaned_column.str.replace(',', '', regex=False)
     
-    # Ubah string angka yang sudah bersih ke tipe data numerik.
-    # errors='coerce' akan mengubah teks kosong menjadi NaN, lalu .fillna(0) mengubahnya jadi 0.
-    return pd.to_numeric(column, errors='coerce').fillna(0)
+    # 3. Ubah string angka yang sudah bersih ke tipe data numerik.
+    #    errors='coerce' akan mengubah teks yang tidak valid menjadi NaN, lalu .fillna(0) mengubahnya jadi 0.
+    return pd.to_numeric(cleaned_column, errors='coerce').fillna(0)
     
 def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     """
