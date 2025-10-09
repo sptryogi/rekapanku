@@ -162,8 +162,8 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     # Hitung biaya layanan langsung dari Total Harga Produk.
     # Biaya ini bersifat per-produk, bukan per-pesanan.
     rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0)
-    rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
+    rekap_df['Biaya Layanan 2%'] = 0
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = 0
     # --- AKHIR LOGIKA BARU ---
 
     # Logika untuk men-nol-kan biaya per-pesanan di baris duplikat
