@@ -572,7 +572,6 @@ if store_choice:
                 status_text.text("Menyiapkan file output untuk diunduh...")
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    # Dictionary untuk menyimpan dataframe dan namanya
                     sheets = {
                         'SUMMARY': summary_processed,
                         'REKAP': rekap_processed,
@@ -585,32 +584,70 @@ if store_choice:
                     if store_choice == "HumanStore":
                         sheets['sheet service fee'] = service_fee_df
                     
-                    # Tulis semua dataframe ke sheet masing-masing
-                    for sheet_name, df in sheets.items():
-                        df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-                    # --- KODE BARU UNTUK FORMATTING ---
+                    # --- SEMUA FORMATTING VISUAL DIDEFINISIKAN DI SINI ---
                     workbook = writer.book
-                    # Buat format untuk header: biru muda, bold, border
-                    header_format = workbook.add_format({
-                        'bold': True,
-                        'fg_color': '#DDEBF7', # Warna biru muda
-                        'border': 1
-                    })
+                    
+                    # Format Judul Sheet (biru, bold, merge)
+                    title_format = workbook.add_format({'bold': True, 'fg_color': '#4472C4', 'font_color': 'white', 'align': 'center', 'valign': 'vcenter'})
+                    # Format Header Kolom (biru muda, bold, border)
+                    header_format = workbook.add_format({'bold': True, 'fg_color': '#DDEBF7', 'border': 1})
+                    # Format Persen (0.00%)
+                    percent_format = workbook.add_format({'num_format': '0.00%'})
+                    # Format 1 Angka Desimal (0.0)
+                    one_decimal_format = workbook.add_format({'num_format': '0.0'})
+                    # Format Baris Total (kuning, bold)
+                    total_fmt = workbook.add_format({'bold': True, 'fg_color': '#FFFF00'})
+                    total_fmt_percent = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'num_format': '0.00%'})
+                    total_fmt_decimal = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'num_format': '0.0'})
 
-                    # Loop melalui setiap sheet yang sudah dibuat
+                    # --- PROSES SETIAP SHEET ---
                     for sheet_name, df in sheets.items():
+                        # Tulis dataframe ke Excel (tanpa header, kita akan buat manual)
+                        df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=2 if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN'] else 1, header=False)
                         worksheet = writer.sheets[sheet_name]
-                        # Terapkan format ke baris header
-                        for col_num, value in enumerate(df.columns.values):
-                            worksheet.write(0, col_num, value, header_format)
                         
-                        # Terapkan autofit untuk setiap kolom
+                        start_row_header = 0
+                        # Jika sheet adalah salah satu dari tiga utama, buat judul
+                        if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN']:
+                            worksheet.merge_range(0, 0, 0, len(df.columns) - 1, sheet_name, title_format)
+                            start_row_header = 1
+                        
+                        # Tulis header kolom dengan format
+                        for col_num, value in enumerate(df.columns.values):
+                            worksheet.write(start_row_header, col_num, value, header_format)
+
+                        # Terapkan formatting KHUSUS untuk sheet SUMMARY
+                        if sheet_name == 'SUMMARY':
+                            # Cari posisi kolom
+                            persen_col = df.columns.get_loc('Persentase')
+                            penjualan_hari_col = df.columns.get_loc('Penjualan Per Hari')
+                            buku_pesanan_col = df.columns.get_loc('Jumlah buku per pesanan')
+                            
+                            # Terapkan format ke seluruh kolom (worksheet.set_column(col_start, col_end, width, format))
+                            worksheet.set_column(persen_col, persen_col, 12, percent_format)
+                            worksheet.set_column(penjualan_hari_col, penjualan_hari_col, 18, one_decimal_format)
+                            worksheet.set_column(buku_pesanan_col, buku_pesanan_col, 22, one_decimal_format)
+                            
+                            # Terapkan format ke baris Total (baris terakhir)
+                            last_row = len(df) + start_row_header # +1 karena startrow
+                            for col_num in range(len(df.columns)):
+                                cell_value = df.iloc[-1, col_num]
+                                current_fmt = total_fmt
+                                # Pilih format yang tepat agar angka tetap terformat
+                                if col_num == persen_col:
+                                    current_fmt = total_fmt_percent
+                                elif col_num in [penjualan_hari_col, buku_pesanan_col]:
+                                    current_fmt = total_fmt_decimal
+                                
+                                # Tulis ulang sel di baris total dengan format baru
+                                if pd.notna(cell_value):
+                                    worksheet.write(last_row, col_num, cell_value, current_fmt)
+                                else:
+                                    worksheet.write_blank(last_row, col_num, None, current_fmt)
+                        
+                        # Atur lebar kolom otomatis untuk semua sheet
                         for i, col in enumerate(df.columns):
-                            # Cari lebar maksimum antara header dan isi kolom
-                            # Tambah 1 untuk handle nilai NaN yang bisa jadi sangat pendek
-                            column_len = max(df[col].astype(str).map(len).max(skipna=True), len(str(col)))
-                            # Tambahkan sedikit padding agar tidak terlalu mepet
+                            column_len = max(df[col].astype(str).map(len).max(), len(col))
                             worksheet.set_column(i, i, column_len + 2)
                 
                 output.seek(0)
