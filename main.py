@@ -641,7 +641,14 @@ if store_choice:
                             # --- PERUBAHAN 6: Terapkan format persen ke seluruh kolom, bukan hanya baris total ---
                             # Terapkan format mulai dari baris data pertama hingga baris sebelum total
                             # (worksheet.set_column(col_start, col_end, width, format))
-                            worksheet.set_column(persen_col, persen_col, 12, percent_format) # Format ini sudah termasuk border
+                            # worksheet.set_column(persen_col, persen_col, 12, percent_format) # Format ini sudah termasuk border
+                            for row_idx in range(len(df) - 1): # -1 agar tidak menyentuh baris 'Total'
+                                excel_row = start_row_data + row_idx
+                                cell_value = df.iloc[row_idx, persen_col]
+                                worksheet.write(excel_row, persen_col, cell_value, percent_format)
+                            
+                            # Atur lebar kolomnya secara terpisah
+                            worksheet.set_column(persen_col, persen_col, 12)
                             worksheet.set_column(penjualan_hari_col, penjualan_hari_col, 18, one_decimal_format)
                             worksheet.set_column(buku_pesanan_col, buku_pesanan_col, 22, one_decimal_format)
                             
