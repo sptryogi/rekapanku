@@ -40,18 +40,19 @@ def clean_and_convert_to_numeric(column):
 #     return pd.to_numeric(cleaned_column, errors='coerce').fillna(0)
 
 def clean_order_all_numeric(column):
-    """
-    Fungsi khusus untuk membersihkan kolom di file order-all.
-    Hanya menyisakan digit angka dari string.
-    """
-    # Karena kita sudah memastikan kolom dibaca sebagai string,
-    # kita bisa langsung membersihkannya.
-    # Regex `\D` berarti "karakter apa pun yang bukan digit".
-    cleaned_column = column.str.replace(r'\D', '', regex=True)
-    
-    # Ubah string angka yang sudah bersih ke tipe data numerik.
-    return pd.to_numeric(cleaned_column, errors='coerce').fillna(0)
-
+    """
+    Fungsi khusus untuk membersihkan kolom di file order-all.
+    Menghapus semua karakter non-digit dari string.
+    """
+    # Karena kita akan memastikan kolom dibaca sebagai string,
+    # kita bisa langsung membersihkannya dengan aman.
+    # Regex `\D` berarti "karakter apa pun yang bukan digit".
+    # Ini akan menghapus '.' , ',' , spasi, 'Rp', dll.
+    cleaned_column = column.astype(str).str.replace(r'\D', '', regex=True)
+    
+    # Ubah string angka yang sudah bersih (misal: "35750") ke tipe data numerik.
+    return pd.to_numeric(cleaned_column, errors='coerce').fillna(0)
+    
 def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     """
     Fungsi untuk memproses dan membuat sheet 'REKAP' dengan file 'income' sebagai data utama.
