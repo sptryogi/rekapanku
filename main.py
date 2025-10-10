@@ -589,7 +589,7 @@ if store_choice:
                     workbook = writer.book
                     
                     # --- PERUBAHAN 1: Format Judul diubah menjadi rata kiri (align: 'left') ---
-                    title_format = workbook.add_format({'bold': True, 'fg_color': '#4472C4', 'font_color': 'white', 'align': 'left', 'valign': 'vcenter'})
+                    title_format = workbook.add_format({'bold': True, 'fg_color': '#4472C4', 'font_color': 'white', 'align': 'left', 'valign': 'vcenter', 'font_size': 14})
                     
                     # Format Header Kolom (biru muda, bold, border)
                     header_format = workbook.add_format({'bold': True, 'fg_color': '#DDEBF7', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
@@ -630,7 +630,7 @@ if store_choice:
                         if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN']:
                             # --- PERUBAHAN 5: Terapkan border ke semua sel data ---
                             # (row_start, col_start, row_end, col_end, format)
-                            worksheet.conditional_format(start_row_data + 1, 0, start_row_data + len(df) - 1, len(df.columns) - 1, 
+                            worksheet.conditional_format(start_row_data, 0, start_row_data + len(df) - 1, len(df.columns) - 1, 
                                                          {'type': 'no_blanks', 'format': cell_border_format})
 
                         if sheet_name == 'SUMMARY':
@@ -658,6 +658,16 @@ if store_choice:
                                     worksheet.write(last_row, col_num, cell_value, current_fmt)
                                 else:
                                     worksheet.write_blank(last_row, col_num, None, current_fmt)
+
+                        # TAMBAHKAN BLOK BARU INI
+                        if sheet_name == 'IKLAN':
+                            # Cek jika baris terakhir adalah baris TOTAL
+                            last_row_idx = len(df) - 1
+                            if not df.empty and df.iloc[last_row_idx]['Nama Iklan'] == 'TOTAL':
+                                # Terapkan format total (kuning, bold, border) ke setiap sel di baris ini
+                                for col_num in range(len(df.columns)):
+                                    cell_value = df.iloc[last_row_idx, col_num]
+                                    worksheet.write(start_row_data + last_row_idx, col_num, cell_value, total_fmt)
                         
                         # Atur lebar kolom otomatis untuk semua sheet
                         for i, col in enumerate(df.columns):
