@@ -589,44 +589,46 @@ if store_choice:
                 status_text.text("Menyiapkan file output untuk diunduh...")
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    sheets = {
-                      'SUMMARY': summary_processed,
-                      'REKAP': rekap_processed,
-                      'IKLAN': iklan_processed,
-                      'sheet order-all': order_all_df,
-                      'sheet income dilepas': income_dilepas_df,
-                      'sheet biaya iklan': iklan_produk_df,
-                      'sheet seller conversion': seller_conversion_df
+                    # Dictionary untuk menyimpan dataframe dan namanya
+                    sheets = {
+                        'SUMMARY': summary_processed,
+                        'REKAP': rekap_processed,
+                        'IKLAN': iklan_processed,
+                        'sheet order-all': order_all_df,
+                        'sheet income dilepas': income_dilepas_df,
+                        'sheet biaya iklan': iklan_produk_df,
+                        'sheet seller conversion': seller_conversion_df
                     }
                     if store_choice == "HumanStore":
                         sheets['sheet service fee'] = service_fee_df
-                    
-                    # Tulis semua dataframe ke sheet masing-masing
-                    for sheet_name, df in sheets.items():
-                        df.to_excel(writer, sheet_name=sheet_name, index=False)
+                    
+                    # Tulis semua dataframe ke sheet masing-masing
+                    for sheet_name, df in sheets.items():
+                        df.to_excel(writer, sheet_name=sheet_name, index=False)
 
-                    # --- KODE BARU UNTUK FORMATTING ---
-                    workbook = writer.book
-                    # Buat format untuk header: biru muda, bold, border
-                    header_format = workbook.add_format({
-                        'bold': True,
-                        'fg_color': '#DDEBF7', # Warna biru muda
-                        'border': 1
-                    })
+                    # --- KODE BARU UNTUK FORMATTING ---
+                    workbook = writer.book
+                    # Buat format untuk header: biru muda, bold, border
+                    header_format = workbook.add_format({
+                        'bold': True,
+                        'fg_color': '#DDEBF7', # Warna biru muda
+                        'border': 1
+                    })
 
-                    # Loop melalui setiap sheet yang sudah dibuat
-                    for sheet_name, df in sheets.items():
-                        worksheet = writer.sheets[sheet_name]
-                        # Terapkan format ke baris header
-                        for col_num, value in enumerate(df.columns.values):
-                            worksheet.write(0, col_num, value, header_format)
-                        
-                        # Terapkan autofit untuk setiap kolom
-                        for i, col in enumerate(df.columns):
-                            # Cari lebar maksimum antara header dan isi kolom
-                            column_len = max(df[col].astype(str).map(len).max(), len(col))
-                            # Tambahkan sedikit padding agar tidak terlalu mepet
-                            worksheet.set_column(i, i, column_len + 2)
+                    # Loop melalui setiap sheet yang sudah dibuat
+                    for sheet_name, df in sheets.items():
+                        worksheet = writer.sheets[sheet_name]
+                        # Terapkan format ke baris header
+                        for col_num, value in enumerate(df.columns.values):
+                            worksheet.write(0, col_num, value, header_format)
+                        
+                        # Terapkan autofit untuk setiap kolom
+                        for i, col in enumerate(df.columns):
+                            # Cari lebar maksimum antara header dan isi kolom
+                            # Tambah 1 untuk handle nilai NaN yang bisa jadi sangat pendek
+                            column_len = max(df[col].astype(str).map(len).max(skipna=True), len(str(col)))
+                            # Tambahkan sedikit padding agar tidak terlalu mepet
+                            worksheet.set_column(i, i, column_len + 2)
                 
                 output.seek(0)
                 progress_bar.progress(100, text="Proses Selesai!")
