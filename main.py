@@ -635,13 +635,18 @@ if store_choice:
                             if not df.empty and df.iloc[last_row_idx]['Nama Produk'] == 'Total':
                                 for col_num in range(len(df.columns)): # Loop hanya sejumlah kolom yang ada
                                     cell_value = df.iloc[last_row_idx, col_num]
+                                    
+                                    # **FIX:** Check for NaN. Write an empty string if NaN, otherwise write the original value.
+                                    value_to_write = '' if pd.isna(cell_value) else cell_value
+                                    
                                     current_fmt = total_fmt
                                     if col_num == persen_col_idx:
                                         current_fmt = total_fmt_percent
                                     elif col_num in [penjualan_hari_col_idx, buku_pesanan_col_idx]:
                                         current_fmt = total_fmt_decimal
                                     
-                                    worksheet.write(start_row_data + last_row_idx, col_num, cell_value, current_fmt)
+                                    # Write the corrected value to the worksheet
+                                    worksheet.write(start_row_data + last_row_idx, col_num, value_to_write, current_fmt)
 
                         if sheet_name == 'IKLAN':
                             # PERBAIKAN 2: Format baris TOTAL IKLAN agar tidak melebihi batas
