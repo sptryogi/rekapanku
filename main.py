@@ -22,23 +22,36 @@ def clean_and_convert_to_numeric(column):
         column = column.str.replace(',', '.', regex=False)
     return pd.to_numeric(column, errors='coerce').fillna(0)
 
+# def clean_order_all_numeric(column):
+#     """
+#     Fungsi khusus untuk membersihkan kolom di file order-all.
+#     Menghapus titik (.) sebagai pemisah ribuan dan koma (,).
+#     """
+#     # 1. Paksa kolom menjadi tipe string untuk memastikan .str.replace() bekerja
+#     #    Ini penting jika pandas salah membaca angka sebagai float (misal: 16.808)
+#     cleaned_column = column.astype(str)
+    
+#     # 2. Hapus titik (.) dan koma (,) dari string
+#     cleaned_column = cleaned_column.str.replace('.', '', regex=False)
+#     cleaned_column = cleaned_column.str.replace(',', '', regex=False)
+    
+#     # 3. Ubah string angka yang sudah bersih ke tipe data numerik.
+#     #    errors='coerce' akan mengubah teks yang tidak valid menjadi NaN, lalu .fillna(0) mengubahnya jadi 0.
+#     return pd.to_numeric(cleaned_column, errors='coerce').fillna(0)
+
 def clean_order_all_numeric(column):
-    """
-    Fungsi khusus untuk membersihkan kolom di file order-all.
-    Menghapus titik (.) sebagai pemisah ribuan dan koma (,).
-    """
-    # 1. Paksa kolom menjadi tipe string untuk memastikan .str.replace() bekerja
-    #    Ini penting jika pandas salah membaca angka sebagai float (misal: 16.808)
-    cleaned_column = column.astype(str)
-    
-    # 2. Hapus titik (.) dan koma (,) dari string
-    cleaned_column = cleaned_column.str.replace('.', '', regex=False)
-    cleaned_column = cleaned_column.str.replace(',', '', regex=False)
-    
-    # 3. Ubah string angka yang sudah bersih ke tipe data numerik.
-    #    errors='coerce' akan mengubah teks yang tidak valid menjadi NaN, lalu .fillna(0) mengubahnya jadi 0.
-    return pd.to_numeric(cleaned_column, errors='coerce').fillna(0)
-    
+    """
+    Fungsi khusus untuk membersihkan kolom di file order-all.
+    Hanya menyisakan digit angka dari string.
+    """
+    # Karena kita sudah memastikan kolom dibaca sebagai string,
+    # kita bisa langsung membersihkannya.
+    # Regex `\D` berarti "karakter apa pun yang bukan digit".
+    cleaned_column = column.str.replace(r'\D', '', regex=True)
+    
+    # Ubah string angka yang sudah bersih ke tipe data numerik.
+    return pd.to_numeric(cleaned_column, errors='coerce').fillna(0)
+
 def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     """
     Fungsi untuk memproses dan membuat sheet 'REKAP' dengan file 'income' sebagai data utama.
@@ -88,6 +101,7 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
         'Biaya Layanan Gratis Ongkir Xtra 4,5%' # <-- Kolom baru
     ]
     
+    order_level_costs.append('Total Penghasilan')
     is_first_item_mask = ~rekap_df.duplicated(subset='No. Pesanan', keep='first')
     
     for col in order_level_costs:
@@ -112,15 +126,7 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
             rekap_df[col] = rekap_df[col].abs()
 
     # Kalkulasi Penjualan Netto per baris produk
-    rekap_df['Penjualan Netto'] = (
-        rekap_df.get('Total Harga Produk', 0) -
-        rekap_df.get('Voucher dari Penjual', 0) -
-        rekap_df.get('Pengeluaran(Rp)', 0) -
-        rekap_df.get('Biaya Administrasi', 0) -
-        rekap_df.get('Biaya Layanan 2%', 0) -
-        rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
-        rekap_df.get('Biaya Proses Pesanan', 0) # <-- Diubah kembali ke kolom asli
-    )
+    rekap_df['Penjualan Netto'] = rekap_df.get('Total Penghasilan', 0)
 
     # Urutkan berdasarkan No. Pesanan untuk memastikan produk dalam pesanan yang sama berkelompok
     rekap_df.sort_values(by='No. Pesanan', inplace=True)
@@ -192,6 +198,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         # Biaya Layanan 2% dan 4,5% DIHAPUS dari sini karena dihitung per produk
     ]
     
+    order_level_costs.append('Total Penghasilan')
     is_first_item_mask = ~rekap_df.duplicated(subset='No. Pesanan', keep='first')
     
     for col in order_level_costs:
@@ -210,15 +217,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
             rekap_df[col] = rekap_df[col].abs()
 
     # Kalkulasi Penjualan Netto (sama seperti sebelumnya)
-    rekap_df['Penjualan Netto'] = (
-        rekap_df.get('Total Harga Produk', 0) -
-        rekap_df.get('Voucher dari Penjual', 0) -
-        rekap_df.get('Pengeluaran(Rp)', 0) -
-        rekap_df.get('Biaya Administrasi', 0) -
-        rekap_df.get('Biaya Layanan 2%', 0) -
-        rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
-        rekap_df.get('Biaya Proses Pesanan', 0)
-    )
+    rekap_df['Penjualan Netto'] = rekap_df.get('Total Penghasilan', 0)
 
     # Sisa kodenya sama persis dengan fungsi rekap sebelumnya
     rekap_df.sort_values(by='No. Pesanan', inplace=True)
@@ -479,7 +478,7 @@ if store_choice:
             try:
                 # --- LOGIKA PEMBACAAN FILE ---
                 status_text.text("Membaca file...")
-                order_all_df = pd.read_excel(uploaded_order)
+                order_all_df = pd.read_excel(uploaded_order, dtype={'Harga Setelah Diskon': str, 'Total Harga Produk': str})
                 income_dilepas_df = pd.read_excel(uploaded_income, sheet_name='Income', skiprows=5)
                 # Baca 'Service Fee' HANYA untuk HumanStore
                 if store_choice == "HumanStore":
@@ -509,7 +508,7 @@ if store_choice:
 
                 # --- Langkah 2: Bersihkan file-file lainnya dengan fungsi lama ---
                 other_financial_data_to_clean = [
-                    (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan']),
+                    (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan', 'Total Penghasilan']),
                     (iklan_produk_df, ['Biaya', 'Omzet Penjualan']),
                     (seller_conversion_df, ['Pengeluaran(Rp)'])
                 ]
