@@ -149,7 +149,7 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
         'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
         'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan', 0), # <-- Diubah ke kolom asli
-        'Penjualan Netto': rekap_df['Penjualan Netto'],
+        'Total Penghasilan': rekap_df['Penjualan Netto'],
         'Metode Pembayaran': rekap_df.get('Metode pembayaran pembeli', '')
     })
 
@@ -239,7 +239,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
         'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan', 0),
-        'Penjualan Netto': rekap_df['Penjualan Netto'],
+        'Total Penghasilan': rekap_df['Penjualan Netto'],
         'Metode Pembayaran': rekap_df.get('Metode pembayaran pembeli', '')
     })
 
@@ -368,7 +368,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
         'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
-        'Penjualan Netto': 'sum'
+        'Total Penghasilan': 'sum'
     }).reset_index()
 
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']]
@@ -377,7 +377,16 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
     summary_df['Iklan Klik'].fillna(0, inplace=True)
     summary_df.drop('Nama Iklan', axis=1, inplace=True, errors='ignore')
 
-    summary_df['Penjualan Netto (Setelah Iklan)'] = summary_df['Penjualan Netto'] - summary_df['Iklan Klik']
+    summary_df['Penjualan Netto'] = (
+        summary_df['Total Harga Produk'] -
+        summary_df['Voucher Ditanggung Penjual'] -
+        summary_df['Biaya Komisi AMS + PPN Shopee'] -
+        summary_df['Biaya Adm 8%'] -
+        summary_df['Biaya Layanan 2%'] -
+        summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] -
+        summary_df['Biaya Proses Pesanan'] -
+        summary_df['Iklan Klik']
+    )
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
     # --- LOGIKA BARU UNTUK BIAYA KIRIM ---
@@ -393,16 +402,16 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
     summary_df['Harga Custom TLJ'] = 0
     summary_df['Total Pembelian'] = summary_df['Jumlah Terjual'] * summary_df['Harga Beli']
     
-    summary_df['Margin Kotor'] = (
-        summary_df['Penjualan Netto (Setelah Iklan)'] - 
+    summary_df['M1'] = (
+        summary_df['Penjualan Netto'] - 
         summary_df['Biaya Packing'] - 
         biaya_ekspedisi_final - # <-- Gunakan variabel hasil logika di atas
         summary_df['Total Pembelian']
     )
     
-    summary_df['Persentase'] = summary_df.apply(lambda row: row['Margin Kotor'] / row['Total Harga Produk'] if row['Total Harga Produk'] != 0 else 0, axis=1)
+    summary_df['Persentase'] = summary_df.apply(lambda row: row['M1'] / row['Total Harga Produk'] if row['Total Harga Produk'] != 0 else 0, axis=1)
     summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
-    summary_df['Penjualan Per Hari'] = summary_df['Penjualan Netto (Setelah Iklan)'] / 7
+    summary_df['Penjualan Per Hari'] = summary_df['Penjualan Netto'] / 7
     summary_df['Jumlah buku per pesanan'] = summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1)
 
     # --- MEMBUAT DATAFRAME FINAL SECARA DINAMIS ---
@@ -413,7 +422,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
         'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
         'Biaya Layanan 2%': summary_df['Biaya Layanan 2%'], 'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
         'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'], 'Iklan Klik': summary_df['Iklan Klik'],
-        'Penjualan Netto': summary_df['Penjualan Netto (Setelah Iklan)'], 'Biaya Packing': summary_df['Biaya Packing'],
+        'Penjualan Netto': summary_df['Penjualan Netto'], 'Biaya Packing': summary_df['Biaya Packing'],
     }
     # Tambahkan kolom ekspedisi sesuai pilihan toko
     if store_type == 'PacificBookStore':
@@ -423,12 +432,27 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
         
     summary_final_data.update({
         'Harga Beli': summary_df['Harga Beli'], 'Harga Custom TLJ': summary_df['Harga Custom TLJ'],
-        'Total Pembelian': summary_df['Total Pembelian'], 'Margin Kotor': summary_df['Margin Kotor'],
+        'Total Pembelian': summary_df['Total Pembelian'], 'M1': summary_df['M1'],
         'Persentase': summary_df['Persentase'], 'Jumlah Pesanan': summary_df['Jumlah Pesanan'],
         'Penjualan Per Hari': summary_df['Penjualan Per Hari'], 'Jumlah buku per pesanan': summary_df['Jumlah buku per pesanan']
     })
-    
-    return pd.DataFrame(summary_final_data)
+
+    summary_final = pd.DataFrame(summary_final_data)
+
+    # --- PERUBAHAN: Menambahkan baris Total ---
+    # Buat baris total
+    total_row = pd.DataFrame(summary_final.sum(numeric_only=True)).T
+    total_row['No. Pesanan'] = 'Total' # Label 'Total' di kolom No. Pesanan
+    # Kolom yang tidak seharusnya dijumlahkan, kita kosongkan
+    for col in ['Harga Satuan', 'Harga Beli', 'Persentase', 'No', 'Harga Custom TLJ', 'Jumlah buku per pesanan']:
+        if col in total_row.columns:
+            total_row[col] = None
+
+    # Gabungkan dataframe asli dengan baris total
+    summary_with_total = pd.concat([summary_final, total_row], ignore_index=True)
+    # --- AKHIR PERUBAHAN ---
+
+    return summary_with_total
 
 # --- TAMPILAN STREAMLIT ---
 
