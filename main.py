@@ -440,15 +440,46 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
     summary_final = pd.DataFrame(summary_final_data)
 
     # --- PERUBAHAN: Menambahkan baris Total ---
-    # Buat baris total
+    # 1. Buat baris total dengan menjumlahkan semua kolom numerik sebagai dasar
     total_row = pd.DataFrame(summary_final.sum(numeric_only=True)).T
-    total_row['No. Pesanan'] = 'Total' # Label 'Total' di kolom No. Pesanan
-    # Kolom yang tidak seharusnya dijumlahkan, kita kosongkan
-    for col in ['Harga Satuan', 'Harga Beli', 'Persentase', 'No', 'Harga Custom TLJ', 'Jumlah buku per pesanan']:
+    total_row['Nama Produk'] = 'Total'
+
+    # 2. Ambil nilai total yang sudah dijumlahkan untuk perhitungan baru
+    total_penjualan_netto = total_row['Penjualan Netto'].iloc[0]
+    total_biaya_packing = total_row['Biaya Packing'].iloc[0]
+    total_pembelian = total_row['Total Pembelian'].iloc[0]
+    total_harga_produk = total_row['Total Harga Produk'].iloc[0]
+    total_biaya_proses_pesanan = total_row['Biaya Proses Pesanan'].iloc[0]
+    total_jumlah_terjual = total_row['Jumlah Terjual'].iloc[0]
+    
+    # Tentukan nama kolom biaya kirim dan ambil nilainya
+    biaya_ekspedisi_col_name = 'Biaya Kirim ke Sby' if store_type == 'PacificBookStore' else 'Biaya Ekspedisi'
+    total_biaya_ekspedisi = total_row[biaya_ekspedisi_col_name].iloc[0]
+    
+    # 3. Hitung ulang kolom spesifik berdasarkan rumus yang Anda berikan
+    # Hitung ulang M1
+    total_m1 = total_penjualan_netto - total_biaya_packing - total_biaya_ekspedisi - total_pembelian
+    total_row['M1'] = total_m1
+    
+    # Hitung ulang Persentase
+    total_row['Persentase'] = (total_m1 / total_harga_produk) if total_harga_produk != 0 else 0
+    
+    # Hitung ulang Jumlah Pesanan
+    total_jumlah_pesanan = (total_biaya_proses_pesanan / 1250) if 1250 != 0 else 0
+    total_row['Jumlah Pesanan'] = total_jumlah_pesanan
+    
+    # Hitung ulang Penjualan Per Hari
+    total_row['Penjualan Per Hari'] = total_penjualan_netto / 7
+    
+    # Hitung ulang Jumlah buku per pesanan
+    total_row['Jumlah buku per pesanan'] = (total_jumlah_terjual / total_jumlah_pesanan) if total_jumlah_pesanan != 0 else 0
+
+    # 4. Kosongkan kolom yang tidak seharusnya dijumlahkan
+    for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ']:
         if col in total_row.columns:
             total_row[col] = None
 
-    # Gabungkan dataframe asli dengan baris total
+    # 5. Gabungkan dataframe asli dengan baris total yang sudah dihitung ulang
     summary_with_total = pd.concat([summary_final, total_row], ignore_index=True)
     # --- AKHIR PERUBAHAN ---
 
@@ -514,16 +545,6 @@ if store_choice:
                 progress_bar.progress(20, text="File dimuat. Membersihkan format angka...")
 
                 # ... (Kode pembersihan data keuangan Anda tetap di sini) ...
-                # financial_data_to_clean = [
-                #     (order_all_df, ['Harga Setelah Diskon', 'Total Harga Produk']),
-                #     (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan', 'Harga Awal', 'Harga Setelah Diskon', 'Total Harga Produk']),
-                #     (iklan_produk_df, ['Biaya', 'Omzet Penjualan']),
-                #     (seller_conversion_df, ['Pengeluaran(Rp)'])
-                # ]
-                # for df, cols in financial_data_to_clean:
-                #     for col in cols:
-                #         if col in df.columns:
-                #             df[col] = clean_and_convert_to_numeric(df[col])
                 # --- Langkah 1: Bersihkan file order-all secara khusus ---
                 cols_to_clean_order = ['Harga Setelah Diskon', 'Total Harga Produk']
                 for col in cols_to_clean_order:
@@ -568,16 +589,45 @@ if store_choice:
                 status_text.text("Menyiapkan file output untuk diunduh...")
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    summary_processed.to_excel(writer, sheet_name='SUMMARY', index=False)
-                    rekap_processed.to_excel(writer, sheet_name='REKAP', index=False)
-                    iklan_processed.to_excel(writer, sheet_name='IKLAN', index=False)
-                    order_all_df.to_excel(writer, sheet_name='sheet order-all', index=False)
-                    income_dilepas_df.to_excel(writer, sheet_name='sheet income dilepas', index=False)
-                    iklan_produk_df.to_excel(writer, sheet_name='sheet biaya iklan', index=False)
-                    seller_conversion_df.to_excel(writer, sheet_name='sheet seller conversion', index=False)
-                    # Simpan service fee HANYA jika HumanStore
-                    if store_choice == "HumanStore":
-                        service_fee_df.to_excel(writer, sheet_name='sheet service fee', index=False)
+                    # Dictionary untuk menyimpan dataframe dan namanya
+                    sheets = {
+                        'SUMMARY': summary_processed,
+                        'REKAP': rekap_processed,
+                        'IKLAN': iklan_processed,
+                        'sheet order-all': order_all_df,
+                        'sheet income dilepas': income_dilepas_df,
+                        'sheet biaya iklan': iklan_produk_df,
+                        'sheet seller conversion': seller_conversion_df
+                    }
+                    if store_choice == "HumanStore":
+                        sheets['sheet service fee'] = service_fee_df
+                    
+                    # Tulis semua dataframe ke sheet masing-masing
+                    for sheet_name, df in sheets.items():
+                        df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+                    # --- KODE BARU UNTUK FORMATTING ---
+                    workbook = writer.book
+                    # Buat format untuk header: biru muda, bold, border
+                    header_format = workbook.add_format({
+                        'bold': True,
+                        'fg_color': '#DDEBF7', # Warna biru muda
+                        'border': 1
+                    })
+
+                    # Loop melalui setiap sheet yang sudah dibuat
+                    for sheet_name, df in sheets.items():
+                        worksheet = writer.sheets[sheet_name]
+                        # Terapkan format ke baris header
+                        for col_num, value in enumerate(df.columns.values):
+                            worksheet.write(0, col_num, value, header_format)
+                        
+                        # Terapkan autofit untuk setiap kolom
+                        for i, col in enumerate(df.columns):
+                            # Cari lebar maksimum antara header dan isi kolom
+                            column_len = max(df[col].astype(str).map(len).max(), len(col))
+                            # Tambahkan sedikit padding agar tidak terlalu mepet
+                            worksheet.set_column(i, i, column_len + 2)
                 
                 output.seek(0)
                 progress_bar.progress(100, text="Proses Selesai!")
