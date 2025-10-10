@@ -589,18 +589,17 @@ if store_choice:
                 status_text.text("Menyiapkan file output untuk diunduh...")
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    # Dictionary untuk menyimpan dataframe dan namanya
                     sheets = {
-                        'SUMMARY': summary_processed,
-                        'REKAP': rekap_processed,
-                        'IKLAN': iklan_processed,
-                        'sheet order-all': order_all_df,
-                        'sheet income dilepas': income_dilepas_df,
-                        'sheet biaya iklan': iklan_produk_df,
-                        'sheet seller conversion': seller_conversion_df
-                    }
-                    if store_choice == "HumanStore":
-                        sheets['sheet service fee'] = service_fee_df
+                      'SUMMARY': summary_processed,
+                      'REKAP': rekap_processed,
+                      'IKLAN': iklan_processed,
+                      'sheet order-all': order_all_df,
+                      'sheet income dilepas': income_dilepas_df,
+                      'sheet biaya iklan': iklan_produk_df,
+                      'sheet seller conversion': seller_conversion_df
+                    }
+                    if store_choice == "HumanStore":
+                        sheets['sheet service fee'] = service_fee_df
                     
                     # Tulis semua dataframe ke sheet masing-masing
                     for sheet_name, df in sheets.items():
@@ -645,4 +644,3 @@ if store_choice:
                 st.exception(e)
 else:
     st.info("Silakan pilih toko terlebih dahulu untuk melanjutkan.")
-
