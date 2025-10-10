@@ -357,7 +357,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']]
     summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk', right_on='Nama Iklan', how='left')
     summary_df.rename(columns={'Biaya': 'Iklan Klik'}, inplace=True)
-    summary_df['Iklan Klik'].fillna(0, inplace=True)
+    # summary_df['Iklan Klik'].fillna(0, inplace=True)
+    summary_df['Iklan Klik'] = summary_df['Iklan Klik'].fillna(0)
     summary_df.drop('Nama Iklan', axis=1, inplace=True, errors='ignore')
 
     summary_df['Penjualan Netto'] = (
@@ -658,13 +659,16 @@ if store_choice:
 
                         # PERBAIKAN 3: Terapkan border ke semua baris data untuk sheet utama
                         if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN'] and not df.empty:
-                            # Terapkan border dari baris data pertama sampai baris data terakhir
-                            for row_num in range(start_row_data, start_row_data + len(df)):
+                            # Looping dari baris pertama data hingga baris sebelum baris "Total"
+                            # Baris total akan diformat secara terpisah nanti.
+                            last_data_row = len(df) - 1 if (df.iloc[-1] == 'Total').any() else len(df)
+                            for row_num in range(start_row_data, start_row_data + last_data_row):
                                 for col_num in range(len(df.columns)):
-                                    # Cek apakah sel sudah punya format, jika belum, beri border
-                                    cell = worksheet.table.get(row_num, col_num)
-                                    if cell and cell.format is None:
-                                        worksheet.write(row_num, col_num, cell.value, workbook.add_format({'border': 1}))
+                                    # Tulis ulang nilai dari dataframe dengan format border
+                                    cell_value = df.iloc[row_num - start_row_data, col_num]
+                                    # Handle nilai NaN agar tidak error
+                                    value_to_write = '' if pd.isna(cell_value) else cell_value
+                                    worksheet.write(row_num, col_num, value_to_write, border_format)
                         
                         # Atur lebar kolom otomatis
                         for i, col in enumerate(df.columns):
