@@ -587,18 +587,19 @@ if store_choice:
                     # --- SEMUA FORMATTING VISUAL DIDEFINISIKAN DI SINI ---
                     workbook = writer.book
                     
-                    # --- PERUBAHAN 1: Tambahkan ukuran font 14 pada Judul ---
+                    # PERBAIKAN 4: Tambahkan 'font_size' pada Judul
                     title_format = workbook.add_format({
                         'bold': True, 'fg_color': '#4472C4', 'font_color': 'white', 
                         'align': 'left', 'valign': 'vcenter', 'font_size': 14
                     })
                     
                     header_format = workbook.add_format({'bold': True, 'fg_color': '#DDEBF7', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
-                    cell_border_format = workbook.add_format({'border': 1})
+                    
+                    # PERBAIKAN 1 & 2: Definisikan format persen dan border dengan benar
                     percent_format = workbook.add_format({'num_format': '0.00%', 'border': 1})
                     one_decimal_format = workbook.add_format({'num_format': '0.0', 'border': 1})
                     
-                    # Format untuk baris Total
+                    # Format Baris Total
                     total_fmt = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'border': 1})
                     total_fmt_percent = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'num_format': '0.00%', 'border': 1})
                     total_fmt_decimal = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'num_format': '0.0', 'border': 1})
@@ -619,43 +620,52 @@ if store_choice:
                         for col_num, value in enumerate(df.columns.values):
                             worksheet.write(start_row_header, col_num, value, header_format)
 
-                        if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN']:
-                            # --- PERUBAHAN 2: Perbaiki rentang border agar baris pertama data ikut ter-format ---
-                            # Rentang dimulai dari baris data pertama (start_row_data)
-                            worksheet.conditional_format(start_row_data, 0, start_row_data + len(df) - 2, len(df.columns) - 1, 
-                                                         {'type': 'no_blanks', 'format': cell_border_format})
-
-                        # --- PERUBAHAN 3 & 4: Format persen di SUMMARY dan format Total di IKLAN ---
                         if sheet_name == 'SUMMARY':
-                            persen_col = df.columns.get_loc('Persentase')
-                            penjualan_hari_col = df.columns.get_loc('Penjualan Per Hari')
-                            buku_pesanan_col = df.columns.get_loc('Jumlah buku per pesanan')
+                            persen_col_idx = df.columns.get_loc('Persentase')
+                            penjualan_hari_col_idx = df.columns.get_loc('Penjualan Per Hari')
+                            buku_pesanan_col_idx = df.columns.get_loc('Jumlah buku per pesanan')
                             
-                            # Terapkan format persen ke seluruh kolom (termasuk non-total)
-                            worksheet.set_column(persen_col, persen_col, 12, percent_format)
-                            worksheet.set_column(penjualan_hari_col, penjualan_hari_col, 18, one_decimal_format)
-                            worksheet.set_column(buku_pesanan_col, buku_pesanan_col, 22, one_decimal_format)
+                            # PERBAIKAN 1: Terapkan format persen ke seluruh kolom
+                            worksheet.set_column(persen_col_idx, persen_col_idx, 12, percent_format)
+                            worksheet.set_column(penjualan_hari_col_idx, penjualan_hari_col_idx, 18, one_decimal_format)
+                            worksheet.set_column(buku_pesanan_col_idx, buku_pesanan_col_idx, 22, one_decimal_format)
                             
-                            # Format baris total untuk SUMMARY
-                            last_row_idx = len(df) -1
-                            if df.iloc[last_row_idx]['Nama Produk'] == 'Total':
-                                worksheet.set_row(start_row_data + last_row_idx, None, total_fmt)
-                                # Terapkan format spesifik untuk sel tertentu di baris total
-                                worksheet.write(start_row_data + last_row_idx, persen_col, df.iloc[last_row_idx, persen_col], total_fmt_percent)
-                                worksheet.write(start_row_data + last_row_idx, penjualan_hari_col, df.iloc[last_row_idx, penjualan_hari_col], total_fmt_decimal)
-                                worksheet.write(start_row_data + last_row_idx, buku_pesanan_col, df.iloc[last_row_idx, buku_pesanan_col], total_fmt_decimal)
-
-                        # Tambahkan blok ini untuk format baris TOTAL di sheet IKLAN
-                        if sheet_name == 'IKLAN':
+                            # PERBAIKAN 2: Format baris Total SUMMARY agar tidak melebihi batas
                             last_row_idx = len(df) - 1
-                            if df.iloc[last_row_idx]['Nama Iklan'] == 'TOTAL':
-                                # Terapkan format kuning dan bold ke seluruh baris total
-                                worksheet.set_row(start_row_data + last_row_idx, None, total_fmt)
+                            if not df.empty and df.iloc[last_row_idx]['Nama Produk'] == 'Total':
+                                for col_num in range(len(df.columns)): # Loop hanya sejumlah kolom yang ada
+                                    cell_value = df.iloc[last_row_idx, col_num]
+                                    current_fmt = total_fmt
+                                    if col_num == persen_col_idx:
+                                        current_fmt = total_fmt_percent
+                                    elif col_num in [penjualan_hari_col_idx, buku_pesanan_col_idx]:
+                                        current_fmt = total_fmt_decimal
+                                    
+                                    worksheet.write(start_row_data + last_row_idx, col_num, cell_value, current_fmt)
 
+                        if sheet_name == 'IKLAN':
+                            # PERBAIKAN 2: Format baris TOTAL IKLAN agar tidak melebihi batas
+                            last_row_idx = len(df) - 1
+                            if not df.empty and df.iloc[last_row_idx]['Nama Iklan'] == 'TOTAL':
+                                for col_num in range(len(df.columns)): # Loop hanya sejumlah kolom yang ada
+                                    cell_value = df.iloc[last_row_idx, col_num]
+                                    worksheet.write(start_row_data + last_row_idx, col_num, cell_value, total_fmt)
+
+                        # PERBAIKAN 3: Terapkan border ke semua baris data untuk sheet utama
+                        if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN'] and not df.empty:
+                            # Terapkan border dari baris data pertama sampai baris data terakhir
+                            for row_num in range(start_row_data, start_row_data + len(df)):
+                                for col_num in range(len(df.columns)):
+                                    # Cek apakah sel sudah punya format, jika belum, beri border
+                                    cell = worksheet.table.get(row_num, col_num)
+                                    if cell and cell.format is None:
+                                        worksheet.write(row_num, col_num, cell.value, workbook.add_format({'border': 1}))
+                        
                         # Atur lebar kolom otomatis
                         for i, col in enumerate(df.columns):
-                            column_len = max(df[col].astype(str).map(len).max(), len(col))
-                            worksheet.set_column(i, i, column_len + 2)
+                            if not df.empty:
+                                column_len = max(df[col].astype(str).map(len).max(), len(col))
+                                worksheet.set_column(i, i, column_len + 2)
                 
                 output.seek(0)
                 progress_bar.progress(100, text="Proses Selesai!")
