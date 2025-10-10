@@ -587,29 +587,24 @@ if store_choice:
                     # --- SEMUA FORMATTING VISUAL DIDEFINISIKAN DI SINI ---
                     workbook = writer.book
                     
-                    # --- PERUBAHAN 1: Format Judul diubah menjadi rata kiri (align: 'left') ---
-                    title_format = workbook.add_format({'bold': True, 'fg_color': '#4472C4', 'font_color': 'white', 'align': 'left', 'valign': 'vcenter'})
+                    # --- PERUBAHAN 1: Tambahkan ukuran font 14 pada Judul ---
+                    title_format = workbook.add_format({
+                        'bold': True, 'fg_color': '#4472C4', 'font_color': 'white', 
+                        'align': 'left', 'valign': 'vcenter', 'font_size': 14
+                    })
                     
-                    # Format Header Kolom (biru muda, bold, border)
                     header_format = workbook.add_format({'bold': True, 'fg_color': '#DDEBF7', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
-                    
-                    # --- PERUBAHAN 2: Tambahkan format border untuk sel data ---
                     cell_border_format = workbook.add_format({'border': 1})
-                    
-                    # Format Persen (0.00%) DENGAN BORDER
                     percent_format = workbook.add_format({'num_format': '0.00%', 'border': 1})
-                    
-                    # Format 1 Angka Desimal (0.0) DENGAN BORDER
                     one_decimal_format = workbook.add_format({'num_format': '0.0', 'border': 1})
                     
-                    # Format Baris Total (kuning, bold)
+                    # Format untuk baris Total
                     total_fmt = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'border': 1})
                     total_fmt_percent = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'num_format': '0.00%', 'border': 1})
                     total_fmt_decimal = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'num_format': '0.0', 'border': 1})
 
                     # --- PROSES SETIAP SHEET ---
                     for sheet_name, df in sheets.items():
-                        # --- PERUBAHAN 3: Ubah startrow menjadi 3 untuk memberi ruang 2 baris header ---
                         start_row_data = 3 if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN'] else 1
                         
                         df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=start_row_data, header=False)
@@ -617,48 +612,47 @@ if store_choice:
                         
                         start_row_header = 0
                         if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN']:
-                            # --- PERUBAHAN 4: Buat judul dinamis dan merge 2 baris ---
                             judul_sheet = f"{sheet_name} {store_choice.upper()} SHOPEE"
-                            worksheet.merge_range(0, 0, 1, len(df.columns) - 1, judul_sheet, title_format) # merge dari baris 0 hingga 1
-                            start_row_header = 2 # Header kolom sekarang mulai di baris ke-3 (index 2)
+                            worksheet.merge_range(0, 0, 1, len(df.columns) - 1, judul_sheet, title_format)
+                            start_row_header = 2
                         
                         for col_num, value in enumerate(df.columns.values):
                             worksheet.write(start_row_header, col_num, value, header_format)
 
-                        # Terapkan formatting KHUSUS untuk sheet SUMMARY, REKAP, dan IKLAN
                         if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN']:
-                            # --- PERUBAHAN 5: Terapkan border ke semua sel data ---
-                            # (row_start, col_start, row_end, col_end, format)
-                            worksheet.conditional_format(start_row_data + 1, 0, start_row_data + len(df) - 1, len(df.columns) - 1, 
+                            # --- PERUBAHAN 2: Perbaiki rentang border agar baris pertama data ikut ter-format ---
+                            # Rentang dimulai dari baris data pertama (start_row_data)
+                            worksheet.conditional_format(start_row_data, 0, start_row_data + len(df) - 2, len(df.columns) - 1, 
                                                          {'type': 'no_blanks', 'format': cell_border_format})
 
+                        # --- PERUBAHAN 3 & 4: Format persen di SUMMARY dan format Total di IKLAN ---
                         if sheet_name == 'SUMMARY':
                             persen_col = df.columns.get_loc('Persentase')
                             penjualan_hari_col = df.columns.get_loc('Penjualan Per Hari')
                             buku_pesanan_col = df.columns.get_loc('Jumlah buku per pesanan')
                             
-                            # --- PERUBAHAN 6: Terapkan format persen ke seluruh kolom, bukan hanya baris total ---
-                            # Terapkan format mulai dari baris data pertama hingga baris sebelum total
-                            # (worksheet.set_column(col_start, col_end, width, format))
-                            worksheet.set_column(persen_col, persen_col, 12, percent_format) # Format ini sudah termasuk border
+                            # Terapkan format persen ke seluruh kolom (termasuk non-total)
+                            worksheet.set_column(persen_col, persen_col, 12, percent_format)
                             worksheet.set_column(penjualan_hari_col, penjualan_hari_col, 18, one_decimal_format)
                             worksheet.set_column(buku_pesanan_col, buku_pesanan_col, 22, one_decimal_format)
                             
-                            last_row = len(df) + start_row_header
-                            for col_num in range(len(df.columns)):
-                                cell_value = df.iloc[-1, col_num]
-                                current_fmt = total_fmt
-                                if col_num == persen_col:
-                                    current_fmt = total_fmt_percent
-                                elif col_num in [penjualan_hari_col, buku_pesanan_col]:
-                                    current_fmt = total_fmt_decimal
-                                
-                                if pd.notna(cell_value):
-                                    worksheet.write(last_row, col_num, cell_value, current_fmt)
-                                else:
-                                    worksheet.write_blank(last_row, col_num, None, current_fmt)
-                        
-                        # Atur lebar kolom otomatis untuk semua sheet
+                            # Format baris total untuk SUMMARY
+                            last_row_idx = len(df) -1
+                            if df.iloc[last_row_idx]['Nama Produk'] == 'Total':
+                                worksheet.set_row(start_row_data + last_row_idx, None, total_fmt)
+                                # Terapkan format spesifik untuk sel tertentu di baris total
+                                worksheet.write(start_row_data + last_row_idx, persen_col, df.iloc[last_row_idx, persen_col], total_fmt_percent)
+                                worksheet.write(start_row_data + last_row_idx, penjualan_hari_col, df.iloc[last_row_idx, penjualan_hari_col], total_fmt_decimal)
+                                worksheet.write(start_row_data + last_row_idx, buku_pesanan_col, df.iloc[last_row_idx, buku_pesanan_col], total_fmt_decimal)
+
+                        # Tambahkan blok ini untuk format baris TOTAL di sheet IKLAN
+                        if sheet_name == 'IKLAN':
+                            last_row_idx = len(df) - 1
+                            if df.iloc[last_row_idx]['Nama Iklan'] == 'TOTAL':
+                                # Terapkan format kuning dan bold ke seluruh baris total
+                                worksheet.set_row(start_row_data + last_row_idx, None, total_fmt)
+
+                        # Atur lebar kolom otomatis
                         for i, col in enumerate(df.columns):
                             column_len = max(df[col].astype(str).map(len).max(), len(col))
                             worksheet.set_column(i, i, column_len + 2)
