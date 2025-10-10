@@ -394,8 +394,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
     
     summary_df['Persentase'] = (summary_df.apply(lambda row: row['M1'] / row['Total Harga Produk'] if row['Total Harga Produk'] != 0 else 0, axis=1))
     summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
-    summary_df['Penjualan Per Hari'] = (summary_df['Penjualan Netto'] / 7).round(1)
-    summary_df['Jumlah buku per pesanan'] = (summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1)).round(1)
+    summary_df['Penjualan Per Hari'] = round(summary_df['Penjualan Netto'] / 7, 1)
+    summary_df['Jumlah buku per pesanan'] = round(summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1), 1)
 
     # --- MEMBUAT DATAFRAME FINAL SECARA DINAMIS ---
     summary_final_data = {
@@ -452,10 +452,10 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
     total_row['Jumlah Pesanan'] = total_jumlah_pesanan
     
     # Hitung ulang Penjualan Per Hari
-    total_row['Penjualan Per Hari'] = (total_penjualan_netto / 7).round(1)
+    total_row['Penjualan Per Hari'] = round(total_penjualan_netto / 7, 1)
     
     # Hitung ulang Jumlah buku per pesanan
-    total_row['Jumlah buku per pesanan'] = (total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0).round(1)
+    total_row['Jumlah buku per pesanan'] = round(total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
 
     # 4. Kosongkan kolom yang tidak seharusnya dijumlahkan
     for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ']:
