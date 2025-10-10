@@ -22,23 +22,6 @@ def clean_and_convert_to_numeric(column):
         column = column.str.replace(',', '.', regex=False)
     return pd.to_numeric(column, errors='coerce').fillna(0)
 
-# def clean_order_all_numeric(column):
-#     """
-#     Fungsi khusus untuk membersihkan kolom di file order-all.
-#     Menghapus titik (.) sebagai pemisah ribuan dan koma (,).
-#     """
-#     # 1. Paksa kolom menjadi tipe string untuk memastikan .str.replace() bekerja
-#     #    Ini penting jika pandas salah membaca angka sebagai float (misal: 16.808)
-#     cleaned_column = column.astype(str)
-    
-#     # 2. Hapus titik (.) dan koma (,) dari string
-#     cleaned_column = cleaned_column.str.replace('.', '', regex=False)
-#     cleaned_column = cleaned_column.str.replace(',', '', regex=False)
-    
-#     # 3. Ubah string angka yang sudah bersih ke tipe data numerik.
-#     #    errors='coerce' akan mengubah teks yang tidak valid menjadi NaN, lalu .fillna(0) mengubahnya jadi 0.
-#     return pd.to_numeric(cleaned_column, errors='coerce').fillna(0)
-
 def clean_order_all_numeric(column):
     """
     Fungsi khusus untuk membersihkan kolom di file order-all.
@@ -409,10 +392,10 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
         summary_df['Total Pembelian']
     )
     
-    summary_df['Persentase'] = summary_df.apply(lambda row: row['M1'] / row['Total Harga Produk'] if row['Total Harga Produk'] != 0 else 0, axis=1)
+    summary_df['Persentase'] = (summary_df.apply(lambda row: row['M1'] / row['Total Harga Produk'] if row['Total Harga Produk'] != 0 else 0, axis=1))
     summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
-    summary_df['Penjualan Per Hari'] = summary_df['Penjualan Netto'] / 7
-    summary_df['Jumlah buku per pesanan'] = summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1)
+    summary_df['Penjualan Per Hari'] = (summary_df['Penjualan Netto'] / 7).round(1)
+    summary_df['Jumlah buku per pesanan'] = (summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1)).round(1)
 
     # --- MEMBUAT DATAFRAME FINAL SECARA DINAMIS ---
     summary_final_data = {
@@ -469,10 +452,10 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
     total_row['Jumlah Pesanan'] = total_jumlah_pesanan
     
     # Hitung ulang Penjualan Per Hari
-    total_row['Penjualan Per Hari'] = total_penjualan_netto / 7
+    total_row['Penjualan Per Hari'] = (total_penjualan_netto / 7).round(1)
     
     # Hitung ulang Jumlah buku per pesanan
-    total_row['Jumlah buku per pesanan'] = (total_jumlah_terjual / total_jumlah_pesanan) if total_jumlah_pesanan != 0 else 0
+    total_row['Jumlah buku per pesanan'] = (total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0).round(1)
 
     # 4. Kosongkan kolom yang tidak seharusnya dijumlahkan
     for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ']:
