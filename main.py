@@ -62,42 +62,33 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
     rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
 
-    # 1. Siapkan data dari 'Service Fee Details'
-    # Pilih kolom yang relevan dan pastikan tipe data No. Pesanan cocok
-    service_fee_data = service_fee_df[['No. Pesanan', 'Biaya Layanan Promo XTRA', 'Biaya Layanan Gratis Ongkir XTRA']].copy()
-    service_fee_data['No. Pesanan'] = service_fee_data['No. Pesanan'].astype(str)
+    # 1. Pastikan Total Harga Produk ada dan numerik
+    rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0)
     
-    # Bersihkan dan ubah nama kolom agar sesuai target
-    service_fee_data['Biaya Layanan 2%'] = clean_and_convert_to_numeric(service_fee_data['Biaya Layanan Promo XTRA'])
-    service_fee_data['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = clean_and_convert_to_numeric(service_fee_data['Biaya Layanan Gratis Ongkir XTRA'])
-
-    # 2. Gabungkan data biaya layanan baru ini ke rekap_df
-    rekap_df = pd.merge(rekap_df, service_fee_data[['No. Pesanan', 'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%']], on='No. Pesanan', how='left')
-
-    # 3. Kembalikan logika biaya per-pesanan ke awal (tidak dibagi)
-    #    Daftar ini sekarang berisi SEMUA biaya yang hanya berlaku sekali per pesanan.
+    # 2. Hitung biaya baru berdasarkan Total Harga Produk (ini berlaku per-baris/per-produk)
+    rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
+    rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
+    
+    # 3. Hitung Biaya Proses Pesanan yang dibagi rata
+    #    Hitung dulu ada berapa produk dalam satu pesanan
+    product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
+    #    Bagi 1250 dengan jumlah produk tersebut
+    rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
+    
+    # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
         'Voucher dari Penjual', 
-        'Biaya Administrasi', 
-        'Pengeluaran(Rp)', 
-        'Biaya Proses Pesanan', # <-- Dikembalikan ke sini
-        'Biaya Layanan 2%', # <-- Kolom baru
-        'Biaya Layanan Gratis Ongkir Xtra 4,5%' # <-- Kolom baru
+        'Pengeluaran(Rp)',
+        'Total Penghasilan' 
+        # 'Biaya Administrasi', 'Biaya Layanan', dan 'Biaya Proses Pesanan' DIHAPUS dari sini
     ]
-    
-    order_level_costs.append('Total Penghasilan')
     is_first_item_mask = ~rekap_df.duplicated(subset='No. Pesanan', keep='first')
     
     for col in order_level_costs:
         if col in rekap_df.columns:
-            # Isi nilai NaN dengan 0 sebelum perkalian
             rekap_df[col] = rekap_df[col].fillna(0)
-            # Jadikan 0 untuk baris produk kedua, ketiga, dst. dalam satu pesanan
             rekap_df[col] = rekap_df[col] * is_first_item_mask
-
-    # 4. Hapus logika perhitungan lama yang tidak lagi digunakan
-    #    (perkalian 2% dan 4.5% serta pembagian Biaya Proses Pesanan sudah tidak relevan)
-    rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0)
 
     # 5. Pastikan semua biaya bernilai positif (menghilangkan tanda minus)
     cost_columns_to_abs = [
@@ -128,10 +119,10 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
         'Total Harga Produk': rekap_df['Total Harga Produk'],
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
-        'Biaya Adm 8%': rekap_df.get('Biaya Administrasi', 0),
+        'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
         'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
-        'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan', 0), # <-- Diubah ke kolom asli
+        'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan Dibagi', 0),
         'Total Penghasilan': rekap_df['Penjualan Netto'],
         'Metode Pembayaran': rekap_df.get('Metode pembayaran pembeli', '')
     })
@@ -166,23 +157,27 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
 
     # --- LOGIKA BARU UNTUK PACIFICBOOKSTORE ---
-    # Hitung biaya layanan langsung dari Total Harga Produk.
-    # Biaya ini bersifat per-produk, bukan per-pesanan.
-    rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0)
-    rekap_df['Biaya Layanan 2%'] = 0
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = 0
-    # --- AKHIR LOGIKA BARU ---
-
-    # Logika untuk men-nol-kan biaya per-pesanan di baris duplikat
+    # 1. Pastikan Total Harga Produk ada dan numerik
+    rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0)
+    
+    # 2. Hitung biaya baru berdasarkan Total Harga Produk (ini berlaku per-baris/per-produk)
+    rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
+    rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
+    
+    # 3. Hitung Biaya Proses Pesanan yang dibagi rata
+    #    Hitung dulu ada berapa produk dalam satu pesanan
+    product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
+    #    Bagi 1250 dengan jumlah produk tersebut
+    rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
+    
+    # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
         'Voucher dari Penjual', 
-        'Biaya Administrasi', 
-        'Pengeluaran(Rp)', 
-        'Biaya Proses Pesanan'
-        # Biaya Layanan 2% dan 4,5% DIHAPUS dari sini karena dihitung per produk
+        'Pengeluaran(Rp)',
+        'Total Penghasilan'
+        # 'Biaya Administrasi' dan 'Biaya Proses Pesanan' DIHAPUS dari sini
     ]
-    
-    order_level_costs.append('Total Penghasilan')
     is_first_item_mask = ~rekap_df.duplicated(subset='No. Pesanan', keep='first')
     
     for col in order_level_costs:
@@ -218,10 +213,10 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         'Total Harga Produk': rekap_df['Total Harga Produk'],
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
-        'Biaya Adm 8%': rekap_df.get('Biaya Administrasi', 0),
+        'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
         'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
-        'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan', 0),
+        'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan Dibagi', 0), # <-- Gunakan kolom yang sudah dibagi
         'Total Penghasilan': rekap_df['Penjualan Netto'],
         'Metode Pembayaran': rekap_df.get('Metode pembayaran pembeli', '')
     })
