@@ -35,6 +35,11 @@ def clean_order_all_numeric(column):
     
     # Ubah string angka yang sudah bersih (misal: "35750") ke tipe data numerik.
     return pd.to_numeric(cleaned_column, errors='coerce').fillna(0)
+
+def clean_columns(df):
+    """Menghapus spasi di awal dan akhir dari semua nama kolom DataFrame."""
+    df.columns = df.columns.str.strip()
+    return df
     
 def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     """
