@@ -525,7 +525,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
     # Ekstrak ukuran dari variasi
     rekap_df['Variasi'] = rekap_df['Variation'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
 
-    for col in ['SKU Subtotal Before Discount', 'SKU Seller Discount', 'Quantity']:
+    for col in ['SKU Subtotal Before Discount', 'SKU Seller Discount', 'Quantity', 'Affiliate commission', 'Voucher Xtra Service Fee']:
         if col in rekap_df.columns:
             rekap_df[col] = (
                 rekap_df[col]
