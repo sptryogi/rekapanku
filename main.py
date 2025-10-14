@@ -511,8 +511,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
     # Pastikan tipe data kunci untuk merge sama
     order_details_df['Order/adjustment ID'] = order_details_df['Order/adjustment ID'].astype(str)
     # semua_pesanan_df['Order ID'] = semua_pesanan_df['Order ID'].astype(str)
-    semua_pesanan_df.rename(columns={'No. Pesanan': 'Order ID'}, inplace=True)
-    semua_pesanan_df['Order ID'] = semua_pesanan_df['Order ID'].astype(str)
+    semua_pesanan_df['Order ID'] = semua_pesanan_df['Platform unique order ID.'].astype(str)
 
     # Gabungkan data utama (order_details) dengan detail produk (semua_pesanan)
     rekap_df = pd.merge(
