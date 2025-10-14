@@ -826,7 +826,8 @@ if marketplace_choice:
                     # Baca 'semua pesanan' dan langsung bersihkan kolomnya
                     # 1. Baca file tanpa header, sehingga semua baris (termasuk header asli) menjadi data
                     semua_pesanan_df = pd.read_excel(uploaded_semua_pesanan, header=0)
-                    semua_pesanan_df = semua_pesanan_df.drop(semua_pesanan_df.index[0]).reset_index(drop=True)
+                    if len(semua_pesanan_df) > 1 and any(semua_pesanan_df.iloc[1].astype(str).str.contains("Platform unique order ID", case=False, na=False)):
+                        semua_pesanan_df = semua_pesanan_df.drop(index=1).reset_index(drop=True)
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
@@ -900,7 +901,7 @@ if marketplace_choice:
                         start_row_header = 0
                         if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN']:
                             # --- PERUBAHAN 4: Buat judul dinamis dan merge 2 baris ---
-                            judul_sheet = f"{sheet_name} {store_choice.upper()} SHOPEE"
+                            judul_sheet = f"{sheet_name} {store_choice.upper()} {marketplace_choice.upper()}"
                             worksheet.merge_range(0, 0, 1, len(df.columns) - 1, judul_sheet, title_format) # merge dari baris 0 hingga 1
                             start_row_header = 2 # Header kolom sekarang mulai di baris ke-3 (index 2)
                         
