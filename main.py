@@ -826,8 +826,7 @@ if marketplace_choice:
                     # Baca 'semua pesanan' dan langsung bersihkan kolomnya
                     # 1. Baca file tanpa header, sehingga semua baris (termasuk header asli) menjadi data
                     semua_pesanan_df = pd.read_excel(uploaded_semua_pesanan, header=0)
-                    mask_invalid_row = semua_pesanan_df.astype(str).apply(lambda row: row.str.contains("Platform unique order ID", case=False, na=False)).any(axis=1)
-                    semua_pesanan_df = semua_pesanan_df[~mask_invalid_row].reset_index(drop=True)
+                    semua_pesanan_df = semua_pesanan_df.drop(semua_pesanan_df.index[1]).reset_index(drop=True)
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
