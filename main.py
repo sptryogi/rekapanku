@@ -824,7 +824,7 @@ if marketplace_choice:
                     reports_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=0)
                     reports_df = clean_columns(reports_df)
                     # Baca 'semua pesanan' dan langsung bersihkan kolomnya
-                    semua_pesanan_df = pd.read_excel(uploaded_semua_pesanan, header=0)
+                    semua_pesanan_df = pd.read_excel(uploaded_semua_pesanan, header=0, skiprows=[1])
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
