@@ -520,6 +520,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
         right_on='Order ID',
         how='left'
     )
+    # [['Order ID', 'Waktu Pembayaran Dilakukan', 'SKU Induk', 'Variation']]
     
     # Ekstrak ukuran dari variasi
     rekap_df['Variasi'] = rekap_df['Variation'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
