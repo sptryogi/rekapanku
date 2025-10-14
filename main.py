@@ -510,8 +510,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
     """Fungsi untuk memproses dan membuat sheet 'REKAP' untuk TikTok."""
     # Pastikan tipe data kunci untuk merge sama
     order_details_df['Order/adjustment ID'] = order_details_df['Order/adjustment ID'].astype(str)
-    # semua_pesanan_df['Order ID'] = semua_pesanan_df['Order ID'].astype(str)
-    semua_pesanan_df['Order ID'] = semua_pesanan_df['Platform unique order ID.'].astype(str)
+    semua_pesanan_df['Order ID'] = semua_pesanan_df['Order ID'].astype(str)
 
     # Gabungkan data utama (order_details) dengan detail produk (semua_pesanan)
     rekap_df = pd.merge(
@@ -825,7 +824,7 @@ if marketplace_choice:
                     reports_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=0)
                     reports_df = clean_columns(reports_df)
                     # Baca 'semua pesanan' dan langsung bersihkan kolomnya
-                    semua_pesanan_df = pd.read_excel(uploaded_semua_pesanan, header=1)
+                    semua_pesanan_df = pd.read_excel(uploaded_semua_pesanan, header=0)
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
