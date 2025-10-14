@@ -526,14 +526,14 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
     rekap_df['Variasi'] = rekap_df['Variation'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
 
     for col in ['SKU Subtotal Before Discount', 'SKU Seller Discount', 'Quantity']:
-    if col in rekap_df.columns:
-        rekap_df[col] = (
-            rekap_df[col]
-            .astype(str)
-            .str.replace(r'[^\d\-,\.]', '', regex=True)  # hapus simbol non-digit seperti 'Rp', spasi, dll
-            .str.replace(',', '.', regex=False)          # ubah koma jadi titik (jika ada)
-        )
-        rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0)
+        if col in rekap_df.columns:
+            rekap_df[col] = (
+                rekap_df[col]
+                .astype(str)
+                .str.replace(r'[^\d\-,\.]', '', regex=True)  # hapus simbol non-digit seperti 'Rp', spasi, dll
+                .str.replace(',', '.', regex=False)          # ubah koma jadi titik (jika ada)
+            )
+            rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0)
         
     # Hitung kolom finansial
     rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU Subtotal Before Discount'] - rekap_df['SKU Seller Discount']
