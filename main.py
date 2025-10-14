@@ -833,11 +833,14 @@ if marketplace_choice:
                     data = [list(row) for row in ws.iter_rows(values_only=True)]
                     data = [r for r in data if any(r)]  # hapus baris kosong
                     # Gabungkan 2 baris pertama jadi header
-                    header_row_1 = [str(x).strip() if x else "" for x in data[0]]
-                    header_row_2 = [str(x).strip() if x else "" for x in data[1]]
-                    final_header = [h1 if h1 and h1.lower() != "none" else h2 for h1, h2 in zip(header_row_1, header_row_2)]
-                    # Ambil data mulai baris ke-3 (setelah header)
-                    data_rows = data[2:]
+                    # Gunakan hanya baris pertama sebagai header asli (Order ID, Order Status, dst)
+                    final_header = [str(x).strip() if x else "" for x in data[0]]
+                    
+                    # Cek apakah baris kedua berisi "Platform unique order ID" → hapus kalau iya
+                    if len(data) > 1 and any("Platform unique order ID" in str(x) for x in data[1]):
+                        data_rows = data[2:]  # Lewati baris kedua
+                    else:
+                        data_rows = data[1:]
                     # Buat DataFrame
                     semua_pesanan_df = pd.DataFrame(data_rows, columns=final_header)
                     # Bersihkan kolom (hapus spasi dan karakter aneh)
