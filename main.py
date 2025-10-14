@@ -521,11 +521,20 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
         right_on='Order ID',
         how='left'
     )
-    # [['Order ID', 'Waktu Pembayaran Dilakukan', 'SKU Induk', 'Variation']]
     
     # Ekstrak ukuran dari variasi
     rekap_df['Variasi'] = rekap_df['Variation'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
-    
+
+    for col in ['SKU Subtotal Before Discount', 'SKU Seller Discount', 'Quantity']:
+    if col in rekap_df.columns:
+        rekap_df[col] = (
+            rekap_df[col]
+            .astype(str)
+            .str.replace(r'[^\d\-,\.]', '', regex=True)  # hapus simbol non-digit seperti 'Rp', spasi, dll
+            .str.replace(',', '.', regex=False)          # ubah koma jadi titik (jika ada)
+        )
+        rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0)
+        
     # Hitung kolom finansial
     rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU Subtotal Before Discount'] - rekap_df['SKU Seller Discount']
     rekap_df['Biaya Komisi Platform 8%'] = rekap_df['Total Harga Setelah Diskon'] * 0.08
