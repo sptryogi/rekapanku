@@ -533,7 +533,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
                 .str.replace(r'[^\d\-,\.]', '', regex=True)  # hapus simbol non-digit seperti 'Rp', spasi, dll
                 .str.replace(',', '.', regex=False)          # ubah koma jadi titik (jika ada)
             )
-            rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0)
+            rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0).abs()
         
     # Hitung kolom finansial
     rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU Subtotal Before Discount'] - rekap_df['SKU Seller Discount']
