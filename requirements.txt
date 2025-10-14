@@ -4,3 +4,4 @@ openpyxl
 numpy
 xlsxwriter
 rapidfuzz
+pdfplumber
