@@ -817,13 +817,16 @@ if marketplace_choice:
                 elif marketplace_choice == "TikTok":
                     # --- ALUR PROSES TIKTOK BARU ---
                     status_text.text("Membaca file TikTok...")
-                    # Baca sheet 'Order details'
+                    # Baca sheet 'Order details' dan langsung bersihkan kolomnya
                     order_details_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Order details', header=0)
-                    # Baca sheet 'Reports'
+                    order_details_df = clean_columns(order_details_df)
+                    # Baca sheet 'Reports' dan langsung bersihkan kolomnya
                     reports_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=0)
-                    # Baca 'semua pesanan' dengan header di baris pertama (index 0)
+                    reports_df = clean_columns(reports_df)
+                    # Baca 'semua pesanan' dan langsung bersihkan kolomnya
                     semua_pesanan_df = pd.read_excel(uploaded_semua_pesanan, header=0)
-                    progress_bar.progress(20, text="File Excel TikTok dimuat.")
+                    semua_pesanan_df = clean_columns(semua_pesanan_df)
+                    progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
                     status_text.text(f"Memproses {len(uploaded_pdfs)} file PDF nota resi...")
                     pdf_data = [parse_pdf_receipt(pdf) for pdf in uploaded_pdfs if pdf is not None]
