@@ -522,12 +522,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
     )
     
     # Ekstrak ukuran dari variasi
-    # Ekstrak ukuran dari variasi dengan aman (jika kolom 'Variation' ada)
-    if 'Variation' in rekap_df.columns:
-        rekap_df['Variasi'] = rekap_df['Variation'].astype(str).str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
-    else:
-        # Jika kolom 'Variation' tidak ditemukan, buat kolom 'Variasi' kosong
-        rekap_df['Variasi'] = ''
+    rekap_df['Variasi'] = rekap_df['Variation'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
     
     # Hitung kolom finansial
     rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU Subtotal Before Discount'] - rekap_df['SKU Seller Discount']
@@ -829,7 +824,7 @@ if marketplace_choice:
                     reports_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=0)
                     reports_df = clean_columns(reports_df)
                     # Baca 'semua pesanan' dan langsung bersihkan kolomnya
-                    semua_pesanan_df = pd.read_excel(uploaded_semua_pesanan, header=0)
+                    semua_pesanan_df = pd.read_excel(uploaded_semua_pesanan, header=1)
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
