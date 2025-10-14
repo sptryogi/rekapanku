@@ -262,35 +262,83 @@ def process_iklan(iklan_df):
     iklan_final = pd.concat([iklan_agg, total_row], ignore_index=True)
     return iklan_final
 
-def get_harga_beli_fuzzy(nama_produk, katalog_df, score_threshold_primary=80, score_threshold_fallback=75):
+def get_harga_beli_fuzzy(
+    nama_produk,
+    katalog_df,
+    income_df=None,
+    harga_online_sheet1=None,
+    harga_online_sheet2=None,
+    score_threshold_primary=80,
+    score_threshold_fallback=75
+):
     """
-    Cari harga beli dari katalog menggunakan kombinasi filter ukuran + jenis kertas
-    dan fuzzy matching pada judul. Kembalikan angka (0 jika tidak menemukan).
+    Cari harga beli menggunakan logika multi-sheet:
+    1️⃣ Coba cocokkan Nama Produk ke Sheet2 (CUSTOM)
+    2️⃣ Jika cocok → cari di Income (Nama Variasi) → lalu cari di Sheet1 (judul, jenis kertas, ukuran)
+    3️⃣ Jika tidak ada di Sheet2 → langsung ke Sheet1 menggunakan fuzzy matching standar
     """
+
     try:
         if not isinstance(nama_produk, str) or nama_produk.strip() == "":
             return 0
 
         s = nama_produk.upper()
-        # bersihkan tanda baca untuk matching
         s_clean = re.sub(r'[^A-Z0-9\s×xX\-]', ' ', s)
         s_clean = re.sub(r'\s+', ' ', s_clean).strip()
 
-        # 1) deteksi ukuran (pattern umum)
+        # === 0️⃣ CEK DI SHEET2 (CUSTOM)
+        if harga_online_sheet2 is not None and not harga_online_sheet2.empty:
+            match_custom = harga_online_sheet2[
+                harga_online_sheet2["CUSTOM"].astype(str).str.upper().str.strip() == s_clean
+            ]
+            if not match_custom.empty and income_df is not None:
+                # ambil Nama Variasi dari income_df
+                match_variation = income_df[
+                    income_df["Nama Produk"].astype(str).str.upper().str.strip() == s_clean
+                ]
+                if not match_variation.empty:
+                    nama_variasi = str(match_variation.iloc[0]["Nama Variasi"]).strip().upper()
+
+                    # cari di Sheet1 berdasarkan judul / jenis kertas / ukuran
+                    if harga_online_sheet1 is not None and not harga_online_sheet1.empty:
+                        df1 = harga_online_sheet1.copy()
+                        df1["JUDUL_NORM"] = df1["JUDUL AL QUR'AN"].astype(str).str.upper()
+                        df1["JENIS_KERTAS_NORM"] = df1["JENIS KERTAS"].astype(str).str.upper()
+                        df1["UKURAN_NORM"] = df1["UKURAN"].astype(str).str.upper().str.replace(r"\s+", "", regex=True)
+
+                        candidates = df1[
+                            df1["JUDUL_NORM"].str.contains(nama_variasi, na=False)
+                            | df1["JENIS_KERTAS_NORM"].str.contains(nama_variasi, na=False)
+                            | df1["UKURAN_NORM"].str.contains(nama_variasi, na=False)
+                        ]
+                        if not candidates.empty:
+                            harga = candidates.iloc[0].get("KATALOG HARGA", 0)
+                            try:
+                                return float(str(harga).replace(",", "").strip())
+                            except Exception:
+                                pass
+
+        # === 1️⃣ LANJUT KE PENCARIAN DI SHEET1 (Fuzzy matching lama + jenis kertas)
+        if harga_online_sheet1 is None or harga_online_sheet1.empty:
+            return 0
+
+        katalog_df = harga_online_sheet1.copy()
+
+        # deteksi ukuran (A4, 21x29, dll)
         ukuran_found = None
         ukuran_patterns = [
-            r'\bA[0-9]\b',         # A3 A4 A5
-            r'\bB[0-9]\b',         # B4 B5
-            r'\b\d{1,3}\s*[x×X]\s*\d{1,3}\b',  # e.g. 21x29, 30 x 21
-            r'\b\d{1,3}\s*CM\b'    # e.g. 21 CM
+            r"\bA[0-9]\b",
+            r"\bB[0-9]\b",
+            r"\b\d{1,3}\s*[x×X]\s*\d{1,3}\b",
+            r"\b\d{1,3}\s*CM\b"
         ]
         for pat in ukuran_patterns:
             m = re.search(pat, s_clean)
             if m:
-                ukuran_found = m.group(0).replace(' ', '').upper()
+                ukuran_found = m.group(0).replace(" ", "").upper()
                 break
 
-        # 2) deteksi jenis kertas dari kata kunci umum
+        # deteksi jenis kertas (lebih luas)
         jenis_kertas_tokens = ['HVS','KORAN','GLOSSY','DUPLEX','ART','COVER','MATT','MATTE','CTP','BOOK PAPER']
         jenis_found = None
         for jt in jenis_kertas_tokens:
@@ -298,55 +346,54 @@ def get_harga_beli_fuzzy(nama_produk, katalog_df, score_threshold_primary=80, sc
                 jenis_found = jt
                 break
 
-        # 3) filter kandidat katalog: coba filter ukuran dulu, lalu jenis kertas
+        # filter kandidat
         candidates = katalog_df.copy()
         if ukuran_found:
-            # matching kasar: apakah UKURAN_NORM mengandung ukuran_found (contoh A4 atau 21x29)
-            candidates = candidates[candidates['UKURAN_NORM'].str.contains(re.escape(ukuran_found), na=False)]
+            candidates = candidates[
+                candidates["UKURAN"].astype(str).str.upper().str.contains(ukuran_found, na=False)
+            ]
         if jenis_found and not candidates.empty:
-            candidates = candidates[candidates['JENIS_KERTAS_NORM'].str.contains(jenis_found, na=False)]
+            candidates = candidates[
+                candidates["JENIS KERTAS"].astype(str).str.upper().str.contains(jenis_found, na=False)
+            ]
 
-        # jika tidak ada kandidat setelah filter, fallback ke seluruh katalog
         if candidates.empty:
             candidates = katalog_df.copy()
 
-        # 4) fuzzy matching di kandidat (token_set_ratio lebih toleran terhadap urutan)
-        best_score = 0
-        best_price = 0
-        best_title = ""
+        # fuzzy match di kandidat
+        best_score, best_price, best_title = 0, 0, ""
         for _, row in candidates.iterrows():
-            title = str(row['JUDUL_NORM'])
+            title = str(row["JUDUL AL QUR'AN"])
             score = fuzz.token_set_ratio(s_clean, title)
-            # prefer skor tertinggi; tiebreaker: judul lebih panjang (lebih spesifik)
             if score > best_score or (score == best_score and len(title) > len(best_title)):
                 best_score = score
-                best_price = row.get('KATALOG_HARGA_NUM', 0)
+                best_price = row.get("KATALOG HARGA", 0)
                 best_title = title
 
-        # 5) keputusan: terima bila skor cukup tinggi
-        if best_score >= score_threshold_primary and best_price and best_price > 0:
+        if best_score >= score_threshold_primary and best_price and float(best_price) > 0:
             return float(best_price)
 
-        # 6) fallback: scan seluruh katalog untuk skor terbaik jika belum cukup
-        best_score2 = best_score
-        best_price2 = best_price
+        # fallback cari skor terbaik di seluruh katalog
+        best_score2, best_price2 = best_score, best_price
         for _, row in katalog_df.iterrows():
-            title = str(row['JUDUL_NORM'])
+            title = str(row["JUDUL AL QUR'AN"])
             score = fuzz.token_set_ratio(s_clean, title)
             if score > best_score2 or (score == best_score2 and len(title) > len(best_title)):
                 best_score2 = score
-                best_price2 = row.get('KATALOG_HARGA_NUM', 0)
+                best_price2 = row.get("KATALOG HARGA", 0)
                 best_title = title
 
-        if best_score2 >= score_threshold_fallback and best_price2 and best_price2 > 0:
+        if best_score2 >= score_threshold_fallback and best_price2 and float(best_price2) > 0:
             return float(best_price2)
 
-        # kalau masih tidak cukup, kembalikan 0
-        return 0
-    except Exception:
         return 0
 
-def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tambahkan parameter 'store_type'
+    except Exception as e:
+        print(f"[ERROR get_harga_beli_fuzzy] {e}")
+        return 0
+
+
+def process_summary(rekap_df, iklan_final_df, katalog_df, store_type, income_df, sheet1_df, sheet2_df): # <-- Tambahkan parameter 'store_type'
     """Fungsi untuk memproses dan membuat sheet 'SUMMARY'."""
     rekap_copy = rekap_df.copy()
     rekap_copy['No. Pesanan'] = rekap_copy['No. Pesanan'].replace('', np.nan).ffill()
@@ -387,7 +434,11 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type): # <-- Tam
         biaya_ekspedisi_final = summary_df['Biaya Ekspedisi']
     # --- AKHIR LOGIKA BARU ---
 
-    summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(lambda x: get_harga_beli_fuzzy(x, katalog_df))
+    summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(lambda x: get_harga_beli_fuzzy(x,
+        katalog_df=None,
+        income_df=income_dilepas_df,
+        harga_online_sheet1=harga_online_sheet1,
+        harga_online_sheet2=harga_online_sheet2))
     summary_df['Harga Custom TLJ'] = 0
     summary_df['Total Pembelian'] = summary_df['Jumlah Terjual'] * summary_df['Harga Beli']
     
@@ -710,15 +761,18 @@ if marketplace_choice:
     try:
         # ... (kode untuk membaca HARGA ONLINE.xlsx tetap sama) ...
         katalog_df = pd.read_excel('HARGA ONLINE.xlsx')
+        harga_online_sheet1 = katalog_df.parse('Sheet1')
+        harga_online_sheet2 = katalog_df.parse('Sheet2')
         # ... (kode preprocessing katalog Anda tetap di sini) ...
-        katalog_df.columns = [str(c).strip().upper() for c in katalog_df.columns]
-        for col in ["JUDUL AL QUR'AN","JENIS KERTAS","UKURAN","KATALOG HARGA"]:
-            if col not in katalog_df.columns:
-                katalog_df[col] = ""
-        katalog_df['JUDUL_NORM'] = katalog_df["JUDUL AL QUR'AN"].astype(str).str.upper().str.replace(r'[^A-Z0-9\s]', ' ', regex=True)
-        katalog_df['JENIS_KERTAS_NORM'] = katalog_df['JENIS KERTAS'].astype(str).str.upper().str.replace(r'[^A-Z0-9\s]', ' ', regex=True)
-        katalog_df['UKURAN_NORM'] = katalog_df['UKURAN'].astype(str).str.upper().str.replace(r'\s+', '', regex=True)
-        katalog_df['KATALOG_HARGA_NUM'] = pd.to_numeric(katalog_df['KATALOG HARGA'].astype(str).str.replace(r'[^0-9\.]', '', regex=True), errors='coerce').fillna(0)
+        for df in [harga_online_sheet1, harga_online_sheet2]:
+            df.columns = [str(c).strip().upper() for c in df.columns]
+            for col in ["JUDUL AL QUR'AN", "JENIS KERTAS", "UKURAN", "KATALOG HARGA"]:
+                if col not in df.columns:
+                    df[col] = ""
+            df['JUDUL_NORM'] = df["JUDUL AL QUR'AN"].astype(str).str.upper().str.replace(r'[^A-Z0-9\s]', ' ', regex=True)
+            df['JENIS_KERTAS_NORM'] = df['JENIS KERTAS'].astype(str).str.upper().str.replace(r'[^A-Z0-9\s]', ' ', regex=True)
+            df['UKURAN_NORM'] = df['UKURAN'].astype(str).str.upper().str.replace(r'\s+', '', regex=True)
+            df['KATALOG_HARGA_NUM'] = pd.to_numeric(df['KATALOG HARGA'].astype(str).str.replace(r'[^0-9\.]', '', regex=True), errors='coerce').fillna(0)
     except FileNotFoundError:
         st.error("Error: File 'HARGA ONLINE.xlsx' tidak ditemukan.")
         st.stop()
@@ -814,7 +868,7 @@ if marketplace_choice:
                     progress_bar.progress(60, text="Sheet 'IKLAN' selesai.")
     
                     status_text.text("Menyusun sheet 'SUMMARY' (Shopee)...")
-                    summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df, store_type=store_choice)
+                    summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df, store_type=store_choice, income_df=income_dilepas_df, sheet1_df=harga_online_sheet1, sheet2_df=harga_online_sheet2)
                     progress_bar.progress(80, text="Sheet 'SUMMARY' selesai.")
                     
                     file_name_output = f"Rekapanku_Shopee_{store_choice}.xlsx"
