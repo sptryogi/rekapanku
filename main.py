@@ -824,7 +824,14 @@ if marketplace_choice:
                     reports_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=0)
                     reports_df = clean_columns(reports_df)
                     # Baca 'semua pesanan' dan langsung bersihkan kolomnya
-                    semua_pesanan_df = pd.read_excel(uploaded_semua_pesanan, header=0)
+                    # 1. Baca file tanpa header, sehingga semua baris (termasuk header asli) menjadi data
+                    semua_pesanan_df = pd.read_excel(uploaded_semua_pesanan, header=None)
+                    
+                    # 2. Jadikan baris pertama (indeks 0) sebagai nama kolom yang baru
+                    semua_pesanan_df.columns = semua_pesanan_df.iloc[0]
+                    
+                    # 3. Buang baris pertama (indeks 0, yang kini jadi header) dan baris kedua (indeks 1, deskripsi)
+                    semua_pesanan_df = semua_pesanan_df.drop([0, 1]).reset_index(drop=True)
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
