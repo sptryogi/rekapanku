@@ -12,6 +12,7 @@ import time
 import re
 from rapidfuzz import fuzz
 import pdfplumber
+from openpyxl import load_workbook
 
 # --- FUNGSI-FUNGSI PEMROSESAN ---
 
@@ -826,8 +827,21 @@ if marketplace_choice:
                     reports_df = clean_columns(reports_df)
                     # Baca 'semua pesanan' dan langsung bersihkan kolomnya
                     # 1. Baca file tanpa header, sehingga semua baris (termasuk header asli) menjadi data
-                    semua_pesanan_df = pd.read_excel(uploaded_semua_pesanan, header=0)
-                    semua_pesanan_df = semua_pesanan_df.drop(1).reset_index(drop=True)
+                    wb = load_workbook(uploaded_semua_pesanan, data_only=True)
+                    ws = wb.active
+                    # Ambil semua baris sebagai list of values
+                    data = [list(row) for row in ws.iter_rows(values_only=True)]
+                    data = [r for r in data if any(r)]  # hapus baris kosong
+                    # Gabungkan 2 baris pertama jadi header
+                    header_row_1 = [str(x).strip() if x else "" for x in data[0]]
+                    header_row_2 = [str(x).strip() if x else "" for x in data[1]]
+                    final_header = [h1 if h1 and h1.lower() != "none" else h2 for h1, h2 in zip(header_row_1, header_row_2)]
+                    # Ambil data mulai baris ke-3 (setelah header)
+                    data_rows = data[2:]
+                    # Buat DataFrame
+                    semua_pesanan_df = pd.DataFrame(data_rows, columns=final_header)
+                    # Bersihkan kolom (hapus spasi dan karakter aneh)
+                    semua_pesanan_df.columns = semua_pesanan_df.columns.str.strip()
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
