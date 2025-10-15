@@ -270,20 +270,30 @@ def get_harga_beli_fuzzy(nama_produk, katalog_sheet1, katalog_sheet2=None, rekap
     1. Cek 'Sheet2' (custom). Jika cocok, cari variasinya di rekap dan gunakan untuk mencari di 'Sheet1'.
     2. Jika tidak, langsung cari di 'Sheet1' menggunakan nama produk asli.
     """
-    search_name = nama_produk  # Nama yang akan digunakan untuk pencarian fuzzy
+    nama_produk_clean = str(nama_produk).strip()
+    search_name = nama_produk_clean  # Nama yang akan digunakan untuk pencarian fuzzy
 
     # --- LOGIKA BARU: Cek Katalog Custom (Sheet2) ---
     if katalog_sheet2 is not None and rekap_lookup_df is not None and 'CUSTOM' in katalog_sheet2.columns:
-        # Cek apakah nama produk ada di kolom CUSTOM
-        if nama_produk in katalog_sheet2['CUSTOM'].values:
-            # Jika ada, cari 'Nama Variasi' di data rekap
-            # Pastikan kolom 'Nama Variasi' ada di rekap_lookup_df
+        
+        # Buat sebuah "kamus" atau set dari nilai di kolom CUSTOM yang sudah dibersihkan
+        # agar pencarian tidak sensitif terhadap spasi dan huruf besar/kecil.
+        custom_values_lookup = set(katalog_sheet2['CUSTOM'].astype(str).str.strip().str.upper())
+
+        # 3. Cek apakah 'nama_produk' yang sudah bersih ada di dalam "kamus" tersebut.
+        if nama_produk_clean.upper() in custom_values_lookup:
+            
             if 'Nama Variasi' in rekap_lookup_df.columns:
-                variasi_lookup = rekap_lookup_df[rekap_lookup_df['Nama Produk'] == nama_produk]
+                # Cari baris di data rekap yang 'Nama Produk'-nya cocok (setelah dibersihkan juga).
+                variasi_lookup = rekap_lookup_df[rekap_lookup_df['Nama Produk'].str.strip() == nama_produk_clean]
+                
                 if not variasi_lookup.empty:
+                    # Ambil 'Nama Variasi' dari baris pertama yang cocok.
                     nama_variasi = variasi_lookup['Nama Variasi'].iloc[0]
+                    
+                    # Jika 'Nama Variasi' valid, GANTI 'search_name' dengan nilai ini.
                     if isinstance(nama_variasi, str) and nama_variasi.strip() != "":
-                        search_name = nama_variasi # Ganti nama pencarian dengan nama variasi
+                        search_name = nama_variasi.strip() # Inilah kuncinya!
 
     # --- LOGIKA LAMA (FUZZY MATCHING) MENGGUNAKAN 'search_name' ---
     try:
