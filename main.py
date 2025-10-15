@@ -307,7 +307,7 @@ def get_harga_beli_fuzzy(nama_produk, katalog_sheet1, katalog_sheet2=None, rekap
                 break
 
         # 2) deteksi jenis kertas dari kata kunci umum
-        jenis_kertas_tokens = ['HVS','KORAN','GLOSSY','DUPLEX','ART','COVER','MATT','MATTE','CTP','BOOK PAPER']
+        jenis_kertas_tokens = ['HVS', 'QPP', 'KORAN','GLOSSY','DUPLEX','ART','COVER','MATT','MATTE','CTP','BOOK PAPER', 'Art Paper']
         jenis_found = None
         for jt in jenis_kertas_tokens:
             if jt in s_clean:
@@ -329,7 +329,7 @@ def get_harga_beli_fuzzy(nama_produk, katalog_sheet1, katalog_sheet2=None, rekap
         best_price = 0
         best_title = ""
         for _, row in candidates.iterrows():
-            title = str(row['JUDUL_NORM'])
+            title = str(row['FULL_DESC_NORM'])
             score = fuzz.token_set_ratio(s_clean, title)
             if score > best_score or (score == best_score and len(title) > len(best_title)):
                 best_score = score
@@ -343,7 +343,7 @@ def get_harga_beli_fuzzy(nama_produk, katalog_sheet1, katalog_sheet2=None, rekap
         best_score2 = best_score
         best_price2 = best_price
         for _, row in katalog_sheet1.iterrows():
-            title = str(row['JUDUL_NORM'])
+            title = str(row['FULL_DESC_NORM'])
             score = fuzz.token_set_ratio(s_clean, title)
             if score > best_score2 or (score == best_score2 and len(title) > len(best_title)):
                 best_score2 = score
@@ -569,6 +569,20 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
     cols_to_blank = ['No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Total Penghasilan']
     rekap_final.loc[rekap_final['No. Pesanan'].duplicated(), cols_to_blank] = ''
     
+    # --- TAMBAHKAN BLOK KODE BARU DI SINI ---
+    # Logika untuk menghapus pesanan jika Total Penghasilan adalah 0
+    temp_df = rekap_final.copy()
+    # Isi dulu No. Pesanan yang kosong agar bisa difilter
+    temp_df['No. Pesanan'] = temp_df['No. Pesanan'].replace('', np.nan).ffill()
+    
+    # Cari semua No. Pesanan unik yang memiliki setidaknya satu baris dengan Total Penghasilan 0
+    orders_to_remove = temp_df[temp_df['Total Penghasilan'] == 0]['No. Pesanan'].unique()
+    
+    # Jika ada pesanan yang perlu dihapus, filter DataFrame akhir
+    if len(orders_to_remove) > 0:
+        # Gunakan temp_df yang sudah diisi No. Pesanannya untuk memfilter rekap_final
+        rekap_final = rekap_final[~temp_df['No. Pesanan'].isin(orders_to_remove)]
+    
     return rekap_final.fillna(0)
 
 def process_summary_tiktok(rekap_df, katalog_sheet1_df, katalog_sheet2_df, ekspedisi_df):
@@ -660,29 +674,31 @@ def process_summary_tiktok(rekap_df, katalog_sheet1_df, katalog_sheet2_df, ekspe
 
 def process_ekspedisi_tiktok(summary_df, pdf_data_list):
     """Membuat sheet EKSPEDISI berdasarkan data summary dan nota PDF."""
-    # Bagian Kiri: Data Produk
-    kiri_df = summary_df[summary_df['Nama Produk'] != 'Total'][['Nama Produk', 'Jumlah Terjual']].copy()
-    kiri_df.rename(columns={'Jumlah Terjual': 'QTY'}, inplace=True)
+    # --- PERUBAIKAN: Agregasi QTY berdasarkan Nama Produk saja untuk mencegah duplikasi ---
+    kiri_df = summary_df[summary_df['Nama Produk'] != 'Total'].groupby('Nama Produk', as_index=False).agg(
+        QTY=('Jumlah Terjual', 'sum')
+    )
     
-    # Bagian Kanan: Data dari PDF
+    # Bagian Kanan: Data dari PDF (tetap sama)
     kanan_df = pd.DataFrame(pdf_data_list)
     
-    # Kalkulasi Biaya Ekspedisi
+    # Sisa fungsi tetap sama...
     total_qty = kiri_df['QTY'].sum()
-    total_nominal = kanan_df['Nominal'].sum()
+    total_nominal = kanan_df['Nominal'].sum() if not kanan_df.empty else 0
     biaya_per_produk = total_nominal / total_qty if total_qty > 0 else 0
     
     kiri_df['Biaya Ekspedisi per produk'] = biaya_per_produk
     kiri_df['Jumlah'] = kiri_df['QTY'] * biaya_per_produk
     
-    # Tambah baris total
     kiri_total = pd.DataFrame([{'Nama Produk': 'Total', 'QTY': total_qty, 'Biaya Ekspedisi per produk': None, 'Jumlah': kiri_df['Jumlah'].sum()}])
     kiri_df = pd.concat([kiri_df, kiri_total], ignore_index=True)
 
     kanan_total = pd.DataFrame([{'Tanggal Kirim Paket': 'Total', 'Nominal': total_nominal}])
-    kanan_df = pd.concat([kanan_df, kanan_total], ignore_index=True)
+    if not kanan_df.empty:
+        kanan_df = pd.concat([kanan_df, kanan_total], ignore_index=True)
+    else: # Jika tidak ada PDF diupload
+        kanan_df = kanan_total
     
-    # Gabungkan dengan kolom kosong di tengah
     final_df = pd.concat([kiri_df, pd.DataFrame(columns=[' ']), kanan_df], axis=1)
     return final_df.fillna('')
     
@@ -724,6 +740,7 @@ if marketplace_choice:
         katalog_sheet1_df['JENIS_KERTAS_NORM'] = katalog_sheet1_df['JENIS KERTAS'].astype(str).str.upper().str.replace(r'[^A-Z0-9\s]', ' ', regex=True)
         katalog_sheet1_df['UKURAN_NORM'] = katalog_sheet1_df['UKURAN'].astype(str).str.upper().str.replace(r'\s+', '', regex=True)
         katalog_sheet1_df['KATALOG_HARGA_NUM'] = pd.to_numeric(katalog_sheet1_df['KATALOG HARGA'].astype(str).str.replace(r'[^0-9\.]', '', regex=True), errors='coerce').fillna(0)
+        katalog_sheet1_df['FULL_DESC_NORM'] = katalog_sheet1_df['JUDUL_NORM'] + ' ' + katalog_sheet1_df['JENIS_KERTAS_NORM'] + ' ' + katalog_sheet1_df['UKURAN_NORM']
 
         # --- Preprocess Sheet2 (Katalog Custom) ---
         # Pastikan kolom 'CUSTOM' ada dan bersihkan
@@ -881,7 +898,7 @@ if marketplace_choice:
                     
                     # Untuk SUMMARY, kita perlu EKSPEDISI dulu, tapi EKSPEDISI perlu agregasi dari SUMMARY.
                     # Jadi, kita buat summary sementara dulu.
-                    summary_temp_for_ekspedisi = rekap_processed.groupby(['Nama Produk', 'Variasi']).agg({'Jumlah Terjual': 'sum'}).reset_index()
+                    summary_temp_for_ekspedisi = rekap_processed.copy()
                     
                     status_text.text("Menyusun sheet 'EKSPEDISI'...")
                     ekspedisi_processed = process_ekspedisi_tiktok(summary_temp_for_ekspedisi, pdf_data)
