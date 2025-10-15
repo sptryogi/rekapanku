@@ -343,7 +343,7 @@ def get_harga_beli_fuzzy(nama_produk, katalog_df, score_threshold_primary=80, sc
     except Exception:
         return 0
 
-def process_summary(rekap_df, iklan_final_df, katalog_sheet1, katalog_sheet2, store_type):
+def process_summary(rekap_df, iklan_final_df, katalog_df, store_type):
     """
     Fungsi untuk memproses sheet 'SUMMARY'.
     - Menggabungkan produk dari REKAP dan IKLAN.
@@ -581,7 +581,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
     
     return rekap_final.fillna(0)
 
-def process_summary_tiktok(rekap_df, katalog_sheet1_df, katalog_sheet2_df, ekspedisi_df):
+def process_summary_tiktok(rekap_df, katalog_df, ekspedisi_df):
     """Fungsi untuk memproses dan membuat sheet 'SUMMARY' untuk TikTok."""
     # Agregasi data dari REKAP berdasarkan Nama Produk dan Variasi (ini sudah mencegah duplikasi)
     summary_df = rekap_df.groupby(['Nama Produk', 'Variasi']).agg({
@@ -830,7 +830,7 @@ if marketplace_choice:
                     progress_bar.progress(60, text="Sheet 'IKLAN' selesai.")
     
                     status_text.text("Menyusun sheet 'SUMMARY' (Shopee)...")
-                    summary_processed = process_summary(rekap_processed, iklan_processed, katalog_sheet1_df, katalog_sheet2_df, store_type=store_choice)
+                    summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df, store_type=store_choice)
                     progress_bar.progress(80, text="Sheet 'SUMMARY' selesai.")
                     
                     file_name_output = f"Rekapanku_Shopee_{store_choice}.xlsx"
@@ -891,7 +891,7 @@ if marketplace_choice:
                     progress_bar.progress(70, text="Sheet 'EKSPEDISI' selesai.")
     
                     status_text.text("Menyusun sheet 'SUMMARY' (TikTok)...")
-                    summary_processed = process_summary_tiktok(rekap_processed, katalog_sheet1_df, katalog_sheet2_df, ekspedisi_processed)
+                    summary_processed = process_summary_tiktok(rekap_processed, katalog_df, ekspedisi_processed)
                     progress_bar.progress(85, text="Sheet 'SUMMARY' selesai.")
     
                     file_name_output = f"Rekapanku_TikTok_{store_choice}.xlsx"
