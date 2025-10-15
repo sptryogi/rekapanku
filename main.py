@@ -372,21 +372,59 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type):
     }).reset_index()
 
     # --- LOGIKA BARU: Tambahkan Produk dari IKLAN yang tidak ada di REKAP ---
-    iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']]
+    # Siapkan kolom 'Iklan Klik' dengan nilai default 0
+    summary_df['Iklan Klik'] = 0.0
     
-    # Tambahkan 'Iklan Klik' ke produk yang sudah ada
+    # Daftar produk khusus yang biaya iklannya perlu didistribusikan
+    produk_khusus = [
+        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
+        "AL QUR'AN GOLD TERMURAH"
+    ]
+    
+    # Ambil data iklan yang relevan
+    iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
+    
+    # 1. Proses Distribusi Biaya untuk Produk Khusus
+    for produk_base in produk_khusus:
+        # Cari biaya iklan untuk produk dasar ini
+        iklan_cost_row = iklan_data[iklan_data['Nama Iklan'] == produk_base]
+        
+        if not iklan_cost_row.empty:
+            total_iklan_cost = iklan_cost_row['Biaya'].iloc[0]
+    
+            # Cari semua baris di SUMMARY yang merupakan variasi dari produk dasar ini
+            # Kuncinya adalah menggunakan .str.startswith()
+            matching_summary_rows = summary_df['Nama Produk'].str.startswith(produk_base, na=False)
+            
+            # Hitung ada berapa banyak variasi yang ditemukan
+            num_variations = matching_summary_rows.sum()
+    
+            if num_variations > 0:
+                # Bagi biaya iklan secara merata ke semua variasi
+                distributed_cost = total_iklan_cost / num_variations
+                summary_df.loc[matching_summary_rows, 'Iklan Klik'] = distributed_cost
+    
+                # Hapus iklan ini dari `iklan_data` agar tidak diproses lagi
+                iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
+    
+    # 2. Proses Produk Normal (yang tersisa di iklan_data)
+    # Gunakan merge untuk produk yang namanya cocok persis
     summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk', right_on='Nama Iklan', how='left')
-    summary_df.rename(columns={'Biaya': 'Iklan Klik'}, inplace=True)
-    summary_df['Iklan Klik'] = summary_df['Iklan Klik'].fillna(0)
-    summary_df.drop('Nama Iklan', axis=1, inplace=True, errors='ignore')
-
-    # Cari produk yang hanya ada di IKLAN
+    
+    # Gabungkan hasil merge dengan kolom 'Iklan Klik' yang sudah ada
+    # `summary_df['Biaya']` akan berisi biaya untuk produk normal
+    summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
+    summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
+    
+    # 3. Tambahkan Produk yang Hanya Ada di IKLAN (dan bukan produk khusus)
     iklan_only_names = set(iklan_data['Nama Iklan']) - set(summary_df['Nama Produk'])
     if iklan_only_names:
         iklan_only_df = iklan_data[iklan_data['Nama Iklan'].isin(iklan_only_names)].copy()
         iklan_only_df.rename(columns={'Nama Iklan': 'Nama Produk', 'Biaya': 'Iklan Klik'}, inplace=True)
-        # Gabungkan baris baru ini ke summary utama
-        summary_df = pd.concat([summary_df, iklan_only_df], ignore_index=True).fillna(0)
+        summary_df = pd.concat([summary_df, iklan_only_df], ignore_index=True)
+    
+    # Pastikan semua nilai NaN di kolom numerik utama menjadi 0
+    summary_df.fillna(0, inplace=True)
     # --- AKHIR LOGIKA BARU ---
 
     # Sisa fungsi sama seperti sebelumnya, dengan penyesuaian pada pemanggilan `get_harga_beli_fuzzy`
