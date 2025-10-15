@@ -266,104 +266,102 @@ def process_iklan(iklan_df):
 
 def get_harga_beli_fuzzy(nama_produk, katalog_sheet1, katalog_sheet2=None, rekap_lookup_df=None, score_threshold_primary=80, score_threshold_fallback=75):
     """
-    Cari harga beli dari katalog dengan logika baru:
-    1. Cek 'Sheet2' (custom). Jika cocok, cari variasinya di rekap dan gunakan untuk mencari di 'Sheet1'.
-    2. Jika tidak, langsung cari di 'Sheet1' menggunakan nama produk asli.
+    Mencari harga beli dari katalog dengan logika yang direvisi sesuai permintaan.
+    Logika:
+    1. Cek apakah 'Nama Produk' ada di 'Sheet2' (katalog custom).
+    2. JIKA ADA:
+       a. Cari 'Nama Variasi' yang sesuai dari data rekap (asalnya dari order-all).
+       b. Gunakan 'Nama Variasi' tersebut sebagai kata kunci pencarian utama di 'Sheet1'.
+    3. JIKA TIDAK ADA:
+       a. Gunakan 'Nama Produk' asli sebagai kata kunci pencarian di 'Sheet1'.
+    4. Pencarian di 'Sheet1' menggunakan fuzzy matching dengan mempertimbangkan UKURAN dan JENIS KERTAS.
     """
-    nama_produk_clean = str(nama_produk).strip()
-    search_name = nama_produk_clean  # Nama yang akan digunakan untuk pencarian fuzzy
+    if not isinstance(nama_produk, str) or not nama_produk.strip():
+        return 0
 
-    # --- LOGIKA BARU: Cek Katalog Custom (Sheet2) ---
-    if katalog_sheet2 is not None and rekap_lookup_df is not None and 'CUSTOM' in katalog_sheet2.columns:
+    nama_produk_clean = nama_produk.strip()
+    search_term = nama_produk_clean  # Default: cari berdasarkan nama produk asli
+
+    # Langkah 1 & 2: Cek katalog custom (Sheet2) dan ganti search_term jika cocok
+    if katalog_sheet2 is not None and not katalog_sheet2.empty and rekap_lookup_df is not None and not rekap_lookup_df.empty:
+        # Lakukan pengecekan case-insensitive dan tanpa spasi di awal/akhir
+        custom_matches = katalog_sheet2[katalog_sheet2['CUSTOM'].astype(str).str.strip().str.upper() == nama_produk_clean.upper()]
         
-        # Buat sebuah "kamus" atau set dari nilai di kolom CUSTOM yang sudah dibersihkan
-        # agar pencarian tidak sensitif terhadap spasi dan huruf besar/kecil.
-        custom_values_lookup = set(katalog_sheet2['CUSTOM'].astype(str).str.strip().str.upper())
-
-        # 3. Cek apakah 'nama_produk' yang sudah bersih ada di dalam "kamus" tersebut.
-        if nama_produk_clean.upper() in custom_values_lookup:
+        if not custom_matches.empty:
+            # Produk ditemukan di katalog custom. Sekarang cari variasinya.
+            variasi_lookup = rekap_lookup_df[rekap_lookup_df['Nama Produk'].astype(str).str.strip() == nama_produk_clean]
             
-            if 'Nama Variasi' in rekap_lookup_df.columns:
-                # Cari baris di data rekap yang 'Nama Produk'-nya cocok (setelah dibersihkan juga).
-                variasi_lookup = rekap_lookup_df[rekap_lookup_df['Nama Produk'].str.strip() == nama_produk_clean]
+            if not variasi_lookup.empty:
+                nama_variasi = variasi_lookup['Nama Variasi'].iloc[0]
                 
-                if not variasi_lookup.empty:
-                    # Ambil 'Nama Variasi' dari baris pertama yang cocok.
-                    nama_variasi = variasi_lookup['Nama Variasi'].iloc[0]
-                    
-                    # Jika 'Nama Variasi' valid, GANTI 'search_name' dengan nilai ini.
-                    if isinstance(nama_variasi, str) and nama_variasi.strip() != "":
-                        search_name = nama_variasi.strip() # Inilah kuncinya!
-
-    # --- LOGIKA LAMA (FUZZY MATCHING) MENGGUNAKAN 'search_name' ---
+                # Jika 'Nama Variasi' valid, GANTI 'search_term' dengan nilai ini.
+                if pd.notna(nama_variasi) and isinstance(nama_variasi, str) and nama_variasi.strip():
+                    search_term = nama_variasi.strip()
+    
+    # Langkah 3 & 4: Lakukan fuzzy matching di Sheet1 menggunakan 'search_term' yang sudah ditentukan
     try:
-        if not isinstance(search_name, str) or search_name.strip() == "":
-            return 0
-
-        # Sisa fungsi fuzzy matching sama persis seperti sebelumnya,
-        # hanya menggunakan `katalog_sheet1` dan `search_name`
-        s = search_name.upper()
+        s = search_term.upper()
         s_clean = re.sub(r'[^A-Z0-9\s×xX\-]', ' ', s)
         s_clean = re.sub(r'\s+', ' ', s_clean).strip()
 
-        # ... (sisa kode fuzzy matching Anda dari sini tetap sama persis) ...
-        # 1) deteksi ukuran (pattern umum)
-        ukuran_found = None
-        ukuran_patterns = [
-            r'\bA[0-9]\b', r'\bB[0-9]\b', r'\b\d{1,3}\s*[x×X]\s*\d{1,3}\b', r'\b\d{1,3}\s*CM\b'
-        ]
+        if not s_clean:
+            return 0
+
+        # --- Bagian 1: Filter Kandidat Berdasarkan Kata Kunci (Ukuran & Jenis Kertas) ---
+        ukuran_found, jenis_found = None, None
+        
+        # Deteksi ukuran
+        ukuran_patterns = [r'\b(A|B)\d{1,2}\b', r'\b\d{1,3}\s*[x×X]\s*\d{1,3}\b']
         for pat in ukuran_patterns:
             m = re.search(pat, s_clean)
             if m:
                 ukuran_found = m.group(0).replace(' ', '').upper()
                 break
 
-        # 2) deteksi jenis kertas dari kata kunci umum
-        jenis_kertas_tokens = ['HVS', 'QPP', 'KORAN','GLOSSY','DUPLEX','ART','COVER','MATT','MATTE','CTP','BOOK PAPER', 'Art Paper']
-        jenis_found = None
+        # Deteksi jenis kertas
+        jenis_kertas_tokens = ['HVS', 'QPP', 'KORAN', 'GLOSSY', 'DUPLEX', 'ART PAPER', 'BOOK PAPER', 'MATTE', 'MATT']
         for jt in jenis_kertas_tokens:
-            if jt in s_clean:
+            if re.search(r'\b' + re.escape(jt) + r'\b', s_clean):
                 jenis_found = jt
                 break
-
-        # 3) filter kandidat katalog: coba filter ukuran dulu, lalu jenis kertas
+        
         candidates = katalog_sheet1.copy()
+        
         if ukuran_found:
-            candidates = candidates[candidates['UKURAN_NORM'].str.contains(re.escape(ukuran_found), na=False)]
+            if re.match(r'^(A|B)\d{1,2}$', ukuran_found):
+                 candidates = candidates[candidates['UKURAN_NORM'] == ukuran_found]
+            else:
+                 candidates = candidates[candidates['UKURAN_NORM'].str.contains(re.escape(ukuran_found), na=False)]
+
         if jenis_found and not candidates.empty:
             candidates = candidates[candidates['JENIS_KERTAS_NORM'].str.contains(jenis_found, na=False)]
 
         if candidates.empty:
             candidates = katalog_sheet1.copy()
 
-        # 4) fuzzy matching di kandidat
-        best_score = 0
-        best_price = 0
-        best_title = ""
+        # --- Bagian 2: Fuzzy Matching pada Kandidat yang Telah Difilter ---
+        best_score, best_price = 0, 0
+        
         for _, row in candidates.iterrows():
             title = str(row['JUDUL_NORM'])
-            score = fuzz.token_set_ratio(s_clean, title)
-            if score > best_score or (score == best_score and len(title) > len(best_title)):
+            score = fuzz.WRatio(s_clean, title) # Menggunakan WRatio untuk hasil lebih baik
+            if score > best_score:
                 best_score = score
                 best_price = row.get('KATALOG_HARGA_NUM', 0)
-                best_title = title
 
-        if best_score >= score_threshold_primary and best_price and best_price > 0:
+        if best_score >= score_threshold_primary:
             return float(best_price)
 
-        # 6) fallback
-        best_score2 = best_score
-        best_price2 = best_price
+        # --- Bagian 3: Fallback - Fuzzy Matching pada Seluruh Katalog ---
         for _, row in katalog_sheet1.iterrows():
             title = str(row['JUDUL_NORM'])
-            score = fuzz.token_set_ratio(s_clean, title)
-            if score > best_score2 or (score == best_score2 and len(title) > len(best_title)):
-                best_score2 = score
-                best_price2 = row.get('KATALOG_HARGA_NUM', 0)
-                best_title = title
-
-        if best_score2 >= score_threshold_fallback and best_price2 and best_price2 > 0:
-            return float(best_price2)
+            score = fuzz.WRatio(s_clean, title)
+            if score > best_score:
+                best_score = score
+                best_price = row.get('KATALOG_HARGA_NUM', 0)
+        
+        if best_score >= score_threshold_fallback:
+            return float(best_price)
 
         return 0
     except Exception:
