@@ -66,7 +66,7 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
     produk_khusus = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
-        "AL - QUR'AN NON TERJEMAH TERMURAH A5 A6 A7"
+        "AL QUR'AN GOLD TERMURAH"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
@@ -169,6 +169,16 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     seller_conv_df['Kode Pesanan'] = seller_conv_df['Kode Pesanan'].astype(str)
     
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
+    # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
+    produk_khusus = [
+        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
+        "AL QUR'AN GOLD TERMURAH"
+    ]
+    # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
+    kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
+    # Gabungkan Nama Produk dengan Nama Variasi jika kondisi terpenuhi
+    if 'Nama Variasi' in rekap_df.columns:
+        rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + rekap_df['Nama Variasi'].fillna('').str.strip()
 
     iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
@@ -507,7 +517,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
 
     produk_khusus = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
-        "AL - QUR'AN NON TERJEMAH TERMURAH A5 A6 A7"
+        "AL QUR'AN GOLD TERMURAH"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     kondisi = rekap_df['Product Name'].isin(produk_khusus)
