@@ -51,7 +51,8 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk']).agg({
         'Jumlah': 'sum',
         'Harga Setelah Diskon': 'first',
-        'Total Harga Produk': 'sum'
+        'Total Harga Produk': 'sum',
+        'Nama Variasi': 'first'
     }).reset_index()
     order_agg.rename(columns={'Jumlah': 'Jumlah Terjual'}, inplace=True)
 
@@ -148,7 +149,8 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk']).agg({
         'Jumlah': 'sum',
         'Harga Setelah Diskon': 'first',
-        'Total Harga Produk': 'sum'
+        'Total Harga Produk': 'sum',
+        'Nama Variasi': 'first'
     }).reset_index()
     order_agg.rename(columns={'Jumlah': 'Jumlah Terjual'}, inplace=True)
 
