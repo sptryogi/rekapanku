@@ -63,6 +63,16 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     
     # Gabungkan income_df dengan order_agg. Ini akan membuat duplikasi baris income untuk setiap produk.
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
+    # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
+    produk_khusus = [
+        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
+        "AL - QUR'AN NON TERJEMAH TERMURAH A5 A6 A7"
+    ]
+    # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
+    kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
+    # Gabungkan Nama Produk dengan Nama Variasi jika kondisi terpenuhi
+    if 'Nama Variasi' in rekap_df.columns:
+        rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + rekap_df['Nama Variasi'].fillna('').str.strip()
 
     # Gabungkan dengan data seller conversion
     iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
@@ -264,109 +274,74 @@ def process_iklan(iklan_df):
     iklan_final = pd.concat([iklan_agg, total_row], ignore_index=True)
     return iklan_final
 
-def get_harga_beli_fuzzy(nama_produk, katalog_sheet1, katalog_sheet2=None, rekap_lookup_df=None, score_threshold_primary=80, score_threshold_fallback=75):
+def get_harga_beli_fuzzy(nama_produk, katalog_df, score_threshold_primary=80, score_threshold_fallback=75):
     """
-    Mencari harga beli dari katalog dengan logika yang direvisi sesuai permintaan.
-    Logika:
-    1. Cek apakah 'Nama Produk' ada di 'Sheet2' (katalog custom).
-    2. JIKA ADA:
-       a. Cari 'Nama Variasi' yang sesuai dari data rekap (asalnya dari order-all).
-       b. Gunakan 'Nama Variasi' tersebut sebagai kata kunci pencarian utama di 'Sheet1'.
-    3. JIKA TIDAK ADA:
-       a. Gunakan 'Nama Produk' asli sebagai kata kunci pencarian di 'Sheet1'.
-    4. Pencarian di 'Sheet1' menggunakan fuzzy matching dengan mempertimbangkan UKURAN dan JENIS KERTAS.
+    REVISI 3: Mencari harga beli dari satu dataframe katalog saja.
     """
-    if not isinstance(nama_produk, str) or not nama_produk.strip():
-        return 0
-
-    nama_produk_clean = nama_produk.strip()
-    search_term = nama_produk_clean  # Default: cari berdasarkan nama produk asli
-
-    # Langkah 1 & 2: Cek katalog custom (Sheet2) dan ganti search_term jika cocok
-    if katalog_sheet2 is not None and not katalog_sheet2.empty and rekap_lookup_df is not None and not rekap_lookup_df.empty:
-        # Lakukan pengecekan case-insensitive dan tanpa spasi di awal/akhir
-        custom_matches = katalog_sheet2[katalog_sheet2['CUSTOM'].astype(str).str.strip().str.upper() == nama_produk_clean.upper()]
-        
-        if not custom_matches.empty:
-            # Produk ditemukan di katalog custom. Sekarang cari variasinya.
-            variasi_lookup = rekap_lookup_df[rekap_lookup_df['Nama Produk'].astype(str).str.strip() == nama_produk_clean]
-            
-            if not variasi_lookup.empty:
-                nama_variasi = variasi_lookup['Nama Variasi'].iloc[0]
-                
-                # Jika 'Nama Variasi' valid, GANTI 'search_term' dengan nilai ini.
-                if pd.notna(nama_variasi) and isinstance(nama_variasi, str) and nama_variasi.strip():
-                    search_term = nama_variasi.strip()
-    
-    # Langkah 3 & 4: Lakukan fuzzy matching di Sheet1 menggunakan 'search_term' yang sudah ditentukan
     try:
-        s = search_term.upper()
+        search_name = str(nama_produk).strip()
+        if not search_name:
+            return 0
+
+        # Logika fuzzy matching langsung ke katalog_df
+        s = search_name.upper()
         s_clean = re.sub(r'[^A-Z0-9\s×xX\-]', ' ', s)
         s_clean = re.sub(r'\s+', ' ', s_clean).strip()
 
-        if not s_clean:
-            return 0
-
-        # --- Bagian 1: Filter Kandidat Berdasarkan Kata Kunci (Ukuran & Jenis Kertas) ---
-        ukuran_found, jenis_found = None, None
-        
-        # Deteksi ukuran
-        ukuran_patterns = [r'\b(A|B)\d{1,2}\b', r'\b\d{1,3}\s*[x×X]\s*\d{1,3}\b']
+        # 1) Deteksi ukuran
+        ukuran_found = None
+        ukuran_patterns = [
+            r'\bA[0-9]\b', r'\bB[0-9]\b', r'\b\d{1,3}\s*[x×X]\s*\d{1,3}\b', r'\b\d{1,3}\s*CM\b'
+        ]
         for pat in ukuran_patterns:
             m = re.search(pat, s_clean)
             if m:
                 ukuran_found = m.group(0).replace(' ', '').upper()
                 break
 
-        # Deteksi jenis kertas
-        jenis_kertas_tokens = ['HVS', 'QPP', 'KORAN', 'GLOSSY', 'DUPLEX', 'ART PAPER', 'BOOK PAPER', 'MATTE', 'MATT']
+        # 2) Deteksi jenis kertas
+        jenis_kertas_tokens = ['HVS', 'QPP', 'KORAN','GLOSSY','DUPLEX','ART','COVER','MATT','MATTE','CTP','BOOK PAPER', 'Art Paper']
+        jenis_found = None
         for jt in jenis_kertas_tokens:
-            if re.search(r'\b' + re.escape(jt) + r'\b', s_clean):
+            if jt in s_clean:
                 jenis_found = jt
                 break
-        
-        candidates = katalog_sheet1.copy()
-        
-        if ukuran_found:
-            if re.match(r'^(A|B)\d{1,2}$', ukuran_found):
-                 candidates = candidates[candidates['UKURAN_NORM'] == ukuran_found]
-            else:
-                 candidates = candidates[candidates['UKURAN_NORM'].str.contains(re.escape(ukuran_found), na=False)]
 
+        # 3) Filter kandidat
+        candidates = katalog_df.copy()
+        if ukuran_found:
+            candidates = candidates[candidates['UKURAN_NORM'].str.contains(re.escape(ukuran_found), na=False)]
         if jenis_found and not candidates.empty:
             candidates = candidates[candidates['JENIS_KERTAS_NORM'].str.contains(jenis_found, na=False)]
 
         if candidates.empty:
-            candidates = katalog_sheet1.copy()
+            candidates = katalog_df.copy()
 
-        # --- Bagian 2: Fuzzy Matching pada Kandidat yang Telah Difilter ---
-        best_score, best_price = 0, 0
-        
+        # 4) Fuzzy matching
+        best_score, best_price, best_title = 0, 0, ""
         for _, row in candidates.iterrows():
             title = str(row['JUDUL_NORM'])
-            score = fuzz.WRatio(s_clean, title) # Menggunakan WRatio untuk hasil lebih baik
-            if score > best_score:
-                best_score = score
-                best_price = row.get('KATALOG_HARGA_NUM', 0)
+            score = fuzz.token_set_ratio(s_clean, title)
+            if score > best_score or (score == best_score and len(title) > len(best_title)):
+                best_score, best_price, best_title = score, row.get('KATALOG_HARGA_NUM', 0), title
 
-        if best_score >= score_threshold_primary:
+        if best_score >= score_threshold_primary and best_price > 0:
             return float(best_price)
 
-        # --- Bagian 3: Fallback - Fuzzy Matching pada Seluruh Katalog ---
-        for _, row in katalog_sheet1.iterrows():
+        # 5) Fallback ke seluruh katalog jika perlu
+        best_score2, best_price2 = best_score, best_price
+        for _, row in katalog_df.iterrows():
             title = str(row['JUDUL_NORM'])
-            score = fuzz.WRatio(s_clean, title)
-            if score > best_score:
-                best_score = score
-                best_price = row.get('KATALOG_HARGA_NUM', 0)
-        
-        if best_score >= score_threshold_fallback:
-            return float(best_price)
+            score = fuzz.token_set_ratio(s_clean, title)
+            if score > best_score2 or (score == best_score2 and len(title) > len(best_title)):
+                best_score2, best_price2, best_title = score, row.get('KATALOG_HARGA_NUM', 0), title
+
+        if best_score2 >= score_threshold_fallback and best_price2 > 0:
+            return float(best_price2)
 
         return 0
     except Exception:
         return 0
-
 
 def process_summary(rekap_df, iklan_final_df, katalog_sheet1, katalog_sheet2, store_type):
     """
@@ -423,7 +398,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_sheet1, katalog_sheet2, st
     # --- PERUBAHAN PADA PEMANGGILAN FUNGSI ---
     # Pastikan rekap_df (rekap_copy) yang belum diagregasi digunakan untuk lookup variasi
     summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(
-        lambda x: get_harga_beli_fuzzy(x, katalog_sheet1, katalog_sheet2, rekap_copy)
+        lambda x: get_harga_beli_fuzzy(x, katalog_df)
     )
 
     summary_df['Harga Custom TLJ'] = 0
@@ -529,9 +504,20 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
         right_on='Order ID',
         how='left'
     )
+
+    produk_khusus = [
+        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
+        "AL - QUR'AN NON TERJEMAH TERMURAH A5 A6 A7"
+    ]
+    # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
+    kondisi = rekap_df['Product Name'].isin(produk_khusus)
+    # Gabungkan Nama Produk dengan Nama Variasi jika kondisi terpenuhi
+    if 'Variation' in rekap_df.columns:
+        rekap_df.loc[kondisi, 'Product Name'] = rekap_df['Product Name'] + ' ' + rekap_df['Variation'].fillna('').str.strip()
     
     # Ekstrak ukuran dari variasi
     rekap_df['Variasi'] = rekap_df['Variation'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+    
 
     for col in ['SKU Subtotal Before Discount', 'SKU Seller Discount', 'Quantity', 'Affiliate commission', 'Voucher Xtra Service Fee']:
         if col in rekap_df.columns:
@@ -632,7 +618,7 @@ def process_summary_tiktok(rekap_df, katalog_sheet1_df, katalog_sheet2_df, ekspe
     # Untuk TikTok, kita tidak memiliki 'Nama Variasi' dari file income,
     # jadi kita tidak perlu memberikan rekap_lookup_df. Logika custom akan dilewati.
     summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(
-        lambda x: get_harga_beli_fuzzy(x, katalog_sheet1_df, katalog_sheet2_df, rekap_lookup_df=None)
+        lambda x: get_harga_beli_fuzzy(x, katalog_df)
     )
     # --- AKHIR PERUBAHAN ---
     
@@ -738,26 +724,17 @@ elif marketplace_choice == "TikTok":
 if marketplace_choice:
     try:
         # ... (kode untuk membaca HARGA ONLINE.xlsx tetap sama) ...
-        katalog_file = pd.ExcelFile('HARGA ONLINE.xlsx')
-        katalog_sheet1_df = pd.read_excel(katalog_file, sheet_name='Sheet1')
-        katalog_sheet2_df = pd.read_excel(katalog_file, sheet_name='Sheet2')
-        # ... (kode preprocessing katalog Anda tetap di sini) ...
-        katalog_sheet1_df.columns = [str(c).strip().upper() for c in katalog_sheet1_df.columns]
+        katalog_df = pd.read_excel('HARGA ONLINE.xlsx')
+    
+        # Lakukan preprocessing langsung ke dataframe tunggal
+        katalog_df.columns = [str(c).strip().upper() for c in katalog_df.columns]
         for col in ["JUDUL AL QUR'AN", "JENIS KERTAS", "UKURAN", "KATALOG HARGA"]:
-            if col not in katalog_sheet1_df.columns:
-                katalog_sheet1_df[col] = ""
-        katalog_sheet1_df['JUDUL_NORM'] = katalog_sheet1_df["JUDUL AL QUR'AN"].astype(str).str.upper().str.replace(r'[^A-Z0-9\s]', ' ', regex=True)
-        katalog_sheet1_df['JENIS_KERTAS_NORM'] = katalog_sheet1_df['JENIS KERTAS'].astype(str).str.upper().str.replace(r'[^A-Z0-9\s]', ' ', regex=True)
-        katalog_sheet1_df['UKURAN_NORM'] = katalog_sheet1_df['UKURAN'].astype(str).str.upper().str.replace(r'\s+', '', regex=True)
-        katalog_sheet1_df['KATALOG_HARGA_NUM'] = pd.to_numeric(katalog_sheet1_df['KATALOG HARGA'].astype(str).str.replace(r'[^0-9\.]', '', regex=True), errors='coerce').fillna(0)
-
-        # --- Preprocess Sheet2 (Katalog Custom) ---
-        # Pastikan kolom 'CUSTOM' ada dan bersihkan
-        if 'CUSTOM' in katalog_sheet2_df.columns:
-            katalog_sheet2_df.columns = [str(c).strip().upper() for c in katalog_sheet2_df.columns]
-        else:
-            st.error("Error: Kolom 'CUSTOM' tidak ditemukan di Sheet2 file 'HARGA ONLINE.xlsx'.")
-            st.stop()
+            if col not in katalog_df.columns:
+                katalog_df[col] = ""
+        katalog_df['JUDUL_NORM'] = katalog_df["JUDUL AL QUR'AN"].astype(str).str.upper().str.replace(r'[^A-Z0-9\s]', ' ', regex=True)
+        katalog_df['JENIS_KERTAS_NORM'] = katalog_df['JENIS KERTAS'].astype(str).str.upper().str.replace(r'[^A-Z0-9\s]', ' ', regex=True)
+        katalog_df['UKURAN_NORM'] = katalog_df['UKURAN'].astype(str).str.upper().str.replace(r'\s+', '', regex=True)
+        katalog_df['KATALOG_HARGA_NUM'] = pd.to_numeric(katalog_df['KATALOG HARGA'].astype(str).str.replace(r'[^0-9\.]', '', regex=True), errors='coerce').fillna(0)
     except FileNotFoundError:
         st.error("Error: File 'HARGA ONLINE.xlsx' tidak ditemukan.")
         st.stop()
