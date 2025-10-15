@@ -329,7 +329,7 @@ def get_harga_beli_fuzzy(nama_produk, katalog_sheet1, katalog_sheet2=None, rekap
         best_price = 0
         best_title = ""
         for _, row in candidates.iterrows():
-            title = str(row['FULL_DESC_NORM'])
+            title = str(row['JUDUL_NORM'])
             score = fuzz.token_set_ratio(s_clean, title)
             if score > best_score or (score == best_score and len(title) > len(best_title)):
                 best_score = score
@@ -343,7 +343,7 @@ def get_harga_beli_fuzzy(nama_produk, katalog_sheet1, katalog_sheet2=None, rekap
         best_score2 = best_score
         best_price2 = best_price
         for _, row in katalog_sheet1.iterrows():
-            title = str(row['FULL_DESC_NORM'])
+            title = str(row['JUDUL_NORM'])
             score = fuzz.token_set_ratio(s_clean, title)
             if score > best_score2 or (score == best_score2 and len(title) > len(best_title)):
                 best_score2 = score
@@ -740,7 +740,6 @@ if marketplace_choice:
         katalog_sheet1_df['JENIS_KERTAS_NORM'] = katalog_sheet1_df['JENIS KERTAS'].astype(str).str.upper().str.replace(r'[^A-Z0-9\s]', ' ', regex=True)
         katalog_sheet1_df['UKURAN_NORM'] = katalog_sheet1_df['UKURAN'].astype(str).str.upper().str.replace(r'\s+', '', regex=True)
         katalog_sheet1_df['KATALOG_HARGA_NUM'] = pd.to_numeric(katalog_sheet1_df['KATALOG HARGA'].astype(str).str.replace(r'[^0-9\.]', '', regex=True), errors='coerce').fillna(0)
-        katalog_sheet1_df['FULL_DESC_NORM'] = katalog_sheet1_df['JUDUL_NORM'] + ' ' + katalog_sheet1_df['JENIS_KERTAS_NORM'] + ' ' + katalog_sheet1_df['UKURAN_NORM']
 
         # --- Preprocess Sheet2 (Katalog Custom) ---
         # Pastikan kolom 'CUSTOM' ada dan bersihkan
