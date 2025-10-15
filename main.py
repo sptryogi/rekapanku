@@ -707,7 +707,7 @@ elif marketplace_choice == "TikTok":
 if marketplace_choice:
     try:
         # ... (kode untuk membaca HARGA ONLINE.xlsx tetap sama) ...
-        katalog_df = pd.ExcelFile('HARGA ONLINE.xlsx')
+        katalog_file = pd.ExcelFile('HARGA ONLINE.xlsx')
         katalog_sheet1_df = pd.read_excel(katalog_file, sheet_name='Sheet1')
         katalog_sheet2_df = pd.read_excel(katalog_file, sheet_name='Sheet2')
         # ... (kode preprocessing katalog Anda tetap di sini) ...
