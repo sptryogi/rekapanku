@@ -571,9 +571,9 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
     
     return rekap_final.fillna(0)
 
-def process_summary_tiktok(rekap_df, katalog_df, ekspedisi_df):
+def process_summary_tiktok(rekap_df, katalog_sheet1_df, katalog_sheet2_df, ekspedisi_df):
     """Fungsi untuk memproses dan membuat sheet 'SUMMARY' untuk TikTok."""
-    # Agregasi data dari REKAP berdasarkan Nama Produk dan Variasi
+    # Agregasi data dari REKAP berdasarkan Nama Produk dan Variasi (ini sudah mencegah duplikasi)
     summary_df = rekap_df.groupby(['Nama Produk', 'Variasi']).agg({
         'Jumlah Terjual': 'sum',
         'Harga Satuan': 'first',
@@ -598,14 +598,20 @@ def process_summary_tiktok(rekap_df, katalog_df, ekspedisi_df):
         summary_df['Biaya Proses Pesanan']
     )
     
-    # Ambil data Biaya Ekspedisi dari sheet EKSPEDISI (kolom 'Jumlah')
     ekspedisi_cost = ekspedisi_df[['Nama Produk', 'Jumlah']].rename(columns={'Jumlah': 'Biaya Ekspedisi'})
     summary_df = pd.merge(summary_df, ekspedisi_cost, on='Nama Produk', how='left')
     summary_df['Biaya Ekspedisi'] = summary_df['Biaya Ekspedisi'].fillna(0)
 
-    # Hitung kolom lainnya
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
-    summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(lambda x: get_harga_beli_fuzzy(x, katalog_df))
+
+    # --- PERUBAHAN DI SINI: Gunakan logika harga beli yang sama dengan Shopee ---
+    # Untuk TikTok, kita tidak memiliki 'Nama Variasi' dari file income,
+    # jadi kita tidak perlu memberikan rekap_lookup_df. Logika custom akan dilewati.
+    summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(
+        lambda x: get_harga_beli_fuzzy(x, katalog_sheet1_df, katalog_sheet2_df, rekap_lookup_df=None)
+    )
+    # --- AKHIR PERUBAHAN ---
+    
     summary_df['Harga Custom TLJ'] = 0
     summary_df['Total Pembelian'] = summary_df['Jumlah Terjual'] * summary_df['Harga Beli']
     
@@ -616,12 +622,12 @@ def process_summary_tiktok(rekap_df, katalog_df, ekspedisi_df):
         summary_df['Total Pembelian']
     )
     
+    # ... (Sisa fungsi Anda dari sini sampai akhir tetap sama persis) ...
     summary_df['Persentase'] = summary_df.apply(lambda row: row['M1'] / row['Total Harga Setelah Diskon'] if row['Total Harga Setelah Diskon'] != 0 else 0, axis=1)
     summary_df['Jumlah Pesanan'] = summary_df['Biaya Proses Pesanan'] / 1250
     summary_df['Penjualan Per Hari'] = round(summary_df['Penjualan Netto'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1)
 
-    # Buat DataFrame Final
     summary_final = pd.DataFrame({
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'], 'Variasi': summary_df['Variasi'],
         'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Harga Satuan': summary_df['Harga Satuan'],
@@ -635,8 +641,7 @@ def process_summary_tiktok(rekap_df, katalog_df, ekspedisi_df):
         'M1': summary_df['M1'], 'Persentase': summary_df['Persentase'], 'Jumlah Pesanan': summary_df['Jumlah Pesanan'],
         'Penjualan Per Hari': summary_df['Penjualan Per Hari'], 'Jumlah buku per pesanan': summary_df['Jumlah buku per pesanan']
     })
-
-    # Tambahkan baris Total (logika mirip Shopee)
+    
     total_row = pd.DataFrame(summary_final.sum(numeric_only=True)).T
     total_row['Nama Produk'] = 'Total'
     total_m1 = total_row['Penjualan Netto'].iloc[0] - total_row['Biaya Packing'].iloc[0] - total_row['Biaya Ekspedisi'].iloc[0] - total_row['Total Pembelian'].iloc[0]
@@ -883,7 +888,7 @@ if marketplace_choice:
                     progress_bar.progress(70, text="Sheet 'EKSPEDISI' selesai.")
     
                     status_text.text("Menyusun sheet 'SUMMARY' (TikTok)...")
-                    summary_processed = process_summary_tiktok(rekap_processed, katalog_df, ekspedisi_processed)
+                    summary_processed = process_summary_tiktok(rekap_processed, katalog_sheet1_df, katalog_sheet2_df, ekspedisi_processed)
                     progress_bar.progress(85, text="Sheet 'SUMMARY' selesai.")
     
                     file_name_output = f"Rekapanku_TikTok_{store_choice}.xlsx"
