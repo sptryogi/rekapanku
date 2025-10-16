@@ -571,62 +571,57 @@ def parse_pdf_receipt(pdf_file):
 def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_df):
     """Fungsi untuk memproses dan membuat sheet 'REKAP' untuk TikTok dengan logika baru."""
     # 1. PREPARASI DATA & MERGE AWAL
-    order_details_df['Order/adjustment ID'] = order_details_df['Order/adjustment ID'].astype(str)
-    semua_pesanan_df['Order ID'] = semua_pesanan_df['Order ID'].astype(str)
-    creator_order_all_df['ID Pesanan'] = creator_order_all_df['ID Pesanan'].astype(str)
+    order_details_df['ORDER/ADJUSTMENT ID'] = order_details_df['ORDER/ADJUSTMENT ID'].astype(str)
+    semua_pesanan_df['ORDER ID'] = semua_pesanan_df['ORDER ID'].astype(str)
+    creator_order_all_df['ID PESANAN'] = creator_order_all_df['ID PESANAN'].astype(str)
 
     # Gabungkan data utama
-    rekap_df = pd.merge(order_details_df, semua_pesanan_df, left_on='Order/adjustment ID', right_on='Order ID', how='left')
-    rekap_df['Variasi'] = rekap_df['Variation'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+    rekap_df = pd.merge(order_details_df, semua_pesanan_df, left_on='ORDER/ADJUSTMENT ID', right_on='ORDER ID', how='left')
+    rekap_df['Variasi'] = rekap_df['VARIATION'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
 
     # Bersihkan kolom-kolom finansial
-    for col in ['SKU Subtotal Before Discount', 'SKU Seller Discount', 'Quantity', 'Bonus cashback service fee', 'Voucher Xtra Service Fee']:
+    cols_to_clean = ['SKU SUBTOTAL BEFORE DISCOUNT', 'SKU SELLER DISCOUNT', 'QUANTITY', 'BONUS CASHBACK SERVICE FEE', 'VOUCHER XTRA SERVICE FEE']
+    for col in cols_to_clean:
         if col in rekap_df.columns:
             rekap_df[col] = (rekap_df[col].astype(str).str.replace(r'[^\d\-,\.]', '', regex=True).str.replace(',', '.', regex=False))
             rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0).abs()
 
-    # 2. LOGIKA AGREGASI PRODUK (MENGHILANGKAN DUPLIKASI)
+    # 2. LOGIKA AGREGASI PRODUK
     agg_rules = {
-        'Quantity': 'sum',
-        'SKU Subtotal Before Discount': 'sum',
-        'SKU Seller Discount': 'sum',
-        'Order created time(UTC)': 'first',
-        'Order settled time(UTC)': 'first',
-        'SKU Unit Original Price': 'first',
-        'Bonus cashback service fee': 'first', # Ambil nilai per pesanan
-        'Voucher Xtra Service Fee': 'first', # Ambil nilai per pesanan
-        'Total settlement amount': 'first' # Ambil nilai per pesanan
+        'QUANTITY': 'sum',
+        'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
+        'SKU SELLER DISCOUNT': 'sum',
+        'ORDER CREATED TIME(UTC)': 'first',
+        'ORDER SETTLED TIME(UTC)': 'first',
+        'SKU UNIT ORIGINAL PRICE': 'first',
+        'BONUS CASHBACK SERVICE FEE': 'first',
+        'VOUCHER XTRA SERVICE FEE': 'first',
+        'TOTAL SETTLEMENT AMOUNT': 'first'
     }
-    rekap_df = rekap_df.groupby(['Order ID', 'Product Name', 'Variasi'], as_index=False).agg(agg_rules)
-    rekap_df.rename(columns={'Quantity': 'Jumlah Terjual'}, inplace=True)
+    rekap_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False).agg(agg_rules)
+    rekap_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True)
 
     # 3. MENGHITUNG BIAYA-BIAYA BARU
-    # Hitung Total Harga Setelah Diskon per produk yang sudah diagregasi
-    rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU Subtotal Before Discount'] - rekap_df['SKU Seller Discount']
-
-    # Hitung biaya standar
+    rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'] - rekap_df['SKU SELLER DISCOUNT']
     rekap_df['Biaya Komisi Platform 8%'] = rekap_df['Total Harga Setelah Diskon'] * 0.08
     rekap_df['Komisi Dinamis 5%'] = rekap_df['Total Harga Setelah Diskon'] * 0.05
-    rekap_df['Biaya Proses Pesanan'] = 1250 # Ini akan dibagi nanti
+    
+    product_count = rekap_df.groupby('ORDER ID')['ORDER ID'].transform('size')
+    rekap_df['Biaya Layanan Cashback Bonus 1,5%'] = rekap_df['BONUS CASHBACK SERVICE FEE'] / product_count
+    rekap_df['Biaya Layanan Voucher Xtra'] = rekap_df['VOUCHER XTRA SERVICE FEE'] / product_count
+    rekap_df['Biaya Proses Pesanan'] = 1250 / product_count
 
-    # Hitung biaya yang perlu dibagi rata per pesanan
-    product_count = rekap_df.groupby('Order ID')['Order ID'].transform('size')
-    rekap_df['Biaya Layanan Cashback Bonus 1,5%'] = rekap_df['Bonus cashback service fee'] / product_count
-    rekap_df['Biaya Layanan Voucher Xtra'] = rekap_df['Voucher Xtra Service Fee'] / product_count
-    rekap_df['Biaya Proses Pesanan'] = rekap_df['Biaya Proses Pesanan'] / product_count
-
-    # 4. MENGAMBIL KOMISI AFFILIATE DARI 'creator order-all'
+    # 4. MENGAMBIL KOMISI AFFILIATE
     creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
     rekap_df = pd.merge(
         rekap_df,
-        creator_order_all_df[['ID Pesanan', 'Produk', 'Variasi_Clean', 'Pembayaran Komisi Aktual']],
-        left_on=['Order ID', 'Product Name', 'Variasi'],
-        right_on=['ID Pesanan', 'Produk', 'Variasi_Clean'],
+        creator_order_all_df[['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL']],
+        left_on=['ORDER ID', 'PRODUCT NAME', 'Variasi'],
+        right_on=['ID PESANAN', 'PRODUK', 'Variasi_Clean'],
         how='left'
     )
-    rekap_df.rename(columns={'Pembayaran Komisi Aktual': 'Komisi Affiliate'}, inplace=True)
+    rekap_df.rename(columns={'PEMBAYARAN KOMISI AKTUAL': 'Komisi Affiliate'}, inplace=True)
     rekap_df['Komisi Affiliate'] = rekap_df['Komisi Affiliate'].fillna(0)
-
 
     # 5. RUMUS BARU UNTUK TOTAL PENGHASILAN
     rekap_df['Total Penghasilan'] = (
@@ -642,15 +637,15 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     # 6. MEMBUAT FINAL DATAFRAME
     rekap_final = pd.DataFrame({
         'No.': np.arange(1, len(rekap_df) + 1),
-        'No. Pesanan': rekap_df['Order ID'],
-        'Waktu Pesanan Dibuat': rekap_df['Order created time(UTC)'],
-        'Waktu Dana Dilepas': rekap_df['Order settled time(UTC)'],
-        'Nama Produk': rekap_df['Product Name'],
+        'No. Pesanan': rekap_df['ORDER ID'],
+        'Waktu Pesanan Dibuat': rekap_df['ORDER CREATED TIME(UTC)'],
+        'Waktu Dana Dilepas': rekap_df['ORDER SETTLED TIME(UTC)'],
+        'Nama Produk': rekap_df['PRODUCT NAME'],
         'Variasi': rekap_df['Variasi'],
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
-        'Harga Satuan': rekap_df['SKU Unit Original Price'],
-        'Total Harga Sebelum Diskon': rekap_df['SKU Subtotal Before Discount'],
-        'Diskon Penjual': rekap_df['SKU Seller Discount'],
+        'Harga Satuan': rekap_df['SKU UNIT ORIGINAL PRICE'],
+        'Total Harga Sebelum Diskon': rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'],
+        'Diskon Penjual': rekap_df['SKU SELLER DISCOUNT'],
         'Total Harga Setelah Diskon': rekap_df['Total Harga Setelah Diskon'],
         'Komisi Affiliate': rekap_df['Komisi Affiliate'],
         'Biaya Komisi Platform 8%': rekap_df['Biaya Komisi Platform 8%'],
@@ -949,9 +944,11 @@ if marketplace_choice:
                     # Baca sheet 'Order details' dan langsung bersihkan kolomnya
                     order_details_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Order details', header=0)
                     order_details_df = clean_columns(order_details_df)
+                    order_details_df.columns = [col.upper() for col in order_details_df.columns]
                     # Baca sheet 'Reports' dan langsung bersihkan kolomnya
                     reports_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=0)
                     reports_df = clean_columns(reports_df)
+                    reports_df.columns = [col.upper() for col in reports_df.columns]
                     # Baca 'semua pesanan' dan langsung bersihkan kolomnya
                     # 1. Baca file tanpa header, sehingga semua baris (termasuk header asli) menjadi data
                     wb = load_workbook(uploaded_semua_pesanan, data_only=True)
@@ -973,7 +970,9 @@ if marketplace_choice:
                     # Bersihkan kolom (hapus spasi dan karakter aneh)
                     semua_pesanan_df.columns = semua_pesanan_df.columns.str.strip()
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
+                    semua_pesanan_df.columns = [col.upper() for col in semua_pesanan_df.columns]
                     creator_order_all_df = clean_columns(pd.read_excel(uploaded_creator_order))
+                    creator_order_all_df.columns = [col.upper() for col in creator_order_all_df.columns]
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
                     status_text.text(f"Memproses {len(uploaded_pdfs)} file PDF nota resi...")
