@@ -588,6 +588,16 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     creator_order_all_df['ID PESANAN'] = creator_order_all_df['ID PESANAN'].astype(str)
 
     rekap_df = pd.merge(order_details_df, semua_pesanan_df, left_on='ORDER/ADJUSTMENT ID', right_on='ORDER ID', how='left')
+
+    # >>> BAGIAN BARU 1: FILTER PESANAN YANG DIBATALKAN/DIKEMBALIKAN <<<
+    if 'CANCELLATION/RETURN TYPE' in rekap_df.columns:
+        # Dapatkan daftar unik ORDER ID yang statusnya 'Cancel' atau 'Return/Refund'
+        cancelled_orders = rekap_df[rekap_df['CANCELLATION/RETURN TYPE'].isin(['Cancel', 'Return/Refund'])]['ORDER ID'].unique()
+        
+        # Hapus semua baris dari rekap_df yang ORDER ID-nya ada di daftar cancelled_orders
+        if len(cancelled_orders) > 0:
+            rekap_df = rekap_df[~rekap_df['ORDER ID'].isin(cancelled_orders)]
+
     rekap_df['Variasi'] = rekap_df['VARIATION'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
 
     cols_to_clean = ['SKU SUBTOTAL BEFORE DISCOUNT', 'SKU SELLER DISCOUNT', 'QUANTITY', 'BONUS CASHBACK SERVICE FEE', 'VOUCHER XTRA SERVICE FEE']
@@ -596,11 +606,15 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
             rekap_df[col] = (rekap_df[col].astype(str).str.replace(r'[^\d\-,\.]', '', regex=True).str.replace(',', '.', regex=False))
             rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0).abs()
 
-    # >>> BAGIAN KRUSIAL UNTUK MENGHILANGKAN DUPLIKASI <<<
-    # 2. LOGIKA AGREGASI PRODUK
-    # Kode ini akan mengelompokkan semua baris berdasarkan ID Pesanan, Nama Produk, dan Variasi.
-    # Kemudian, ia akan menjumlahkan (sum) kuantitas dan harga, serta mengambil nilai pertama (first) untuk data lain.
-    # Hasilnya adalah satu baris unik untuk setiap produk dalam satu pesanan.
+    # >>> BAGIAN BARU 2: PEMBERSIHAN DATA SEBELUM GROUPBY UNTUK MENCEGAH DUPLIKASI <<<
+    # Hapus spasi di awal/akhir dari kolom kunci untuk memastikan groupby bekerja dengan benar
+    if 'PRODUCT NAME' in rekap_df.columns:
+        rekap_df['PRODUCT NAME'] = rekap_df['PRODUCT NAME'].astype(str).str.strip()
+    if 'Variasi' in rekap_df.columns:
+        rekap_df['Variasi'] = rekap_df['Variasi'].astype(str).str.strip()
+
+
+    # 2. LOGIKA AGREGASI PRODUK (Sekarang akan bekerja dengan benar)
     agg_rules = {
         'QUANTITY': 'sum',
         'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
@@ -614,8 +628,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     }
     rekap_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False).agg(agg_rules)
     rekap_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True)
-    # >>> AKHIR BAGIAN KRUSIAL <<<
-
+    
     # 3. MENGHITUNG BIAYA-BIAYA BARU (setelah agregasi)
     rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'] - rekap_df['SKU SELLER DISCOUNT']
     rekap_df['Biaya Komisi Platform 8%'] = rekap_df['Total Harga Setelah Diskon'] * 0.08
