@@ -523,15 +523,27 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type):
 
 def get_harga_beli_fuzzy_tiktok(nama_produk, variasi, katalog_df, score_threshold_primary=80, score_threshold_fallback=75):
     """
-    Mencari harga beli khusus untuk TikTok dengan memprioritaskan variasi.
+    Mencari harga beli khusus untuk TikTok dengan logika baru:
+    - Jika ada variasi, hapus semua ukuran (A5, B5, dll.) dari nama produk, lalu gabungkan.
+    - Jika tidak ada variasi, gunakan nama produk asli.
     """
-    search_term = str(nama_produk).strip()
-    # Jika ada variasi yang valid (bukan string kosong), GABUNGKAN DI DEPAN nama produk
-    if pd.notna(variasi) and str(variasi).strip():
-        # >>> INI ADALAH PERUBAHAN UTAMANYA <<<
-        search_term = f"{str(variasi).strip()} {search_term}"
+    nama_produk_clean = str(nama_produk).strip()
+    variasi_clean = str(variasi).strip()
 
-    # Panggil fungsi fuzzy matching yang sudah ada dengan search_term yang sudah diprioritaskan
+    # Pola regex untuk menemukan dan menghapus ukuran seperti A5, B5, dll.
+    size_pattern = r'\s*\b(A|B)\d{1,2}\b\s*'
+
+    # Jika ada variasi yang valid (bukan string kosong)
+    if pd.notna(variasi) and variasi_clean:
+        # Hapus semua pola ukuran dari string nama produk
+        nama_produk_tanpa_ukuran = re.sub(size_pattern, ' ', nama_produk_clean, flags=re.IGNORECASE).strip()
+        # Gabungkan dengan Variasi di depan untuk prioritas pencarian
+        search_term = f"{variasi_clean} {nama_produk_tanpa_ukuran}"
+    else:
+        # Jika tidak ada variasi, gunakan nama produk apa adanya
+        search_term = nama_produk_clean
+
+    # Panggil fungsi fuzzy matching yang sudah ada dengan search_term yang baru dan lebih bersih
     return get_harga_beli_fuzzy(search_term, katalog_df, score_threshold_primary=score_threshold_primary, score_threshold_fallback=score_threshold_fallback)
     
 def parse_pdf_receipt(pdf_file):
