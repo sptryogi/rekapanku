@@ -579,6 +579,7 @@ def parse_pdf_receipt(pdf_file):
         st.warning(f"Gagal memproses PDF: {pdf_file.name}. Error: {e}")
         return None
 
+# KODE BARU (Ganti seluruh fungsi ini)
 def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_df):
     """Fungsi untuk memproses dan membuat sheet 'REKAP' untuk TikTok dengan logika baru."""
     # 1. PREPARASI DATA & MERGE AWAL
@@ -586,22 +587,24 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     semua_pesanan_df['ORDER ID'] = semua_pesanan_df['ORDER ID'].astype(str)
     creator_order_all_df['ID PESANAN'] = creator_order_all_df['ID PESANAN'].astype(str)
 
-    # Gabungkan data utama
     rekap_df = pd.merge(order_details_df, semua_pesanan_df, left_on='ORDER/ADJUSTMENT ID', right_on='ORDER ID', how='left')
     rekap_df['Variasi'] = rekap_df['VARIATION'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
 
-    # Bersihkan kolom-kolom finansial
     cols_to_clean = ['SKU SUBTOTAL BEFORE DISCOUNT', 'SKU SELLER DISCOUNT', 'QUANTITY', 'BONUS CASHBACK SERVICE FEE', 'VOUCHER XTRA SERVICE FEE']
     for col in cols_to_clean:
         if col in rekap_df.columns:
             rekap_df[col] = (rekap_df[col].astype(str).str.replace(r'[^\d\-,\.]', '', regex=True).str.replace(',', '.', regex=False))
             rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0).abs()
 
+    # >>> BAGIAN KRUSIAL UNTUK MENGHILANGKAN DUPLIKASI <<<
     # 2. LOGIKA AGREGASI PRODUK
+    # Kode ini akan mengelompokkan semua baris berdasarkan ID Pesanan, Nama Produk, dan Variasi.
+    # Kemudian, ia akan menjumlahkan (sum) kuantitas dan harga, serta mengambil nilai pertama (first) untuk data lain.
+    # Hasilnya adalah satu baris unik untuk setiap produk dalam satu pesanan.
     agg_rules = {
-        'QUANTITY': 'sum', # Menjumlahkan kuantitas
-        'SKU SUBTOTAL BEFORE DISCOUNT': 'sum', # Menjumlahkan total harga
-        'SKU SELLER DISCOUNT': 'sum', # Menjumlahkan total diskon
+        'QUANTITY': 'sum',
+        'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
+        'SKU SELLER DISCOUNT': 'sum',
         'ORDER CREATED TIME(UTC)': 'first',
         'ORDER SETTLED TIME(UTC)': 'first',
         'SKU UNIT ORIGINAL PRICE': 'first',
@@ -609,11 +612,11 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'VOUCHER XTRA SERVICE FEE': 'first',
         'TOTAL SETTLEMENT AMOUNT': 'first'
     }
-    # Baris inilah yang melakukan penggabungan
     rekap_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False).agg(agg_rules)
     rekap_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True)
+    # >>> AKHIR BAGIAN KRUSIAL <<<
 
-    # 3. MENGHITUNG BIAYA-BIAYA BARU
+    # 3. MENGHITUNG BIAYA-BIAYA BARU (setelah agregasi)
     rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'] - rekap_df['SKU SELLER DISCOUNT']
     rekap_df['Biaya Komisi Platform 8%'] = rekap_df['Total Harga Setelah Diskon'] * 0.08
     rekap_df['Komisi Dinamis 5%'] = rekap_df['Total Harga Setelah Diskon'] * 0.05
@@ -670,20 +673,6 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     cols_to_blank = ['No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas']
     rekap_final.loc[rekap_final['No. Pesanan'].duplicated(), cols_to_blank] = ''
-
-    # --- TAMBAHKAN BLOK KODE BARU DI SINI ---
-    # Logika untuk menghapus pesanan jika Total Penghasilan adalah 0
-    temp_df = rekap_final.copy()
-    # Isi dulu No. Pesanan yang kosong agar bisa difilter
-    temp_df['No. Pesanan'] = temp_df['No. Pesanan'].replace('', np.nan).ffill()
-    
-    # Cari semua No. Pesanan unik yang memiliki setidaknya satu baris dengan Total Penghasilan 0
-    orders_to_remove = temp_df[temp_df['Total Penghasilan'] == 0]['No. Pesanan'].unique()
-    
-    # Jika ada pesanan yang perlu dihapus, filter DataFrame akhir
-    if len(orders_to_remove) > 0:
-        # Gunakan temp_df yang sudah diisi No. Pesanannya untuk memfilter rekap_final
-        rekap_final = rekap_final[~temp_df['No. Pesanan'].isin(orders_to_remove)]
 
     return rekap_final.fillna(0)
 
