@@ -118,7 +118,15 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
             rekap_df[col] = rekap_df[col].abs()
 
     # Kalkulasi Penjualan Netto per baris produk
-    rekap_df['Penjualan Netto'] = rekap_df.get('Total Penghasilan', 0)
+    rekap_df['Penjualan Netto'] = (
+        rekap_df.get('Total Harga Produk', 0) -
+        rekap_df.get('Voucher dari Penjual', 0) -
+        rekap_df.get('Pengeluaran(Rp)', 0) -
+        rekap_df.get('Biaya Adm 8%', 0) -
+        rekap_df.get('Biaya Layanan 2%', 0) -
+        rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
+        rekap_df.get('Biaya Proses Pesanan Dibagi', 0)
+    )
 
     # Urutkan berdasarkan No. Pesanan untuk memastikan produk dalam pesanan yang sama berkelompok
     rekap_df.sort_values(by='No. Pesanan', inplace=True)
@@ -228,7 +236,15 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
             rekap_df[col] = rekap_df[col].abs()
 
     # Kalkulasi Penjualan Netto (sama seperti sebelumnya)
-    rekap_df['Penjualan Netto'] = rekap_df.get('Total Penghasilan', 0)
+    rekap_df['Penjualan Netto'] = (
+        rekap_df.get('Total Harga Produk', 0) -
+        rekap_df.get('Voucher dari Penjual', 0) -
+        rekap_df.get('Pengeluaran(Rp)', 0) -
+        rekap_df.get('Biaya Adm 8%', 0) -
+        rekap_df.get('Biaya Layanan 2%', 0) -
+        rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
+        rekap_df.get('Biaya Proses Pesanan Dibagi', 0)
+    )
 
     # Sisa kodenya sama persis dengan fungsi rekap sebelumnya
     rekap_df.sort_values(by='No. Pesanan', inplace=True)
