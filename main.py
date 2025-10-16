@@ -521,6 +521,20 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type):
     summary_with_total = pd.concat([summary_final, total_row], ignore_index=True)
     return summary_with_total
 
+def get_harga_beli_fuzzy_tiktok(nama_produk, variasi, katalog_df, score_threshold_primary=80, score_threshold_fallback=75):
+    """
+    Mencari harga beli khusus untuk TikTok dengan mempertimbangkan variasi.
+    """
+    search_term = str(nama_produk).strip()
+    # Jika ada variasi yang valid (bukan string kosong), gabungkan dengan nama produk
+    if pd.notna(variasi) and str(variasi).strip():
+        search_term = f"{search_term} {str(variasi).strip()}"
+
+    # Setelah search_term ditentukan, panggil fungsi fuzzy yang sudah ada
+    # untuk menghindari duplikasi kode fuzzy matching.
+    # Kita hanya mengubah inputnya saja.
+    return get_harga_beli_fuzzy(search_term, katalog_df, score_threshold_primary=score_threshold_primary, score_threshold_fallback=score_threshold_fallback)
+    
 def parse_pdf_receipt(pdf_file):
     """Mengekstrak tanggal dan total nominal dari satu file PDF nota Lalamove."""
     try:
@@ -554,56 +568,78 @@ def parse_pdf_receipt(pdf_file):
         st.warning(f"Gagal memproses PDF: {pdf_file.name}. Error: {e}")
         return None
 
-def process_rekap_tiktok(order_details_df, semua_pesanan_df):
-    """Fungsi untuk memproses dan membuat sheet 'REKAP' untuk TikTok."""
-    # Pastikan tipe data kunci untuk merge sama
+def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_df):
+    """Fungsi untuk memproses dan membuat sheet 'REKAP' untuk TikTok dengan logika baru."""
+    # 1. PREPARASI DATA & MERGE AWAL
     order_details_df['Order/adjustment ID'] = order_details_df['Order/adjustment ID'].astype(str)
     semua_pesanan_df['Order ID'] = semua_pesanan_df['Order ID'].astype(str)
+    creator_order_all_df['ID Pesanan'] = creator_order_all_df['ID Pesanan'].astype(str)
 
-    # Gabungkan data utama (order_details) dengan detail produk (semua_pesanan)
-    rekap_df = pd.merge(
-        order_details_df,
-        semua_pesanan_df,
-        left_on='Order/adjustment ID',
-        right_on='Order ID',
-        how='left'
-    )
-
-    produk_khusus = [
-        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
-        "AL QUR'AN GOLD TERMURAH"
-    ]
-    # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
-    kondisi = rekap_df['Product Name'].isin(produk_khusus)
-    # Gabungkan Nama Produk dengan Nama Variasi jika kondisi terpenuhi
-    if 'Variation' in rekap_df.columns:
-        rekap_df.loc[kondisi, 'Product Name'] = rekap_df['Product Name'] + ' ' + rekap_df['Variation'].fillna('').str.strip()
-    
-    # Ekstrak ukuran dari variasi
+    # Gabungkan data utama
+    rekap_df = pd.merge(order_details_df, semua_pesanan_df, left_on='Order/adjustment ID', right_on='Order ID', how='left')
     rekap_df['Variasi'] = rekap_df['Variation'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
-    
 
-    for col in ['SKU Subtotal Before Discount', 'SKU Seller Discount', 'Quantity', 'Affiliate commission', 'Voucher Xtra Service Fee']:
+    # Bersihkan kolom-kolom finansial
+    for col in ['SKU Subtotal Before Discount', 'SKU Seller Discount', 'Quantity', 'Bonus cashback service fee', 'Voucher Xtra Service Fee']:
         if col in rekap_df.columns:
-            rekap_df[col] = (
-                rekap_df[col]
-                .astype(str)
-                .str.replace(r'[^\d\-,\.]', '', regex=True)  # hapus simbol non-digit seperti 'Rp', spasi, dll
-                .str.replace(',', '.', regex=False)          # ubah koma jadi titik (jika ada)
-            )
+            rekap_df[col] = (rekap_df[col].astype(str).str.replace(r'[^\d\-,\.]', '', regex=True).str.replace(',', '.', regex=False))
             rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0).abs()
-        
-    # Hitung kolom finansial
+
+    # 2. LOGIKA AGREGASI PRODUK (MENGHILANGKAN DUPLIKASI)
+    agg_rules = {
+        'Quantity': 'sum',
+        'SKU Subtotal Before Discount': 'sum',
+        'SKU Seller Discount': 'sum',
+        'Order created time(UTC)': 'first',
+        'Order settled time(UTC)': 'first',
+        'SKU Unit Original Price': 'first',
+        'Bonus cashback service fee': 'first', # Ambil nilai per pesanan
+        'Voucher Xtra Service Fee': 'first', # Ambil nilai per pesanan
+        'Total settlement amount': 'first' # Ambil nilai per pesanan
+    }
+    rekap_df = rekap_df.groupby(['Order ID', 'Product Name', 'Variasi'], as_index=False).agg(agg_rules)
+    rekap_df.rename(columns={'Quantity': 'Jumlah Terjual'}, inplace=True)
+
+    # 3. MENGHITUNG BIAYA-BIAYA BARU
+    # Hitung Total Harga Setelah Diskon per produk yang sudah diagregasi
     rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU Subtotal Before Discount'] - rekap_df['SKU Seller Discount']
+
+    # Hitung biaya standar
     rekap_df['Biaya Komisi Platform 8%'] = rekap_df['Total Harga Setelah Diskon'] * 0.08
     rekap_df['Komisi Dinamis 5%'] = rekap_df['Total Harga Setelah Diskon'] * 0.05
-    rekap_df['Biaya Layanan Cashback Bonus 1,5%'] = rekap_df['Total Harga Setelah Diskon'] * 0.015
+    rekap_df['Biaya Proses Pesanan'] = 1250 # Ini akan dibagi nanti
 
-    # Hitung Biaya Proses Pesanan yang dibagi rata
+    # Hitung biaya yang perlu dibagi rata per pesanan
     product_count = rekap_df.groupby('Order ID')['Order ID'].transform('size')
-    rekap_df['Biaya Proses Pesanan'] = 1250 / product_count
+    rekap_df['Biaya Layanan Cashback Bonus 1,5%'] = rekap_df['Bonus cashback service fee'] / product_count
+    rekap_df['Biaya Layanan Voucher Xtra'] = rekap_df['Voucher Xtra Service Fee'] / product_count
+    rekap_df['Biaya Proses Pesanan'] = rekap_df['Biaya Proses Pesanan'] / product_count
 
-    # Buat DataFrame Final
+    # 4. MENGAMBIL KOMISI AFFILIATE DARI 'creator order-all'
+    creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+    rekap_df = pd.merge(
+        rekap_df,
+        creator_order_all_df[['ID Pesanan', 'Produk', 'Variasi_Clean', 'Pembayaran Komisi Aktual']],
+        left_on=['Order ID', 'Product Name', 'Variasi'],
+        right_on=['ID Pesanan', 'Produk', 'Variasi_Clean'],
+        how='left'
+    )
+    rekap_df.rename(columns={'Pembayaran Komisi Aktual': 'Komisi Affiliate'}, inplace=True)
+    rekap_df['Komisi Affiliate'] = rekap_df['Komisi Affiliate'].fillna(0)
+
+
+    # 5. RUMUS BARU UNTUK TOTAL PENGHASILAN
+    rekap_df['Total Penghasilan'] = (
+        rekap_df['Total Harga Setelah Diskon'] -
+        rekap_df['Komisi Affiliate'] -
+        rekap_df['Biaya Komisi Platform 8%'] -
+        rekap_df['Komisi Dinamis 5%'] -
+        rekap_df['Biaya Layanan Cashback Bonus 1,5%'] -
+        rekap_df['Biaya Layanan Voucher Xtra'] -
+        rekap_df['Biaya Proses Pesanan']
+    )
+
+    # 6. MEMBUAT FINAL DATAFRAME
     rekap_final = pd.DataFrame({
         'No.': np.arange(1, len(rekap_df) + 1),
         'No. Pesanan': rekap_df['Order ID'],
@@ -611,24 +647,23 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
         'Waktu Dana Dilepas': rekap_df['Order settled time(UTC)'],
         'Nama Produk': rekap_df['Product Name'],
         'Variasi': rekap_df['Variasi'],
-        'Jumlah Terjual': rekap_df['Quantity'],
+        'Jumlah Terjual': rekap_df['Jumlah Terjual'],
         'Harga Satuan': rekap_df['SKU Unit Original Price'],
         'Total Harga Sebelum Diskon': rekap_df['SKU Subtotal Before Discount'],
         'Diskon Penjual': rekap_df['SKU Seller Discount'],
         'Total Harga Setelah Diskon': rekap_df['Total Harga Setelah Diskon'],
-        'Komisi Affiliate': rekap_df['Affiliate commission'],
+        'Komisi Affiliate': rekap_df['Komisi Affiliate'],
         'Biaya Komisi Platform 8%': rekap_df['Biaya Komisi Platform 8%'],
         'Komisi Dinamis 5%': rekap_df['Komisi Dinamis 5%'],
         'Biaya Layanan Cashback Bonus 1,5%': rekap_df['Biaya Layanan Cashback Bonus 1,5%'],
-        'Biaya Layanan Voucher Xtra': rekap_df['Voucher Xtra Service Fee'],
+        'Biaya Layanan Voucher Xtra': rekap_df['Biaya Layanan Voucher Xtra'],
         'Biaya Proses Pesanan': rekap_df['Biaya Proses Pesanan'],
-        'Total Penghasilan': rekap_df['Total settlement amount']
+        'Total Penghasilan': rekap_df['Total Penghasilan']
     })
-    
-    # Kosongkan sel duplikat untuk pesanan multi-produk
-    cols_to_blank = ['No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Total Penghasilan']
+
+    cols_to_blank = ['No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas']
     rekap_final.loc[rekap_final['No. Pesanan'].duplicated(), cols_to_blank] = ''
-    
+
     # --- TAMBAHKAN BLOK KODE BARU DI SINI ---
     # Logika untuk menghapus pesanan jika Total Penghasilan adalah 0
     temp_df = rekap_final.copy()
@@ -642,7 +677,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df):
     if len(orders_to_remove) > 0:
         # Gunakan temp_df yang sudah diisi No. Pesanannya untuk memfilter rekap_final
         rekap_final = rekap_final[~temp_df['No. Pesanan'].isin(orders_to_remove)]
-    
+
     return rekap_final.fillna(0)
 
 def process_summary_tiktok(rekap_df, katalog_df, ekspedisi_df):
@@ -681,8 +716,9 @@ def process_summary_tiktok(rekap_df, katalog_df, ekspedisi_df):
     # --- PERUBAHAN DI SINI: Gunakan logika harga beli yang sama dengan Shopee ---
     # Untuk TikTok, kita tidak memiliki 'Nama Variasi' dari file income,
     # jadi kita tidak perlu memberikan rekap_lookup_df. Logika custom akan dilewati.
-    summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(
-        lambda x: get_harga_beli_fuzzy(x, katalog_df)
+    summary_df['Harga Beli'] = summary_df.apply(
+        lambda row: get_harga_beli_fuzzy_tiktok(row['Nama Produk'], row['Variasi'], katalog_df),
+        axis=1
     )
     # --- AKHIR PERUBAHAN ---
     
@@ -824,8 +860,10 @@ if marketplace_choice:
             uploaded_income_tiktok = st.file_uploader("1. Import file Income (Order details & Reports)", type="xlsx")
             uploaded_semua_pesanan = st.file_uploader("2. Import file semua pesanan.xlsx", type="xlsx")
         with col2:
+            # TAMBAHKAN FILE UPLOADER BARU DI SINI
+            uploaded_creator_order = st.file_uploader("3. Import file creator order-all.xlsx", type="xlsx")
             uploaded_pdfs = st.file_uploader(
-                "3. Import Nota Resi Ekspedisi (bisa lebih dari satu)",
+                "4. Import Nota Resi Ekspedisi (bisa lebih dari satu)",
                 type="pdf",
                 accept_multiple_files=True
             )
@@ -839,7 +877,7 @@ if marketplace_choice:
     
     # Kondisi untuk menampilkan tombol proses
     show_shopee_button = marketplace_choice == "Shopee" and uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller
-    show_tiktok_button = marketplace_choice == "TikTok" and uploaded_income_tiktok and uploaded_semua_pesanan and uploaded_pdfs
+    show_tiktok_button = marketplace_choice == "TikTok" and uploaded_income_tiktok and uploaded_semua_pesanan and uploaded_creator_order and uploaded_pdfs
 
     if show_shopee_button or show_tiktok_button:
         button_label = f"🚀 Mulai Proses untuk {marketplace_choice} - {store_choice}"
@@ -935,6 +973,7 @@ if marketplace_choice:
                     # Bersihkan kolom (hapus spasi dan karakter aneh)
                     semua_pesanan_df.columns = semua_pesanan_df.columns.str.strip()
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
+                    creator_order_all_df = clean_columns(pd.read_excel(uploaded_creator_order))
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
                     status_text.text(f"Memproses {len(uploaded_pdfs)} file PDF nota resi...")
@@ -943,7 +982,7 @@ if marketplace_choice:
                     progress_bar.progress(40, text="File PDF selesai diproses.")
     
                     status_text.text("Menyusun sheet 'REKAP' (TikTok)...")
-                    rekap_processed = process_rekap_tiktok(order_details_df, semua_pesanan_df)
+                    rekap_processed = process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_df)
                     progress_bar.progress(60, text="Sheet 'REKAP' selesai.")
                     
                     # Untuk SUMMARY, kita perlu EKSPEDISI dulu, tapi EKSPEDISI perlu agregasi dari SUMMARY.
@@ -965,7 +1004,8 @@ if marketplace_choice:
                         'EKSPEDISI': ekspedisi_processed,
                         'sheet Order details': order_details_df,
                         'sheet Reports': reports_df,
-                        'sheet semua pesanan': semua_pesanan_df
+                        'sheet semua pesanan': semua_pesanan_df,
+                        'sheet creator order-all': creator_order_all_df
                     }
 
                 # ... (Sisa kode untuk membuat file Excel dan tombol download tetap sama) ...
