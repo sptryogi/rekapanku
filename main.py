@@ -523,16 +523,15 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type):
 
 def get_harga_beli_fuzzy_tiktok(nama_produk, variasi, katalog_df, score_threshold_primary=80, score_threshold_fallback=75):
     """
-    Mencari harga beli khusus untuk TikTok dengan mempertimbangkan variasi.
+    Mencari harga beli khusus untuk TikTok dengan memprioritaskan variasi.
     """
     search_term = str(nama_produk).strip()
-    # Jika ada variasi yang valid (bukan string kosong), gabungkan dengan nama produk
+    # Jika ada variasi yang valid (bukan string kosong), GABUNGKAN DI DEPAN nama produk
     if pd.notna(variasi) and str(variasi).strip():
-        search_term = f"{search_term} {str(variasi).strip()}"
+        # >>> INI ADALAH PERUBAHAN UTAMANYA <<<
+        search_term = f"{str(variasi).strip()} {search_term}"
 
-    # Setelah search_term ditentukan, panggil fungsi fuzzy yang sudah ada
-    # untuk menghindari duplikasi kode fuzzy matching.
-    # Kita hanya mengubah inputnya saja.
+    # Panggil fungsi fuzzy matching yang sudah ada dengan search_term yang sudah diprioritaskan
     return get_harga_beli_fuzzy(search_term, katalog_df, score_threshold_primary=score_threshold_primary, score_threshold_fallback=score_threshold_fallback)
     
 def parse_pdf_receipt(pdf_file):
@@ -588,9 +587,9 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     # 2. LOGIKA AGREGASI PRODUK
     agg_rules = {
-        'QUANTITY': 'sum',
-        'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
-        'SKU SELLER DISCOUNT': 'sum',
+        'QUANTITY': 'sum', # Menjumlahkan kuantitas
+        'SKU SUBTOTAL BEFORE DISCOUNT': 'sum', # Menjumlahkan total harga
+        'SKU SELLER DISCOUNT': 'sum', # Menjumlahkan total diskon
         'ORDER CREATED TIME(UTC)': 'first',
         'ORDER SETTLED TIME(UTC)': 'first',
         'SKU UNIT ORIGINAL PRICE': 'first',
@@ -598,6 +597,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'VOUCHER XTRA SERVICE FEE': 'first',
         'TOTAL SETTLEMENT AMOUNT': 'first'
     }
+    # Baris inilah yang melakukan penggabungan
     rekap_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False).agg(agg_rules)
     rekap_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True)
 
