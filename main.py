@@ -369,7 +369,7 @@ def get_harga_beli_fuzzy(nama_produk, katalog_df, score_threshold_primary=80, sc
     except Exception:
         return 0
 
-def process_summary(rekap_df, iklan_final_df, katalog_df, store_type):
+def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, store_type):
     """
     Fungsi untuk memproses sheet 'SUMMARY'.
     - Menggabungkan produk dari REKAP dan IKLAN.
@@ -465,8 +465,31 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, store_type):
         lambda x: get_harga_beli_fuzzy(x, katalog_df)
     )
 
-    summary_df['Harga Custom TLJ'] = 0
-    summary_df['Total Pembelian'] = summary_df['Jumlah Terjual'] * summary_df['Harga Beli']
+    # --- LOGIKA BARU UNTUK HARGA CUSTOM TLJ ---
+    # 1. Gabungkan dengan data harga custom berdasarkan 'Nama Produk' yang cocok dengan 'LOOKUP_KEY'
+    summary_df = pd.merge(
+        summary_df,
+        harga_custom_tlj_df[['LOOKUP_KEY', 'HARGA CUSTOM TLJ']],
+        left_on='Nama Produk',
+        right_on='LOOKUP_KEY',
+        how='left'
+    )
+    # Ganti nama kolom dan isi nilai kosong dengan 0
+    summary_df.rename(columns={'HARGA CUSTOM TLJ': 'Harga Custom TLJ'}, inplace=True)
+    summary_df['Harga Custom TLJ'] = summary_df['Harga Custom TLJ'].fillna(0)
+    summary_df.drop(columns=['LOOKUP_KEY'], inplace=True, errors='ignore')
+
+    # --- LOGIKA BARU UNTUK TOTAL PEMBELIAN ---
+    produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI"
+    # Kondisi: jika Nama Produk mengandung string produk custom
+    kondisi_custom = summary_df['Nama Produk'].str.contains(produk_custom_str, na=False)
+    
+    # Hitung Total Pembelian dengan rumus berbeda jika kondisi terpenuhi
+    summary_df['Total Pembelian'] = np.where(
+        kondisi_custom,
+        (summary_df['Jumlah Terjual'] * summary_df['Harga Beli']) + (summary_df['Jumlah Terjual'] * summary_df['Harga Custom TLJ']), # Rumus untuk produk custom
+        summary_df['Jumlah Terjual'] * summary_df['Harga Beli']  # Rumus untuk produk normal
+    )
     
     summary_df['M1'] = (
         summary_df['Penjualan Netto'] - summary_df['Biaya Packing'] - 
@@ -934,6 +957,31 @@ if marketplace_choice:
         katalog_df['KATALOG_HARGA_NUM'] = pd.to_numeric(katalog_df['KATALOG HARGA'].astype(str).str.replace(r'[^0-9\.]', '', regex=True), errors='coerce').fillna(0)
     except FileNotFoundError:
         st.error("Error: File 'HARGA ONLINE.xlsx' tidak ditemukan.")
+        st.stop()
+
+    try:
+        harga_custom_tlj_df = pd.read_excel('Harga Custom TLJ.xlsx')
+        
+        # Lakukan preprocessing
+        harga_custom_tlj_df.columns = [str(c).strip().upper() for c in harga_custom_tlj_df.columns]
+        
+        # Pastikan kolom yang dibutuhkan ada
+        required_cols = ['NAMA PRODUK', 'VARIASI', 'HARGA CUSTOM TLJ']
+        if not all(col in harga_custom_tlj_df.columns for col in required_cols):
+            st.error(f"File 'Harga Custom TLJ.xlsx' harus memiliki kolom: {', '.join(required_cols)}")
+            st.stop()
+
+        # Buat kolom kunci untuk pencocokan yang mudah (Nama Produk + Variasi)
+        harga_custom_tlj_df['LOOKUP_KEY'] = harga_custom_tlj_df['NAMA PRODUK'].astype(str).str.strip() + ' ' + harga_custom_tlj_df['VARIASI'].astype(str).str.strip()
+        
+        # Pastikan kolom harga adalah numerik
+        harga_custom_tlj_df['HARGA CUSTOM TLJ'] = pd.to_numeric(harga_custom_tlj_df['HARGA CUSTOM TLJ'], errors='coerce').fillna(0)
+
+    except FileNotFoundError:
+        st.error("Error: File 'Harga Custom TLJ.xlsx' tidak ditemukan.")
+        st.stop()
+    except Exception as e:
+        st.error(f"Error saat membaca file 'Harga Custom TLJ.xlsx': {e}")
         st.stop()
     
     st.header("1. Import File Anda")
