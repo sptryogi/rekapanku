@@ -800,7 +800,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     return rekap_final.fillna(0)
 
-def process_summary_tiktok(rekap_df, katalog_df, ekspedisi_df):
+def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_df):
     """Fungsi untuk memproses dan membuat sheet 'SUMMARY' untuk TikTok."""
     # Agregasi data dari REKAP berdasarkan Nama Produk dan Variasi (ini sudah mencegah duplikasi)
     summary_df = rekap_df.groupby(['Nama Produk', 'Variasi']).agg({
@@ -842,8 +842,30 @@ def process_summary_tiktok(rekap_df, katalog_df, ekspedisi_df):
     )
     # --- AKHIR PERUBAHAN ---
     
-    summary_df['Harga Custom TLJ'] = 0
-    summary_df['Total Pembelian'] = summary_df['Jumlah Terjual'] * summary_df['Harga Beli']
+    # --- LOGIKA BARU UNTUK HARGA CUSTOM TLJ (TIKTOK) ---
+    # 1. Buat kolom kunci di summary_df untuk pencocokan
+    summary_df['LOOKUP_KEY'] = summary_df['Nama Produk'].astype(str).str.strip() + ' ' + summary_df['Variasi'].astype(str).str.strip()
+    
+    # 2. Gabungkan dengan data harga custom
+    summary_df = pd.merge(
+        summary_df,
+        harga_custom_tlj_df[['LOOKUP_KEY', 'HARGA CUSTOM TLJ']],
+        on='LOOKUP_KEY',
+        how='left'
+    )
+    summary_df.rename(columns={'HARGA CUSTOM TLJ': 'Harga Custom TLJ'}, inplace=True)
+    summary_df['Harga Custom TLJ'] = summary_df['Harga Custom TLJ'].fillna(0)
+    summary_df.drop(columns=['LOOKUP_KEY'], inplace=True, errors='ignore')
+
+    # --- LOGIKA BARU UNTUK TOTAL PEMBELIAN (TIKTOK) ---
+    produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI"
+    kondisi_custom = summary_df['Nama Produk'].str.contains(produk_custom_str, na=False)
+    
+    summary_df['Total Pembelian'] = np.where(
+        kondisi_custom,
+        (summary_df['Jumlah Terjual'] * summary_df['Harga Beli']) + (summary_df['Jumlah Terjual'] * summary_df['Harga Custom TLJ']),
+        summary_df['Jumlah Terjual'] * summary_df['Harga Beli']
+    )
     
     summary_df['M1'] = (
         summary_df['Penjualan Netto'] -
@@ -1077,7 +1099,7 @@ if marketplace_choice:
                     progress_bar.progress(60, text="Sheet 'IKLAN' selesai.")
     
                     status_text.text("Menyusun sheet 'SUMMARY' (Shopee)...")
-                    summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df, store_type=store_choice)
+                    summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df, harga_custom_tlj_df, store_type=store_choice)
                     progress_bar.progress(80, text="Sheet 'SUMMARY' selesai.")
                     
                     file_name_output = f"Rekapanku_Shopee_{store_choice}.xlsx"
@@ -1143,7 +1165,7 @@ if marketplace_choice:
                     progress_bar.progress(70, text="Sheet 'EKSPEDISI' selesai.")
     
                     status_text.text("Menyusun sheet 'SUMMARY' (TikTok)...")
-                    summary_processed = process_summary_tiktok(rekap_processed, katalog_df, ekspedisi_processed)
+                    summary_processed = process_summary_tiktok(rekap_processed, katalog_df, harga_custom_tlj_df, ekspedisi_processed)
                     progress_bar.progress(85, text="Sheet 'SUMMARY' selesai.")
     
                     file_name_output = f"Rekapanku_TikTok_{store_choice}.xlsx"
