@@ -720,18 +720,17 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Jumlah Terjual',
         'Total Harga Sebelum Diskon',
         'Diskon Penjual',
-        'Komisi Affiliate',
-        # Biaya yang sudah terdistribusi per baris juga perlu dijumlahkan
-        'Biaya Layanan Cashback Bonus 1,5%',
-        'Biaya Layanan Voucher Xtra',
-        'Biaya Proses Pesanan'
+        'Komisi Affiliate'        
     ]
     
     # Kolom yang nilainya sama untuk semua duplikat, jadi kita ambil yang pertama
     cols_to_first = [
         'Waktu Pesanan Dibuat',
         'Waktu Dana Dilepas',
-        'Harga Satuan'
+        'Harga Satuan',
+        'Biaya Layanan Cashback Bonus 1,5%',
+        'Biaya Layanan Voucher Xtra',
+        'Biaya Proses Pesanan'
     ]
     
     # Buat dictionary aturan agregasi
