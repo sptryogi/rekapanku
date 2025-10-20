@@ -1094,7 +1094,7 @@ if marketplace_choice:
                     status_text.text("Menyusun sheet 'REKAP' (Shopee)...")
                     if store_choice == "HumanStore":
                         rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, service_fee_df)
-                    elif store_choice in ["PacificBookStore", "DAMASTORE"]:
+                    elif store_choice in ["PacificBookStore", "DamaStore"]:
                         rekap_processed = process_rekap_pacific(order_all_df, income_dilepas_df, seller_conversion_df)
                     else: # Pengaman jika ada pilihan store lain
                         st.error(f"Pilihan toko '{store_choice}' tidak dikenali.")
