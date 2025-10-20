@@ -731,16 +731,32 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     # >>> BAGIAN BARU 1: FILTER PESANAN YANG DIBATALKAN/DIKEMBALIKAN <<<
     if 'CANCELLATION/RETURN TYPE' in rekap_df.columns:
-        # Dapatkan daftar unik ORDER ID yang statusnya 'Cancel' atau 'Return/Refund'
-        # Pastikan kita menghapus NaN sebelum pengecekan string
         cancelled_orders = rekap_df[
             rekap_df['CANCELLATION/RETURN TYPE'].fillna('').isin(['Cancel', 'Return/Refund'])
         ]['ORDER ID'].unique()
         
-        # Hapus semua baris dari rekap_df yang ORDER ID-nya ada di daftar cancelled_orders
         if len(cancelled_orders) > 0:
             st.warning(f"Menghapus {len(cancelled_orders)} pesanan karena status Cancel/Return: {', '.join(cancelled_orders[:5])}{'...' if len(cancelled_orders) > 5 else ''}")
-            rekap_df = rekap_df[~rekap_df['ORDER ID'].isin(cancelled_orders)].copy() # Gunakan .copy() untuk menghindari SettingWithCopyWarning
+            rekap_df = rekap_df[~rekap_df['ORDER ID'].isin(cancelled_orders)].copy()
+
+    # --- TAMBAHKAN BLOK BARU INI UNTUK FILTER KEDUA ---
+    # Filter tambahan: Hapus jika Total Settlement Amount = 0 di Order Details asli
+    if 'TOTAL SETTLEMENT AMOUNT' in order_details_df.columns and 'ORDER/ADJUSTMENT ID' in order_details_df.columns:
+        # Cari ID pesanan dari Order Details yang settlementnya 0
+        zero_settlement_ids = order_details_df[
+            # Pastikan kolom numerik sebelum perbandingan
+            pd.to_numeric(order_details_df['TOTAL SETTLEMENT AMOUNT'], errors='coerce').fillna(0) == 0
+        ]['ORDER/ADJUSTMENT ID'].astype(str).unique() # Pastikan tipe string untuk perbandingan
+
+        # Jika ada ID yang settlementnya 0, filter rekap_df
+        if len(zero_settlement_ids) > 0:
+            orders_before_filter = len(rekap_df['ORDER ID'].unique())
+            # Filter rekap_df, pastikan 'ORDER ID' juga string
+            rekap_df = rekap_df[~rekap_df['ORDER ID'].astype(str).isin(zero_settlement_ids)].copy()
+            orders_after_filter = len(rekap_df['ORDER ID'].unique())
+            removed_count = orders_before_filter - orders_after_filter
+            if removed_count > 0:
+                 st.warning(f"Menghapus {removed_count} pesanan tambahan karena Total Settlement Amount = 0.")
 
     rekap_df['Variasi'] = rekap_df['VARIATION'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
 
@@ -1018,31 +1034,52 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
 
 def process_ekspedisi_tiktok(summary_df, pdf_data_list):
     """Membuat sheet EKSPEDISI berdasarkan data summary dan nota PDF."""
-    # --- PERUBAIKAN: Agregasi QTY berdasarkan Nama Produk saja untuk mencegah duplikasi ---
-    kiri_df = summary_df[summary_df['Nama Produk'] != 'Total'].groupby('Nama Produk', as_index=False).agg(
+    
+    # Ambil data relevan dari summary_df (yang berasal dari rekap_processed)
+    # Pastikan Nama Produk dan Variasi bersih dari spasi
+    kiri_base = summary_df[summary_df['Nama Produk'] != 'Total'].copy()
+    kiri_base['Nama Produk'] = kiri_base['Nama Produk'].astype(str).str.strip()
+    kiri_base['Variasi'] = kiri_base['Variasi'].astype(str).str.strip()
+
+    # --- PERUBAIKAN: Agregasi QTY berdasarkan Nama Produk DAN Variasi ---
+    kiri_df = kiri_base.groupby(['Nama Produk', 'Variasi'], as_index=False).agg(
         QTY=('Jumlah Terjual', 'sum')
     )
     
     # Bagian Kanan: Data dari PDF (tetap sama)
     kanan_df = pd.DataFrame(pdf_data_list)
     
-    # Sisa fungsi tetap sama...
+    # Hitung biaya ekspedisi per produk (berdasarkan total QTY semua produk)
     total_qty = kiri_df['QTY'].sum()
     total_nominal = kanan_df['Nominal'].sum() if not kanan_df.empty else 0
     biaya_per_produk = total_nominal / total_qty if total_qty > 0 else 0
     
+    # Tambahkan kolom biaya ke kiri_df
     kiri_df['Biaya Ekspedisi per produk'] = biaya_per_produk
     kiri_df['Jumlah'] = kiri_df['QTY'] * biaya_per_produk
-    
-    kiri_total = pd.DataFrame([{'Nama Produk': 'Total', 'QTY': total_qty, 'Biaya Ekspedisi per produk': None, 'Jumlah': kiri_df['Jumlah'].sum()}])
+
+    # Buat baris total untuk bagian kiri
+    # Pastikan kolom Variasi ada saat membuat total
+    kiri_total = pd.DataFrame([{
+        'Nama Produk': 'Total', 
+        'Variasi': '', # Kosongkan variasi untuk baris total
+        'QTY': total_qty, 
+        'Biaya Ekspedisi per produk': None, 
+        'Jumlah': kiri_df['Jumlah'].sum()
+    }])
     kiri_df = pd.concat([kiri_df, kiri_total], ignore_index=True)
 
+    # Susun ulang kolom agar Variasi setelah Nama Produk
+    kiri_df = kiri_df[['Nama Produk', 'Variasi', 'QTY', 'Biaya Ekspedisi per produk', 'Jumlah']]
+
+    # Buat baris total untuk bagian kanan (tetap sama)
     kanan_total = pd.DataFrame([{'Tanggal Kirim Paket': 'Total', 'Nominal': total_nominal}])
     if not kanan_df.empty:
         kanan_df = pd.concat([kanan_df, kanan_total], ignore_index=True)
-    else: # Jika tidak ada PDF diupload
+    else:
         kanan_df = kanan_total
     
+    # Gabungkan bagian kiri dan kanan
     final_df = pd.concat([kiri_df, pd.DataFrame(columns=[' ']), kanan_df], axis=1)
     return final_df.fillna('')
     
