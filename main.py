@@ -273,6 +273,112 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     rekap_final.loc[rekap_final['No. Pesanan'].duplicated(), cols_to_blank] = ''
 
     return rekap_final.fillna(0)
+
+def process_rekap_dama(order_df, income_df, seller_conv_df):
+    """
+    Fungsi untuk memproses sheet 'REKAP' KHUSUS untuk DAMASTORE (Shopee).
+    Biaya Adm, Layanan, dan Proses dihitung berdasarkan Total Harga Produk.
+    """
+    # Bagian ini sama persis dengan fungsi rekap pacific/human
+    order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk']).agg({
+        'Jumlah': 'sum',
+        'Harga Setelah Diskon': 'first',
+        'Total Harga Produk': 'sum',
+        'Nama Variasi': 'first'
+    }).reset_index()
+    order_agg.rename(columns={'Jumlah': 'Jumlah Terjual'}, inplace=True)
+
+    income_df['No. Pesanan'] = income_df['No. Pesanan'].astype(str)
+    order_agg['No. Pesanan'] = order_agg['No. Pesanan'].astype(str)
+    seller_conv_df['Kode Pesanan'] = seller_conv_df['Kode Pesanan'].astype(str)
+    
+    rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
+    produk_khusus = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "AL QUR'AN GOLD TERMURAH"]
+    kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
+    if 'Nama Variasi' in rekap_df.columns:
+        rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + rekap_df['Nama Variasi'].fillna('').str.strip()
+
+    iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
+    rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
+    rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
+
+    # --- LOGIKA PERHITUNGAN BIAYA UNTUK DAMASTORE ---
+    rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0)
+    
+    # Hitung biaya berdasarkan Total Harga Produk
+    rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
+    rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
+    
+    # Hitung Biaya Proses Pesanan yang dibagi rata
+    product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
+    rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
+    # --- AKHIR LOGIKA DAMASTORE ---
+    
+    # Terapkan logika "hanya di baris pertama" untuk biaya per-pesanan
+    order_level_costs = [
+        'Voucher dari Penjual', 
+        'Pengeluaran(Rp)',
+        'Total Penghasilan' 
+        # Biaya Adm, Layanan, dan Proses Pesanan Dihapus karena dihitung per produk/dibagi
+    ]
+    is_first_item_mask = ~rekap_df.duplicated(subset='No. Pesanan', keep='first')
+    
+    for col in order_level_costs:
+        if col in rekap_df.columns:
+            rekap_df[col] = rekap_df[col].fillna(0)
+            rekap_df[col] = rekap_df[col] * is_first_item_mask
+
+    # Pastikan semua biaya bernilai positif
+    cost_columns_to_abs = [
+        'Voucher dari Penjual', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+        'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
+        # 'Biaya Proses Pesanan' tidak perlu di-abs karena sudah dibagi
+    ]
+    for col in cost_columns_to_abs:
+        if col in rekap_df.columns:
+             # Cek dulu apakah kolomnya numerik sebelum .abs()
+             if pd.api.types.is_numeric_dtype(rekap_df[col]):
+                  rekap_df[col] = rekap_df[col].abs()
+
+    # Kalkulasi Penjualan Netto
+    rekap_df['Penjualan Netto'] = (
+        rekap_df.get('Total Harga Produk', 0) -
+        rekap_df.get('Voucher dari Penjual', 0) -
+        rekap_df.get('Pengeluaran(Rp)', 0) -
+        rekap_df.get('Biaya Adm 8%', 0) -
+        rekap_df.get('Biaya Layanan 2%', 0) -
+        rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
+        rekap_df.get('Biaya Proses Pesanan Dibagi', 0) # Gunakan yang sudah dibagi
+    )
+
+    # Sisa kodenya sama persis dengan fungsi rekap pacific
+    rekap_df.sort_values(by='No. Pesanan', inplace=True)
+    rekap_df.reset_index(drop=True, inplace=True)
+    
+    rekap_final = pd.DataFrame({
+        'No.': np.arange(1, len(rekap_df) + 1),
+        'No. Pesanan': rekap_df['No. Pesanan'],
+        'Waktu Pesanan Dibuat': rekap_df['Waktu Pesanan Dibuat'],
+        'Waktu Dana Dilepas': rekap_df['Tanggal Dana Dilepaskan'],
+        'Nama Produk': rekap_df['Nama Produk'],
+        'Jumlah Terjual': rekap_df['Jumlah Terjual'],
+        'Harga Satuan': rekap_df['Harga Setelah Diskon'],
+        'Total Harga Produk': rekap_df['Total Harga Produk'],
+        'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual', 0),
+        'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
+        'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
+        'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
+        'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
+        'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan Dibagi', 0),
+        'Total Penghasilan': rekap_df['Penjualan Netto'],
+        'Metode Pembayaran': rekap_df.get('Metode pembayaran pembeli', '')
+    })
+
+    cols_to_blank = ['No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas']
+    rekap_final.loc[rekap_final['No. Pesanan'].duplicated(), cols_to_blank] = ''
+
+    return rekap_final.fillna(0)
     
 def process_iklan(iklan_df):
     """Fungsi untuk memproses dan membuat sheet 'IKLAN'."""
@@ -1094,8 +1200,10 @@ if marketplace_choice:
                     status_text.text("Menyusun sheet 'REKAP' (Shopee)...")
                     if store_choice == "HumanStore":
                         rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, service_fee_df)
-                    elif store_choice in ["PacificBookStore", "DamaStore"]:
+                    elif store_choice == "PacificBookStore": # Hanya Pacific yang pakai logic ini
                         rekap_processed = process_rekap_pacific(order_all_df, income_dilepas_df, seller_conversion_df)
+                    elif store_choice == "DamaStore": # Panggil fungsi baru untuk DAMA
+                        rekap_processed = process_rekap_dama(order_all_df, income_dilepas_df, seller_conversion_df)
                     else: # Pengaman jika ada pilihan store lain
                         st.error(f"Pilihan toko '{store_choice}' tidak dikenali.")
                         st.stop()
