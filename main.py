@@ -452,7 +452,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     )
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
-    if store_type in ['PacificBookStore', 'DamaStore']:
+    if store_type in ['PacificBookStore']:
         summary_df['Biaya Kirim ke Sby'] = summary_df['Jumlah Terjual'] * 733
         biaya_ekspedisi_final = summary_df['Biaya Kirim ke Sby']
     else:
@@ -511,7 +511,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'], 'Iklan Klik': summary_df['Iklan Klik'],
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Biaya Packing': summary_df['Biaya Packing'],
     }
-    if store_type in ['PacificBookStore', 'DamaStore']:
+    if store_type in ['PacificBookStore']:
         summary_final_data['Biaya Kirim ke Sby'] = biaya_ekspedisi_final
     else:
         summary_final_data['Biaya Ekspedisi'] = biaya_ekspedisi_final
