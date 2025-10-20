@@ -452,7 +452,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     )
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
-    if store_type == 'PacificBookStore':
+    if store_type in ['PacificBookStore', 'DamaStore']:
         summary_df['Biaya Kirim ke Sby'] = summary_df['Jumlah Terjual'] * 733
         biaya_ekspedisi_final = summary_df['Biaya Kirim ke Sby']
     else:
@@ -511,7 +511,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'], 'Iklan Klik': summary_df['Iklan Klik'],
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Biaya Packing': summary_df['Biaya Packing'],
     }
-    if store_type == 'PacificBookStore':
+    if store_type in ['PacificBookStore', 'DamaStore']:
         summary_final_data['Biaya Kirim ke Sby'] = biaya_ekspedisi_final
     else:
         summary_final_data['Biaya Ekspedisi'] = biaya_ekspedisi_final
@@ -954,13 +954,17 @@ store_choice = ""
 if marketplace_choice == "Shopee":
     store_choice = st.selectbox(
         "Pilih Toko Shopee:",
-        ("HumanStore", "PacificBookStore"),
+        ("HumanStore", "PacificBookStore", "DamaStore"),
         key='shopee_store'
     )
 elif marketplace_choice == "TikTok":
     # Untuk sekarang, TikTok hanya untuk HumanStore
-    store_choice = "HumanStore"
-    st.info("Marketplace TikTok saat ini hanya tersedia untuk HumanStore.")
+    store_choice = st.selectbox(
+        "Pilih Toko TikTok:",
+        ("HumanStore", "DAMASTORE"), # Hanya toko yang relevan untuk TikTok
+        key='tiktok_store'
+    )
+    st.info("Marketplace TikTok saat ini hanya tersedia untuk HumanStore dan DamaStore.")
 
 # Hanya tampilkan uploader jika marketplace sudah dipilih
 if marketplace_choice:
@@ -1090,8 +1094,11 @@ if marketplace_choice:
                     status_text.text("Menyusun sheet 'REKAP' (Shopee)...")
                     if store_choice == "HumanStore":
                         rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, service_fee_df)
-                    else: # PacificBookStore
+                    elif store_choice in ["PacificBookStore", "DAMASTORE"]:
                         rekap_processed = process_rekap_pacific(order_all_df, income_dilepas_df, seller_conversion_df)
+                    else: # Pengaman jika ada pilihan store lain
+                        st.error(f"Pilihan toko '{store_choice}' tidak dikenali.")
+                        st.stop()
                     progress_bar.progress(40, text="Sheet 'REKAP' selesai.")
                     
                     status_text.text("Menyusun sheet 'IKLAN' (Shopee)...")
