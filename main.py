@@ -949,8 +949,18 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         summary_df['Biaya Proses Pesanan']
     )
     
-    ekspedisi_cost = ekspedisi_df[['Nama Produk', 'Jumlah']].rename(columns={'Jumlah': 'Biaya Ekspedisi'})
-    summary_df = pd.merge(summary_df, ekspedisi_cost, on='Nama Produk', how='left')
+    # 1. Ambil 'Nama Produk', 'Variasi', dan 'Jumlah' dari sheet EKSPEDISI
+    ekspedisi_cost = ekspedisi_df[['Nama Produk', 'Variasi', 'Jumlah']].rename(columns={'Jumlah': 'Biaya Ekspedisi'})
+    
+    # 2. Gabungkan (merge) ke summary_df menggunakan KEDUA kolom sebagai kunci
+    summary_df = pd.merge(
+        summary_df, 
+        ekspedisi_cost, 
+        on=['Nama Produk', 'Variasi'],  # <-- Kunci perubahannya di sini
+        how='left'
+    )
+    
+    # 3. Isi nilai yang tidak cocok (NaN) dengan 0
     summary_df['Biaya Ekspedisi'] = summary_df['Biaya Ekspedisi'].fillna(0)
 
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
