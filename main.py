@@ -961,7 +961,7 @@ elif marketplace_choice == "TikTok":
     # Untuk sekarang, TikTok hanya untuk HumanStore
     store_choice = st.selectbox(
         "Pilih Toko TikTok:",
-        ("HumanStore", "DAMASTORE"), # Hanya toko yang relevan untuk TikTok
+        ("HumanStore", "DamaStore"), # Hanya toko yang relevan untuk TikTok
         key='tiktok_store'
     )
     st.info("Marketplace TikTok saat ini hanya tersedia untuk HumanStore dan DamaStore.")
