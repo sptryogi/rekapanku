@@ -1173,10 +1173,19 @@ if marketplace_choice:
             uploaded_income_tiktok = st.file_uploader("1. Import file Income (Order details & Reports)", type="xlsx")
             uploaded_semua_pesanan = st.file_uploader("2. Import file semua pesanan.xlsx", type="xlsx")
         with col2:
-            # TAMBAHKAN FILE UPLOADER BARU DI SINI
-            uploaded_creator_order = st.file_uploader("3. Import file creator order-all.xlsx", type="xlsx")
+            # --- TAMBAHKAN KONDISI DI SINI ---
+            # Hanya tampilkan uploader creator order jika BUKAN DamaStore
+            if store_choice != "DamaStore":
+                uploaded_creator_order = st.file_uploader("3. Import file creator order-all.xlsx", type="xlsx")
+            else:
+                # Jika DamaStore, pastikan variabelnya ada tapi None
+                uploaded_creator_order = None
+                st.info("File 'creator order-all.xlsx' tidak diperlukan untuk DamaStore.") # Opsional: beri info
+            # ---------------------------------
+
             uploaded_pdfs = st.file_uploader(
-                "4. Import Nota Resi Ekspedisi (bisa lebih dari satu)",
+                # Sesuaikan nomor urut jika creator order disembunyikan
+                f"{'4.' if store_choice != 'DamaStore' else '3.'} Import Nota Resi Ekspedisi (bisa lebih dari satu)",
                 type="pdf",
                 accept_multiple_files=True
             )
