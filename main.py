@@ -709,7 +709,7 @@ def parse_pdf_receipt(pdf_file):
         return None
 
 # KODE BARU (Ganti seluruh fungsi ini)
-def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_df):
+def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_df, , store_choice):
     """Fungsi untuk memproses dan membuat sheet 'REKAP' untuk TikTok dengan logika baru."""
     # 1. PREPARASI DATA & MERGE AWAL
     order_details_df['ORDER/ADJUSTMENT ID'] = order_details_df['ORDER/ADJUSTMENT ID'].astype(str)
@@ -721,6 +721,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     semua_pesanan_df.columns = [col.upper().strip() for col in semua_pesanan_df.columns]
     creator_order_all_df.columns = [col.upper().strip() for col in creator_order_all_df.columns]
 
+    # 2. MERGE AWAL (Kode Anda yang sudah ada)
     rekap_df = pd.merge(
         order_details_df,
         semua_pesanan_df,
@@ -729,81 +730,61 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         how='left'
     )
 
-    # >>> BAGIAN BARU 1: FILTER PESANAN YANG DIBATALKAN/DIKEMBALIKAN <<<
+    # 3. FILTER PESANAN BATAL/REFUND & SETTLEMENT NOL (Kode Anda yang sudah ada)
+    # ... (Blok filter Cancel/Return Anda) ...
     if 'CANCELLATION/RETURN TYPE' in rekap_df.columns:
-        cancelled_orders = rekap_df[
-            rekap_df['CANCELLATION/RETURN TYPE'].fillna('').isin(['Cancel', 'Return/Refund'])
-        ]['ORDER ID'].unique()
-        
+        cancelled_orders = rekap_df[rekap_df['CANCELLATION/RETURN TYPE'].fillna('').isin(['Cancel', 'Return/Refund'])]['ORDER ID'].unique()
         if len(cancelled_orders) > 0:
-            st.warning(f"Menghapus {len(cancelled_orders)} pesanan karena status Cancel/Return: {', '.join(cancelled_orders[:5])}{'...' if len(cancelled_orders) > 5 else ''}")
+            st.warning(f"Menghapus {len(cancelled_orders)} pesanan karena status Cancel/Return...")
             rekap_df = rekap_df[~rekap_df['ORDER ID'].isin(cancelled_orders)].copy()
 
-    # --- TAMBAHKAN BLOK BARU INI UNTUK FILTER KEDUA ---
-    # Filter tambahan: Hapus jika Total Settlement Amount = 0 di Order Details asli
+    # ... (Blok filter Total Settlement Amount Anda) ...
     if 'TOTAL SETTLEMENT AMOUNT' in order_details_df.columns and 'ORDER/ADJUSTMENT ID' in order_details_df.columns:
-        # Cari ID pesanan dari Order Details yang settlementnya 0
-        zero_settlement_ids = order_details_df[
-            # Pastikan kolom numerik sebelum perbandingan
-            pd.to_numeric(order_details_df['TOTAL SETTLEMENT AMOUNT'], errors='coerce').fillna(0) == 0
-        ]['ORDER/ADJUSTMENT ID'].astype(str).unique() # Pastikan tipe string untuk perbandingan
-
-        # Jika ada ID yang settlementnya 0, filter rekap_df
-        if len(zero_settlement_ids) > 0:
-            orders_before_filter = len(rekap_df['ORDER ID'].unique())
-            # Filter rekap_df, pastikan 'ORDER ID' juga string
-            rekap_df = rekap_df[~rekap_df['ORDER ID'].astype(str).isin(zero_settlement_ids)].copy()
-            orders_after_filter = len(rekap_df['ORDER ID'].unique())
-            removed_count = orders_before_filter - orders_after_filter
-            if removed_count > 0:
+         zero_settlement_ids = order_details_df[pd.to_numeric(order_details_df['TOTAL SETTLEMENT AMOUNT'], errors='coerce').fillna(0) == 0]['ORDER/ADJUSTMENT ID'].astype(str).unique()
+         if len(zero_settlement_ids) > 0:
+             orders_before_filter = len(rekap_df['ORDER ID'].unique())
+             rekap_df = rekap_df[~rekap_df['ORDER ID'].astype(str).isin(zero_settlement_ids)].copy()
+             orders_after_filter = len(rekap_df['ORDER ID'].unique())
+             removed_count = orders_before_filter - orders_after_filter
+             if removed_count > 0:
                  st.warning(f"Menghapus {removed_count} pesanan tambahan karena Total Settlement Amount = 0.")
 
+
+    # 4. EKSTRAKSI VARIASI & PEMBERSIHAN DATA SEBELUM GROUPBY (Kode Anda yang sudah ada)
     rekap_df['Variasi'] = rekap_df['VARIATION'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
-
-    # Kolom kunci untuk mendeteksi duplikasi
-    duplicate_check_cols = ['ORDER ID', 'PRODUCT NAME', 'Variasi']
-    
-    # Hitung jumlah baris sebelum menghapus duplikat
-    rows_before_dedup = len(rekap_df)
-    
-    # Hapus duplikat berdasarkan kolom kunci, pertahankan baris pertama
-    rekap_df = rekap_df.drop_duplicates(subset=duplicate_check_cols, keep='first').copy() # Gunakan .copy()
-    
-    # Hitung jumlah baris setelah menghapus duplikat
-    rows_after_dedup = len(rekap_df)
-    
-    # Beri info jika ada duplikat yang dihapus
-    if rows_before_dedup > rows_after_dedup:
-        st.info(f"Menghapus {rows_before_dedup - rows_after_dedup} baris duplikat (produk/variasi yang sama dalam satu pesanan).")
-
-    cols_to_clean = ['SKU SUBTOTAL BEFORE DISCOUNT', 'SKU SELLER DISCOUNT', 'QUANTITY', 'BONUS CASHBACK SERVICE FEE', 'VOUCHER XTRA SERVICE FEE']
-    for col in cols_to_clean:
-        if col in rekap_df.columns:
-            rekap_df[col] = (rekap_df[col].astype(str).str.replace(r'[^\d\-,\.]', '', regex=True).str.replace(',', '.', regex=False))
-            rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0).abs()
-
-    # >>> BAGIAN BARU 2: PEMBERSIHAN DATA SEBELUM GROUPBY UNTUK MENCEGAH DUPLIKASI <<<
-    # Hapus spasi di awal/akhir dari kolom kunci untuk memastikan groupby bekerja dengan benar
     if 'PRODUCT NAME' in rekap_df.columns:
         rekap_df['PRODUCT NAME'] = rekap_df['PRODUCT NAME'].astype(str).str.strip()
     if 'Variasi' in rekap_df.columns:
         rekap_df['Variasi'] = rekap_df['Variasi'].astype(str).str.strip()
 
+    cols_to_clean = [
+        'SKU SUBTOTAL BEFORE DISCOUNT', 'SKU SELLER DISCOUNT', 'QUANTITY', 
+        'BONUS CASHBACK SERVICE FEE', 'VOUCHER XTRA SERVICE FEE', 'TOTAL SETTLEMENT AMOUNT',
+        'SKU UNIT ORIGINAL PRICE' # Penting untuk Harga Satuan nanti
+    ]
+    for col in cols_to_clean:
+        if col in rekap_df.columns:
+            # Menggunakan regex yang lebih sederhana untuk angka (termasuk desimal jika ada)
+            rekap_df[col] = (rekap_df[col].astype(str)
+                             .str.replace(r'[^\d\.\-]', '', regex=True)) # Izinkan titik dan minus
+            rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0).abs() # .abs() sebaiknya di akhir
+
 
     # 2. LOGIKA AGREGASI PRODUK (Sekarang akan bekerja dengan benar)
     agg_rules = {
-        'QUANTITY': 'sum',
+        'QUANTITY': 'sum', # <-- Penjumlahan Kuantitas terjadi di sini
         'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
         'SKU SELLER DISCOUNT': 'sum',
         'ORDER CREATED TIME(UTC)': 'first',
         'ORDER SETTLED TIME(UTC)': 'first',
-        'SKU UNIT ORIGINAL PRICE': 'first',
-        'BONUS CASHBACK SERVICE FEE': 'first',
-        'VOUCHER XTRA SERVICE FEE': 'first',
-        'TOTAL SETTLEMENT AMOUNT': 'first'
+        'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga satuan pertama
+        'BONUS CASHBACK SERVICE FEE': 'sum', # Jumlahkan biaya ini
+        'VOUCHER XTRA SERVICE FEE': 'sum',   # Jumlahkan biaya ini
+        'TOTAL SETTLEMENT AMOUNT': 'first' # Ambil settlement amount pertama (biasanya sama per pesanan)
     }
+    # Grouping berdasarkan ID Pesanan, Nama Produk, dan Variasi
     rekap_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False).agg(agg_rules)
-    rekap_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True)
+    rekap_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True) # Ganti nama setelah agregasi
     
     # 3. MENGHITUNG BIAYA-BIAYA BARU (setelah agregasi)
     rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'] - rekap_df['SKU SELLER DISCOUNT']
@@ -817,15 +798,21 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     # 4. MENGAMBIL KOMISI AFFILIATE
     creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
-    rekap_df = pd.merge(
-        rekap_df,
-        creator_order_all_df[['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL']],
-        left_on=['ORDER ID', 'PRODUCT NAME', 'Variasi'],
-        right_on=['ID PESANAN', 'PRODUK', 'Variasi_Clean'],
-        how='left'
-    )
-    rekap_df.rename(columns={'PEMBAYARAN KOMISI AKTUAL': 'Komisi Affiliate'}, inplace=True)
-    rekap_df['Komisi Affiliate'] = rekap_df['Komisi Affiliate'].fillna(0)
+    # Merge affiliate HANYA jika bukan DamaStore
+    if store_choice != "DamaStore":
+        rekap_df = pd.merge(
+            rekap_df,
+            creator_order_all_df[['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL']],
+            left_on=['ORDER ID', 'PRODUCT NAME', 'Variasi'],
+            right_on=['ID PESANAN', 'PRODUK', 'Variasi_Clean'],
+            how='left'
+        )
+        rekap_df.rename(columns={'PEMBAYARAN KOMISI AKTUAL': 'Komisi Affiliate'}, inplace=True)
+        rekap_df['Komisi Affiliate'] = pd.to_numeric(rekap_df['Komisi Affiliate'], errors='coerce').fillna(0).abs() # Pastikan numerik dan positif
+        rekap_df.drop(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean'], inplace=True, errors='ignore')
+    else:
+        # Jika DamaStore, buat kolom Komisi Affiliate berisi 0
+        rekap_df['Komisi Affiliate'] = 0
 
     # 5. RUMUS BARU UNTUK TOTAL PENGHASILAN
     rekap_df['Total Penghasilan'] = (
@@ -1317,7 +1304,7 @@ if marketplace_choice:
                     progress_bar.progress(40, text="File PDF selesai diproses.")
     
                     status_text.text("Menyusun sheet 'REKAP' (TikTok)...")
-                    rekap_processed = process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_df)
+                    rekap_processed = process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_df, store_choice)
                     progress_bar.progress(60, text="Sheet 'REKAP' selesai.")
                     
                     # Untuk SUMMARY, kita perlu EKSPEDISI dulu, tapi EKSPEDISI perlu agregasi dari SUMMARY.
