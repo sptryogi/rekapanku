@@ -709,7 +709,7 @@ def parse_pdf_receipt(pdf_file):
         return None
 
 # KODE BARU (Ganti seluruh fungsi ini)
-def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_df, , store_choice):
+def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_df, store_choice):
     """Fungsi untuk memproses dan membuat sheet 'REKAP' untuk TikTok dengan logika baru."""
     # 1. PREPARASI DATA & MERGE AWAL
     order_details_df['ORDER/ADJUSTMENT ID'] = order_details_df['ORDER/ADJUSTMENT ID'].astype(str)
