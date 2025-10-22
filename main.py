@@ -690,7 +690,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_df = pd.merge(
         summary_df,
         harga_custom_tlj_df[['LOOKUP_KEY', 'HARGA CUSTOM TLJ']],
-        left_on='Nama Produk',
+        left_on=grouping_key,
         right_on='LOOKUP_KEY',
         how='left'
     )
@@ -702,7 +702,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # --- LOGIKA BARU UNTUK TOTAL PEMBELIAN ---
     produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI"
     # Kondisi: jika Nama Produk mengandung string produk custom
-    kondisi_custom = summary_df['Nama Produk'].str.contains(produk_custom_str, na=False)
+    kondisi_custom = summary_df[grouping_key].str.contains(produk_custom_str, na=False)
     
     # Hitung Total Pembelian dengan rumus berbeda jika kondisi terpenuhi
     summary_df['Total Pembelian'] = np.where(
