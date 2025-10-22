@@ -601,6 +601,30 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         # Tambahkan Dama specific columns ke dictionary agregasi
         agg_dict_final['Nama Produk Ringkas'] = 'first'
         agg_dict_final['Lookup Harga Beli Dama'] = 'first'
+
+    # Definisikan pola yang tidak diinginkan (sama seperti sebelumnya)
+    unwanted_patterns = r'\b(COKLAT|COKELAT|CREAM|0)\b'
+    nama_produk_col_to_clean = grouping_key # Kolom yang akan digrouping
+
+    # Bersihkan kolom yang akan digunakan untuk grouping
+    rekap_copy[nama_produk_col_to_clean] = rekap_copy[nama_produk_col_to_clean].astype(str).str.replace(
+        unwanted_patterns, '', regex=True, flags=re.IGNORECASE
+    ).str.strip()
+    rekap_copy[nama_produk_col_to_clean] = rekap_copy[nama_produk_col_to_clean].str.replace(
+        r'\s{2,}', ' ', regex=True
+    ).str.strip()
+    
+    # Filter lagi SETELAH pembersihan nama produk, untuk menghapus baris yang mungkin jadi kosong
+    rekap_copy = rekap_copy[
+        rekap_copy[nama_produk_col_to_clean].notna() &
+        (rekap_copy[nama_produk_col_to_clean] != '')
+    ].copy()
+    if rekap_copy.empty:
+        st.warning("Tidak ada data valid di REKAP setelah pembersihan nama produk.")
+        # Kembalikan dataframe kosong (kode ini sudah ada sebelumnya)
+        # ...
+        empty_cols = ['No', 'Nama Produk', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Produk', 'Voucher Ditanggung Penjual', 'Biaya Komisi AMS + PPN Shopee', 'Biaya Adm 8%', 'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 'Biaya Proses Pesanan', 'Iklan Klik', 'Penjualan Netto', 'Biaya Packing', 'Biaya Ekspedisi', 'Harga Beli', 'Harga Custom TLJ', 'Total Pembelian', 'M1', 'Persentase', 'Jumlah Pesanan', 'Penjualan Per Hari', 'Jumlah buku per pesanan']
+        return pd.DataFrame(columns=empty_cols)
         
     # Agregasi data utama dari REKAP menggunakan aturan yang sudah ditentukan
     summary_df = rekap_copy.groupby(grouping_key).agg(agg_dict_final).reset_index()
@@ -662,23 +686,24 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     # Pastikan semua nilai NaN di kolom numerik utama menjadi 0
     summary_df.fillna(0, inplace=True)
+    
+    # --- TAMBAHAN: BERSIHKAN NAMA PRODUK DARI IKLAN ONLY & FILTER AKHIR ---
+    nama_produk_col_final = grouping_key # Kolom nama produk di summary_df
 
-    # Definisikan kata/pola yang ingin dihapus (case-insensitive)
-    unwanted_patterns = r'\b(COKLAT|COKELAT|CREAM|0)\b' # \b = batas kata utuh
-
-    # Tentukan kolom nama produk final yang akan dibersihkan
-    nama_produk_col_final = grouping_key # Nama kolom hasil grouping
-
-    # Bersihkan kolom nama produk di summary_df
+    # Terapkan pembersihan lagi ke seluruh kolom nama produk di summary_df
+    # (Ini akan membersihkan nama produk dari 'iklan only' juga)
     summary_df[nama_produk_col_final] = summary_df[nama_produk_col_final].astype(str).str.replace(
         unwanted_patterns, '', regex=True, flags=re.IGNORECASE
     ).str.strip()
-    
-    # Hapus spasi ganda yang mungkin muncul setelah penghapusan
     summary_df[nama_produk_col_final] = summary_df[nama_produk_col_final].str.replace(
         r'\s{2,}', ' ', regex=True
     ).str.strip()
-    # --- AKHIR LOGIKA BARU ---
+
+    # Filter TERAKHIR untuk menghapus baris yang nama produknya menjadi kosong setelah dibersihkan
+    summary_df = summary_df[
+        summary_df[nama_produk_col_final].notna() &
+        (summary_df[nama_produk_col_final] != '')
+    ].copy().reset_index(drop=True) # Reset index setelah filter terakhir
 
     # Sisa fungsi sama seperti sebelumnya, dengan penyesuaian pada pemanggilan `get_harga_beli_fuzzy`
     summary_df['Penjualan Netto'] = (
