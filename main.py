@@ -684,18 +684,25 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     )
 
     # --- LOGIKA BARU UNTUK HARGA CUSTOM TLJ ---
-    # 1. Gabungkan dengan data harga custom berdasarkan 'Nama Produk' yang cocok dengan 'LOOKUP_KEY'
+    # 1. Buat 'temp_lookup_key' di summary_df dengan menghapus bagian variasi (...)
+    #    Ini akan memotong string di " (" pertama dan mengambil bagian sebelumnya.
+    summary_df['temp_lookup_key'] = summary_df['Nama Produk'].astype(str).str.split(' (', n=1).str[0].str.strip()
+    
+    # 2. Gabungkan dengan data harga custom menggunakan 'temp_lookup_key'
     summary_df = pd.merge(
         summary_df,
         harga_custom_tlj_df[['LOOKUP_KEY', 'HARGA CUSTOM TLJ']],
-        left_on='Nama Produk',
+        left_on='temp_lookup_key', # <-- Perubahan di sini
         right_on='LOOKUP_KEY',
         how='left'
     )
-    # Ganti nama kolom dan isi nilai kosong dengan 0
+    
+    # 3. Ganti nama kolom dan isi nilai kosong dengan 0
     summary_df.rename(columns={'HARGA CUSTOM TLJ': 'Harga Custom TLJ'}, inplace=True)
     summary_df['Harga Custom TLJ'] = summary_df['Harga Custom TLJ'].fillna(0)
-    summary_df.drop(columns=['LOOKUP_KEY'], inplace=True, errors='ignore')
+    
+    # 4. Hapus kolom-kolom sementara
+    summary_df.drop(columns=['LOOKUP_KEY', 'temp_lookup_key'], inplace=True, errors='ignore')
 
     # --- LOGIKA BARU UNTUK TOTAL PEMBELIAN ---
     produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI"
@@ -844,15 +851,25 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_
     )
 
     # Harga Custom & Total Pembelian
+    # 1. Buat 'temp_lookup_key' di summary_df dengan menghapus bagian variasi (...)
+    #    Ini akan memotong string di " (" pertama dan mengambil bagian sebelumnya.
+    summary_df['temp_lookup_key'] = summary_df['Nama Produk'].astype(str).str.split(' (', n=1).str[0].str.strip()
+    
+    # 2. Gabungkan dengan data harga custom menggunakan 'temp_lookup_key'
     summary_df = pd.merge(
         summary_df,
         harga_custom_tlj_df[['LOOKUP_KEY', 'HARGA CUSTOM TLJ']],
-        left_on='Nama Produk',
-        right_on='LOOKUP_KEY', how='left'
+        left_on='temp_lookup_key', # <-- Perubahan di sini
+        right_on='LOOKUP_KEY',
+        how='left'
     )
+    
+    # 3. Ganti nama kolom dan isi nilai kosong dengan 0
     summary_df.rename(columns={'HARGA CUSTOM TLJ': 'Harga Custom TLJ'}, inplace=True)
     summary_df['Harga Custom TLJ'] = summary_df['Harga Custom TLJ'].fillna(0)
-    summary_df.drop(columns=['LOOKUP_KEY'], inplace=True, errors='ignore')
+    
+    # 4. Hapus kolom-kolom sementara
+    summary_df.drop(columns=['LOOKUP_KEY', 'temp_lookup_key'], inplace=True, errors='ignore')
 
     produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI"
     kondisi_custom = summary_df['Nama Produk Original'].str.contains(produk_custom_str, na=False)
