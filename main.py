@@ -605,6 +605,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "AL QUR'AN GOLD TERMURAH",
         "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN"
     ]
+    produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus]
     
     # Ambil data iklan yang relevan
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
