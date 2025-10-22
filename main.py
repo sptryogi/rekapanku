@@ -553,6 +553,19 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     rekap_copy = rekap_df.copy()
     rekap_copy['No. Pesanan'] = rekap_copy['No. Pesanan'].replace('', np.nan).ffill()
 
+    # Hapus baris dimana 'Nama Produk' kosong, NaN, atau hanya '0'
+    rekap_copy = rekap_copy[
+        rekap_copy['Nama Produk'].notna() &
+        (rekap_copy['Nama Produk'].astype(str).str.strip() != '') &
+        (rekap_copy['Nama Produk'].astype(str).str.strip() != '0')
+    ].copy()
+    # Jika setelah filter dataframe kosong, langsung return dataframe kosong
+    if rekap_copy.empty:
+        st.warning("Tidak ada data valid di REKAP setelah filtering.")
+        # Mengembalikan dataframe kosong dengan kolom yang diharapkan oleh SUMMARY
+        empty_cols = ['No', 'Nama Produk', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Produk', 'Voucher Ditanggung Penjual', 'Biaya Komisi AMS + PPN Shopee', 'Biaya Adm 8%', 'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 'Biaya Proses Pesanan', 'Iklan Klik', 'Penjualan Netto', 'Biaya Packing', 'Biaya Ekspedisi', 'Harga Beli', 'Harga Custom TLJ', 'Total Pembelian', 'M1', 'Persentase', 'Jumlah Pesanan', 'Penjualan Per Hari', 'Jumlah buku per pesanan']
+        return pd.DataFrame(columns=empty_cols)
+
     # Definisikan aturan agregasi dasar
     agg_base = {
         'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
@@ -649,6 +662,22 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     # Pastikan semua nilai NaN di kolom numerik utama menjadi 0
     summary_df.fillna(0, inplace=True)
+
+    # Definisikan kata/pola yang ingin dihapus (case-insensitive)
+    unwanted_patterns = r'\b(COKLAT|COKELAT|CREAM|0)\b' # \b = batas kata utuh
+
+    # Tentukan kolom nama produk final yang akan dibersihkan
+    nama_produk_col_final = grouping_key # Nama kolom hasil grouping
+
+    # Bersihkan kolom nama produk di summary_df
+    summary_df[nama_produk_col_final] = summary_df[nama_produk_col_final].astype(str).str.replace(
+        unwanted_patterns, '', regex=True, flags=re.IGNORECASE
+    ).str.strip()
+    
+    # Hapus spasi ganda yang mungkin muncul setelah penghapusan
+    summary_df[nama_produk_col_final] = summary_df[nama_produk_col_final].str.replace(
+        r'\s{2,}', ' ', regex=True
+    ).str.strip()
     # --- AKHIR LOGIKA BARU ---
 
     # Sisa fungsi sama seperti sebelumnya, dengan penyesuaian pada pemanggilan `get_harga_beli_fuzzy`
