@@ -41,6 +41,63 @@ def clean_columns(df):
     """Menghapus spasi di awal dan akhir dari semua nama kolom DataFrame."""
     df.columns = df.columns.str.strip()
     return df
+
+def extract_relevant_variation_part(variation):
+    """
+    Ekstrak bagian relevan dari Nama Variasi (ukuran atau paket),
+    abaikan warna atau kata 'RANDOM'.
+    """
+    if pd.isna(variation):
+        return ''
+    
+    var_str = str(variation).strip()
+    
+    # Prioritas: Cari Pola Paket (misal: PAKET 10)
+    package_match = re.search(r'(PAKET\s*\d+)', var_str, re.IGNORECASE)
+    if package_match:
+        return package_match.group(1).upper() # Kembalikan 'PAKET X'
+
+    # Cari Pola Ukuran (misal: A5, B5, A5 (kwarto))
+    size_match = re.search(r'\b((A|B)\d{1,2}(\s*\(.*?\))?)\b', var_str, re.IGNORECASE)
+    if size_match:
+        return size_match.group(1).strip() # Kembalikan 'A5' atau 'A5 (kwarto)'
+
+    # Jika tidak ada pola spesifik, cek apakah hanya warna/random
+    colors_random = {'PINK', 'MERAH', 'BIRU', 'HIJAU', 'RANDOM', 'GOLD'}
+    # Bersihkan variasi dari tanda baca, pisah kata, ubah ke uppercase
+    cleaned_parts = re.split(r'[,\s]+', re.sub(r'[^\w\s,]', '', var_str))
+    is_only_color_random = all(part.upper() in colors_random for part in cleaned_parts if part)
+    
+    if is_only_color_random:
+        return '' # Abaikan jika hanya warna/random
+    else:
+        # Jika bukan hanya warna tapi tidak cocok pola, kembalikan bagian pertama (asumsi)
+        return cleaned_parts[0] if cleaned_parts else ''
+
+def extract_last_size_for_dama_lookup(nama_produk):
+    """
+    Ekstrak ukuran terakhir dari Nama Produk DamaStore untuk lookup harga beli.
+    Contoh: '... A5 A6 A7 (Hijau, A7)' -> 'A7'
+    Contoh: '... HVS A5 A6' -> 'A6'
+    """
+    if pd.isna(nama_produk):
+        return ''
+    
+    nama_upper = str(nama_produk).upper()
+    
+    # Cari semua ukuran A/B digit
+    sizes_found = re.findall(r'\b(A|B)\d{1,2}\b', nama_upper)
+    
+    if sizes_found:
+        # Ambil ukuran terakhir yang ditemukan
+        return sizes_found[-1]
+    else:
+        # Jika tidak ada ukuran A/B, coba cari ukuran dalam format (... , A7)
+        specific_size_match = re.search(r'\(\s*[^,]+,\s*((A|B)\d{1,2})\s*\)', nama_upper)
+        if specific_size_match:
+            return specific_size_match.group(1)
+        
+    return '' # Kembalikan string kosong jika tidak ada ukuran ditemukan
     
 def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     """
@@ -364,6 +421,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
         'Waktu Pesanan Dibuat': rekap_df['Waktu Pesanan Dibuat'],
         'Waktu Dana Dilepas': rekap_df['Tanggal Dana Dilepaskan'],
         'Nama Produk': rekap_df['Nama Produk'],
+        'Nama Variasi': rekap_df['Nama Variasi'],
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
         'Harga Satuan': rekap_df['Harga Setelah Diskon'],
         'Total Harga Produk': rekap_df['Total Harga Produk'],
@@ -486,14 +544,39 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     rekap_copy = rekap_df.copy()
     rekap_copy['No. Pesanan'] = rekap_copy['No. Pesanan'].replace('', np.nan).ffill()
 
+    # --- LOGIKA KHUSUS DAMASTORE: BUAT KOLOM BARU SEBELUM GROUPBY ---
+    if store_type == 'DamaStore':
+        # 1. Buat kolom 'Nama Produk Ringkas' (tanpa variasi) untuk merge Iklan nanti
+        rekap_copy['Nama Produk'] = rekap_copy['Nama Produk']
+        
+        # 2. Buat kolom 'Nama Produk + Var Relevan' untuk display dan grouping
+        rekap_copy['Nama Produk'] = rekap_copy.apply(
+            lambda row: f"{row['Nama Produk']} {extract_relevant_variation_part(row['Nama Variasi'])}".strip(),
+            axis=1
+        )
+        grouping_key = 'Nama Produk' # Gunakan kolom baru ini untuk grouping
+        
+        # 3. Buat kolom 'Lookup Harga Beli Dama'
+        rekap_copy['Lookup Harga Beli Dama'] = rekap_copy['Nama Produk'].apply(extract_last_size_for_dama_lookup)
+        
+    else:
+        # Untuk toko lain, grouping key tetap 'Nama Produk'
+        grouping_key = 'Nama Produk'
+        rekap_copy['Nama Produk'] = rekap_copy['Nama Produk'] # Salin saja
+        # Kolom lookup harga beli tidak dibuat khusus
+
+
     # Agregasi data utama dari REKAP
-    summary_df = rekap_copy.groupby('Nama Produk').agg({
+    summary_df = rekap_copy.groupby(grouping_key).agg({
+        'Nama Produk': 'first' if store_type == 'DamaStore' else pd.NamedAgg(column='Nama Produk', aggfunc='first')
         'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
         'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
         'Total Penghasilan': 'sum'
     }).reset_index()
+
+    merge_key_iklan = 'Nama Produk' if store_type == 'DamaStore' else grouping_key
 
     # --- LOGIKA BARU: Tambahkan Produk dari IKLAN yang tidak ada di REKAP ---
     # Siapkan kolom 'Iklan Klik' dengan nilai default 0
@@ -502,7 +585,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # Daftar produk khusus yang biaya iklannya perlu didistribusikan
     produk_khusus = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
-        "AL QUR'AN GOLD TERMURAH"
+        "AL QUR'AN GOLD TERMURAH",
+        "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN"
     ]
     
     # Ambil data iklan yang relevan
@@ -533,7 +617,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     # 2. Proses Produk Normal (yang tersisa di iklan_data)
     # Gunakan merge untuk produk yang namanya cocok persis
-    summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk', right_on='Nama Iklan', how='left')
+    summary_df = pd.merge(summary_df, iklan_data, left_on=merge_key_iklan, right_on='Nama Iklan', how='left')
     
     # Gabungkan hasil merge dengan kolom 'Iklan Klik' yang sudah ada
     # `summary_df['Biaya']` akan berisi biaya untuk produk normal
@@ -569,9 +653,21 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
 
     # --- PERUBAHAN PADA PEMANGGILAN FUNGSI ---
     # Pastikan rekap_df (rekap_copy) yang belum diagregasi digunakan untuk lookup variasi
-    summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(
-        lambda x: get_harga_beli_fuzzy(x, katalog_df)
-    )
+    if store_type == 'DamaStore':
+        # Untuk DamaStore, gunakan NAMA PRODUK RINGKAS + UKURAN TERAKHIR sebagai input
+        summary_df['Harga Beli'] = summary_df.apply(
+            lambda row: get_harga_beli_fuzzy(
+                # Gabungkan nama ringkas dengan ukuran terakhir yang diekstrak
+                f"{row['Nama Produk Ringkas']} {row['Lookup Harga Beli Dama']}".strip(),
+                katalog_df
+            ),
+            axis=1
+        )
+    else:
+        # Untuk toko lain, gunakan nama produk hasil grouping (bisa jadi sudah + variasi)
+        summary_df['Harga Beli'] = summary_df[grouping_key].apply(
+            lambda x: get_harga_beli_fuzzy(x, katalog_df)
+        )
 
     # --- LOGIKA BARU UNTUK HARGA CUSTOM TLJ ---
     # 1. Gabungkan dengan data harga custom berdasarkan 'Nama Produk' yang cocok dengan 'LOOKUP_KEY'
@@ -611,7 +707,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_df['Jumlah buku per pesanan'] = round(summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1), 1)
     
     summary_final_data = {
-        'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'],
+        'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df[grouping_key],
         'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Harga Produk': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
         'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
