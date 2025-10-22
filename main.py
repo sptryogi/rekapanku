@@ -492,12 +492,21 @@ def get_harga_beli_fuzzy(nama_produk, katalog_df, score_threshold_primary=80, sc
                 break
 
         # 2) Deteksi jenis kertas
-        jenis_kertas_tokens = ['HVS', 'QPP', 'KORAN','GLOSSY','DUPLEX','ART','COVER','MATT','MATTE','CTP','BOOK PAPER', 'Art Paper']
+        jenis_kertas_map = {
+            'HVS': 'HVS', 'QPP': 'QPP', 'KORAN': 'KORAN', 'KK': 'KORAN', # Map KK ke KORAN
+            'GLOSSY':'GLOSSY','DUPLEX':'DUPLEX','ART':'ART','COVER':'COVER',
+            'MATT':'MATT','MATTE':'MATTE','CTP':'CTP','BOOK PAPER':'BOOK PAPER',
+            'ART PAPER': 'ART PAPER', 'ART PAPER': 'Art Paper'
+        }
+        jenis_kertas_tokens_to_search = list(jenis_kertas_map.keys()) # Cari semua keys (termasuk KK)
+        
         jenis_found = None
-        for jt in jenis_kertas_tokens:
-            if jt in s_clean:
-                jenis_found = jt
-                break
+        s_clean_words = set(s_clean.split()) # Pisah kata-kata di nama produk
+        
+        for token_to_find in jenis_kertas_tokens_to_search:
+            if token_to_find in s_clean_words: # Cek jika token ada sebagai kata utuh
+                jenis_found = jenis_kertas_map[token_to_find] # Ambil nilai dari map (misal KORAN jika KK ditemukan)
+                break # Ambil yang pertama ditemukan
 
         # 3) Filter kandidat
         candidates = katalog_df.copy()
@@ -544,9 +553,26 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     rekap_copy = rekap_df.copy()
     rekap_copy['No. Pesanan'] = rekap_copy['No. Pesanan'].replace('', np.nan).ffill()
 
-    # --- LOGIKA KHUSUS DAMASTORE: BUAT KOLOM BARU SEBELUM GROUPBY ---
+    # Definisikan aturan agregasi dasar
+    agg_base = {
+        'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
+        'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
+        'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
+        'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
+        'Total Penghasilan': 'sum'
+    }
+    
+    # Inisialisasi variabel di luar if/else
+    grouping_key = 'Nama Produk'
+    agg_dict_final = agg_base.copy() # Salin dari base
+    
+    # Buat kolom dummy sebelum if/else agar selalu ada
+    rekap_copy['Nama Produk Summary'] = rekap_copy['Nama Produk']
+    rekap_copy['Nama Produk Ringkas'] = rekap_copy['Nama Produk'] # Defaultnya sama
+    rekap_copy['Lookup Harga Beli Dama'] = '' # Kolom kosong by default
+
     if store_type == 'DamaStore':
-        # 1. Buat kolom 'Nama Produk Ringkas' (tanpa variasi) untuk merge Iklan nanti
+        # 1. Buat kolom 'Nama Produk Ringkas' (tanpa variasi)
         rekap_copy['Nama Produk Ringkas'] = rekap_copy['Nama Produk']
         
         # 2. Buat kolom 'Nama Produk + Var Relevan' untuk display dan grouping
@@ -554,27 +580,17 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             lambda row: f"{row['Nama Produk Ringkas']} {extract_relevant_variation_part(row['Nama Variasi'])}".strip(),
             axis=1
         )
-        grouping_key = 'Nama Produk Summary' # Gunakan kolom baru ini untuk grouping
+        grouping_key = 'Nama Produk Summary' # Ganti grouping key
         
         # 3. Buat kolom 'Lookup Harga Beli Dama'
         rekap_copy['Lookup Harga Beli Dama'] = rekap_copy['Nama Produk Ringkas'].apply(extract_last_size_for_dama_lookup)
         
-    else:
-        # Untuk toko lain, grouping key tetap 'Nama Produk'
-        grouping_key = 'Nama Produk'
-        rekap_copy['Nama Produk Summary'] = rekap_copy['Nama Produk'] # Salin saja
-        # Kolom lookup harga beli tidak dibuat khusus
-
-
-    # Agregasi data utama dari REKAP
-    summary_df = rekap_copy.groupby(grouping_key).agg({
-        'Nama Produk Ringkas': 'first' if store_type == 'DamaStore' else pd.NamedAgg(column='Nama Produk', aggfunc='first'),
-        'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
-        'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
-        'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
-        'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
-        'Total Penghasilan': 'sum'
-    }).reset_index()
+        # Tambahkan Dama specific columns ke dictionary agregasi
+        agg_dict_final['Nama Produk Ringkas'] = 'first'
+        agg_dict_final['Lookup Harga Beli Dama'] = 'first'
+        
+    # Agregasi data utama dari REKAP menggunakan aturan yang sudah ditentukan
+    summary_df = rekap_copy.groupby(grouping_key).agg(agg_dict_final).reset_index()
 
     merge_key_iklan = 'Nama Produk Ringkas' if store_type == 'DamaStore' else grouping_key
 
