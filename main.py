@@ -684,15 +684,15 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     )
 
     # --- LOGIKA BARU UNTUK HARGA CUSTOM TLJ ---
-    # 1. Buat 'temp_lookup_key' di summary_df dengan menghapus bagian variasi (...)
-    #    Ini akan memotong string di " (" pertama dan mengambil bagian sebelumnya.
-    summary_df['temp_lookup_key'] = summary_df['Nama Produk'].astype(str).str.split(' (', n=1).str[0].str.strip()
+    # 1. Buat 'temp_lookup_key' yang formatnya SAMA DENGAN 'LOOKUP_KEY' di file Excel
+    #    Caranya: ganti ' (' menjadi ' ' dan hapus ')'
+    summary_df['temp_lookup_key'] = summary_df['Nama Produk'].astype(str).str.replace(' (', ' ', regex=False).str.replace(')', '', regex=False).str.strip()
     
     # 2. Gabungkan dengan data harga custom menggunakan 'temp_lookup_key'
     summary_df = pd.merge(
         summary_df,
         harga_custom_tlj_df[['LOOKUP_KEY', 'HARGA CUSTOM TLJ']],
-        left_on='temp_lookup_key', # <-- Perubahan di sini
+        left_on='temp_lookup_key', # <-- Mencocokkan dengan 'CUSTOM... AL AQEEL A6 HVS...'
         right_on='LOOKUP_KEY',
         how='left'
     )
@@ -851,15 +851,15 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_
     )
 
     # Harga Custom & Total Pembelian
-    # 1. Buat 'temp_lookup_key' di summary_df dengan menghapus bagian variasi (...)
-    #    Ini akan memotong string di " (" pertama dan mengambil bagian sebelumnya.
-    summary_df['temp_lookup_key'] = summary_df['Nama Produk'].astype(str).str.split(' (', n=1).str[0].str.strip()
+    # 1. Buat 'temp_lookup_key' yang formatnya SAMA DENGAN 'LOOKUP_KEY' di file Excel
+    #    Caranya: ganti ' (' menjadi ' ' dan hapus ')'
+    summary_df['temp_lookup_key'] = summary_df['Nama Produk'].astype(str).str.replace(' (', ' ', regex=False).str.replace(')', '', regex=False).str.strip()
     
     # 2. Gabungkan dengan data harga custom menggunakan 'temp_lookup_key'
     summary_df = pd.merge(
         summary_df,
         harga_custom_tlj_df[['LOOKUP_KEY', 'HARGA CUSTOM TLJ']],
-        left_on='temp_lookup_key', # <-- Perubahan di sini
+        left_on='temp_lookup_key', # <-- Mencocokkan dengan 'CUSTOM... AL AQEEL A6 HVS...'
         right_on='LOOKUP_KEY',
         how='left'
     )
