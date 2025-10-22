@@ -41,6 +41,22 @@ def clean_columns(df):
     """Menghapus spasi di awal dan akhir dari semua nama kolom DataFrame."""
     df.columns = df.columns.str.strip()
     return df
+
+def extract_relevant_variation_part(var_str):
+    """Mengekstrak bagian variasi yang relevan (A5, QPP, dll.) untuk DamaStore."""
+    if pd.isna(var_str):
+        return None
+    
+    var_str_clean = str(var_str).strip().upper()
+    parts = [p.strip() for p in var_str_clean.split(',')]
+    # Gunakan keywords yang sama dengan logika di process_rekap
+    size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7', 'HVS', 'KORAN'}
+    
+    for part in parts:
+        if part in size_keywords:
+            return part # Kembalikan bagian relevan pertama yang ditemukan
+    
+    return None # Kembalikan None (atau string kosong) jika tidak ada yang cocok
     
 def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     """
@@ -92,12 +108,8 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     
                 # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
                 if "CUSTOM AL QURAN MENGENANG" in nama_produk_clean:
-                    if ',' in var_str:
-                        # Ambil bagian sebelum koma pertama
-                        part_to_append = var_str.split(',', 1)[0].strip()
-                    else:
-                        # Jika tidak ada koma (meskipun seharusnya ada), ambil seluruhnya
-                        part_to_append = var_str
+                    # REVISI: Ambil seluruh string variasi, jangan di-split
+                    part_to_append = var_str
                 # --- AKHIR LOGIKA KHUSUS ---
     
                 # --- Logika Lama untuk Produk Khusus Lainnya ---
@@ -252,12 +264,8 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     
                 # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
                 if "CUSTOM AL QURAN MENGENANG" in nama_produk_clean:
-                    if ',' in var_str:
-                        # Ambil bagian sebelum koma pertama
-                        part_to_append = var_str.split(',', 1)[0].strip()
-                    else:
-                        # Jika tidak ada koma (meskipun seharusnya ada), ambil seluruhnya
-                        part_to_append = var_str
+                    # REVISI: Ambil seluruh string variasi, jangan di-split
+                    part_to_append = var_str
                 # --- AKHIR LOGIKA KHUSUS ---
     
                 # --- Logika Lama untuk Produk Khusus Lainnya ---
