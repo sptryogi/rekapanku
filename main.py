@@ -67,16 +67,24 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     produk_khusus = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
         "AL QUR'AN GOLD TERMURAH",
-        "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN"
+        "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
-    kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
+    produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
 
-    if 'Nama Variasi' in rekap_df.columns:
-        # Buat Series baru untuk menampung hasil modifikasi
-        new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy() # Salin nama produk asli dulu
+    # --- PERUBAHAN 2: Buat kolom sementara yang bersih di rekap_df ---
+    if 'Nama Produk' in rekap_df.columns:
+        rekap_df['Nama Produk Clean Temp'] = rekap_df['Nama Produk'].astype(str).str.replace('\xa0', ' ').str.replace(r'\s+', ' ', regex=True).str.strip()
+        # Gunakan kolom bersih ini untuk pengecekan kondisi
+        kondisi = rekap_df['Nama Produk Clean Temp'].isin(produk_khusus)
+    else:
+        # Jika kolom 'Nama Produk' tidak ada, kondisi selalu False
+        kondisi = pd.Series([False] * len(rekap_df), index=rekap_df.index)
     
-        # Loop melalui index baris yang memenuhi kondisi produk khusus
+    
+    if 'Nama Variasi' in rekap_df.columns:
+        new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy() # Salin nama produk asli (belum bersih)
+    
         for idx in new_product_names.index:
             nama_variasi_ori = rekap_df.loc[idx, 'Nama Variasi']
     
@@ -86,29 +94,23 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     
                 if ',' in var_str:
                     parts = [p.strip().upper() for p in var_str.split(',')]
-                    # Definisikan kata kunci UKURAN/JENIS KERTAS yang ingin diambil
-                    # (Anda bisa tambahkan 'A5', 'B5', 'HVS', dll. jika perlu)
-                    size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7'} 
-    
-                    # Cari bagian yang cocok dengan keywords ukuran/jenis
+                    size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7', 'HVS', 'KORAN'} # Tambahkan jenis kertas jika perlu
                     relevant_parts = [p for p in parts if p in size_keywords]
-    
                     if relevant_parts:
-                        # Jika ditemukan, ambil yang pertama (atau gabungkan jika ada > 1)
-                        part_to_append = relevant_parts[0] 
-                        # Jika ingin menggabung: part_to_append = ' '.join(relevant_parts)
-                    # Jika tidak ada bagian relevan setelah split (misal "HITAM,BIRU"), part_to_append tetap ''
-    
+                        part_to_append = relevant_parts[0]
                 else:
-                    # Tidak ada koma, ambil seluruh variasi
                     part_to_append = var_str
     
-                # Hanya gabungkan jika part_to_append tidak kosong
                 if part_to_append:
+                    # Gabungkan dengan nama produk ASLI (bukan yang bersih)
                     new_product_names.loc[idx] = f"{rekap_df.loc[idx, 'Nama Produk']} ({part_to_append})"
-
+    
         # Update DataFrame asli dengan nama produk yang sudah dimodifikasi
         rekap_df.loc[kondisi, 'Nama Produk'] = new_product_names
+    
+    # --- PERUBAHAN 3: Hapus kolom sementara ---
+    if 'Nama Produk Clean Temp' in rekap_df.columns:
+        rekap_df.drop(columns=['Nama Produk Clean Temp'], inplace=True)
 
     # Gabungkan dengan data seller conversion
     iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
@@ -217,16 +219,24 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     produk_khusus = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
         "AL QUR'AN GOLD TERMURAH",
-        "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN"
+        "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
-    kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
+    produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
 
-    if 'Nama Variasi' in rekap_df.columns:
-        # Buat Series baru untuk menampung hasil modifikasi
-        new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy() # Salin nama produk asli dulu
+    # --- PERUBAHAN 2: Buat kolom sementara yang bersih di rekap_df ---
+    if 'Nama Produk' in rekap_df.columns:
+        rekap_df['Nama Produk Clean Temp'] = rekap_df['Nama Produk'].astype(str).str.replace('\xa0', ' ').str.replace(r'\s+', ' ', regex=True).str.strip()
+        # Gunakan kolom bersih ini untuk pengecekan kondisi
+        kondisi = rekap_df['Nama Produk Clean Temp'].isin(produk_khusus)
+    else:
+        # Jika kolom 'Nama Produk' tidak ada, kondisi selalu False
+        kondisi = pd.Series([False] * len(rekap_df), index=rekap_df.index)
     
-        # Loop melalui index baris yang memenuhi kondisi produk khusus
+    
+    if 'Nama Variasi' in rekap_df.columns:
+        new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy() # Salin nama produk asli (belum bersih)
+    
         for idx in new_product_names.index:
             nama_variasi_ori = rekap_df.loc[idx, 'Nama Variasi']
     
@@ -236,29 +246,23 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     
                 if ',' in var_str:
                     parts = [p.strip().upper() for p in var_str.split(',')]
-                    # Definisikan kata kunci UKURAN/JENIS KERTAS yang ingin diambil
-                    # (Anda bisa tambahkan 'A5', 'B5', 'HVS', dll. jika perlu)
-                    size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7'} 
-    
-                    # Cari bagian yang cocok dengan keywords ukuran/jenis
+                    size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7', 'HVS', 'KORAN'} # Tambahkan jenis kertas jika perlu
                     relevant_parts = [p for p in parts if p in size_keywords]
-    
                     if relevant_parts:
-                        # Jika ditemukan, ambil yang pertama (atau gabungkan jika ada > 1)
-                        part_to_append = relevant_parts[0] 
-                        # Jika ingin menggabung: part_to_append = ' '.join(relevant_parts)
-                    # Jika tidak ada bagian relevan setelah split (misal "HITAM,BIRU"), part_to_append tetap ''
-    
+                        part_to_append = relevant_parts[0]
                 else:
-                    # Tidak ada koma, ambil seluruh variasi
                     part_to_append = var_str
     
-                # Hanya gabungkan jika part_to_append tidak kosong
                 if part_to_append:
+                    # Gabungkan dengan nama produk ASLI (bukan yang bersih)
                     new_product_names.loc[idx] = f"{rekap_df.loc[idx, 'Nama Produk']} ({part_to_append})"
     
         # Update DataFrame asli dengan nama produk yang sudah dimodifikasi
         rekap_df.loc[kondisi, 'Nama Produk'] = new_product_names
+    
+    # --- PERUBAHAN 3: Hapus kolom sementara ---
+    if 'Nama Produk Clean Temp' in rekap_df.columns:
+        rekap_df.drop(columns=['Nama Produk Clean Temp'], inplace=True)
 
     iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
