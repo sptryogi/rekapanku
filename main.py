@@ -547,28 +547,28 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # --- LOGIKA KHUSUS DAMASTORE: BUAT KOLOM BARU SEBELUM GROUPBY ---
     if store_type == 'DamaStore':
         # 1. Buat kolom 'Nama Produk Ringkas' (tanpa variasi) untuk merge Iklan nanti
-        rekap_copy['Nama Produk'] = rekap_copy['Nama Produk']
+        rekap_copy['Nama Produk Ringkas'] = rekap_copy['Nama Produk']
         
         # 2. Buat kolom 'Nama Produk + Var Relevan' untuk display dan grouping
-        rekap_copy['Nama Produk'] = rekap_copy.apply(
-            lambda row: f"{row['Nama Produk']} {extract_relevant_variation_part(row['Nama Variasi'])}".strip(),
+        rekap_copy['Nama Produk Summary'] = rekap_copy.apply(
+            lambda row: f"{row['Nama Produk Ringkas']} {extract_relevant_variation_part(row['Nama Variasi'])}".strip(),
             axis=1
         )
-        grouping_key = 'Nama Produk' # Gunakan kolom baru ini untuk grouping
+        grouping_key = 'Nama Produk Summary' # Gunakan kolom baru ini untuk grouping
         
         # 3. Buat kolom 'Lookup Harga Beli Dama'
-        rekap_copy['Lookup Harga Beli Dama'] = rekap_copy['Nama Produk'].apply(extract_last_size_for_dama_lookup)
+        rekap_copy['Lookup Harga Beli Dama'] = rekap_copy['Nama Produk Ringkas'].apply(extract_last_size_for_dama_lookup)
         
     else:
         # Untuk toko lain, grouping key tetap 'Nama Produk'
         grouping_key = 'Nama Produk'
-        rekap_copy['Nama Produk'] = rekap_copy['Nama Produk'] # Salin saja
+        rekap_copy['Nama Produk Summary'] = rekap_copy['Nama Produk'] # Salin saja
         # Kolom lookup harga beli tidak dibuat khusus
 
 
     # Agregasi data utama dari REKAP
     summary_df = rekap_copy.groupby(grouping_key).agg({
-        'Nama Produk': 'first' if store_type == 'DamaStore' else pd.NamedAgg(column='Nama Produk', aggfunc='first'),
+        'Nama Produk Ringkas': 'first' if store_type == 'DamaStore' else pd.NamedAgg(column='Nama Produk', aggfunc='first'),
         'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
         'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
@@ -576,7 +576,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         'Total Penghasilan': 'sum'
     }).reset_index()
 
-    merge_key_iklan = 'Nama Produk' if store_type == 'DamaStore' else grouping_key
+    merge_key_iklan = 'Nama Produk Ringkas' if store_type == 'DamaStore' else grouping_key
 
     # --- LOGIKA BARU: Tambahkan Produk dari IKLAN yang tidak ada di REKAP ---
     # Siapkan kolom 'Iklan Klik' dengan nilai default 0
