@@ -64,7 +64,7 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     # Gabungkan income_df dengan order_agg. Ini akan membuat duplikasi baris income untuk setiap produk.
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
-    produk_khusus = [
+    produk_khusus_raw = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
         "AL QUR'AN GOLD TERMURAH",
         "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN"
@@ -216,7 +216,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
-    produk_khusus = [
+    produk_khusus_raw = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
         "AL QUR'AN GOLD TERMURAH",
         "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN"
