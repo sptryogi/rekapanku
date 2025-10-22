@@ -568,7 +568,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
 
     # Agregasi data utama dari REKAP
     summary_df = rekap_copy.groupby(grouping_key).agg({
-        'Nama Produk': 'first' if store_type == 'DamaStore' else pd.NamedAgg(column='Nama Produk', aggfunc='first')
+        'Nama Produk': 'first' if store_type == 'DamaStore' else pd.NamedAgg(column='Nama Produk', aggfunc='first'),
         'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
         'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
