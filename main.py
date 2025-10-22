@@ -72,7 +72,7 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
     # Gabungkan Nama Produk dengan Nama Variasi jika kondisi terpenuhi
     if 'Nama Variasi' in rekap_df.columns:
-        rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + rekap_df['Nama Variasi'].fillna('').str.strip()
+        rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + '(' + rekap_df['Nama Variasi'].fillna('').str.strip() + ')'
 
     # Gabungkan dengan data seller conversion
     iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
@@ -186,7 +186,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
     # Gabungkan Nama Produk dengan Nama Variasi jika kondisi terpenuhi
     if 'Nama Variasi' in rekap_df.columns:
-        rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + rekap_df['Nama Variasi'].fillna('').str.strip()
+        rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + '(' + rekap_df['Nama Variasi'].fillna('').str.strip() + ')'
 
     iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
