@@ -128,9 +128,17 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
-    # Gabungkan Nama Produk dengan Nama Variasi jika kondisi terpenuhi
+
     if 'Nama Variasi' in rekap_df.columns:
-        rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + '(' + rekap_df['Nama Variasi'].fillna('').str.strip() + ')'
+        # Ekstrak bagian relevan dari variasi HANYA untuk produk khusus
+        relevant_variations = rekap_df.loc[kondisi, 'Nama Variasi'].apply(extract_relevant_variation_part)
+    
+        # Buat nama baru HANYA jika ada bagian relevan yang ditemukan
+        # Gunakan Series boolean `kondisi` dan `relevant_variations != ''` untuk filter yang tepat
+        mask_to_update = kondisi & (relevant_variations != '')
+        if mask_to_update.any(): # Hanya lakukan update jika ada baris yang memenuhi syarat
+            new_product_names = rekap_df.loc[mask_to_update, 'Nama Produk'] + ' (' + relevant_variations[mask_to_update] + ')'
+            rekap_df.loc[mask_to_update, 'Nama Produk'] = new_product_names
 
     # Gabungkan dengan data seller conversion
     iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
@@ -243,9 +251,17 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
-    # Gabungkan Nama Produk dengan Nama Variasi jika kondisi terpenuhi
+
     if 'Nama Variasi' in rekap_df.columns:
-        rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + '(' + rekap_df['Nama Variasi'].fillna('').str.strip() + ')'
+        # Ekstrak bagian relevan dari variasi HANYA untuk produk khusus
+        relevant_variations = rekap_df.loc[kondisi, 'Nama Variasi'].apply(extract_relevant_variation_part)
+    
+        # Buat nama baru HANYA jika ada bagian relevan yang ditemukan
+        # Gunakan Series boolean `kondisi` dan `relevant_variations != ''` untuk filter yang tepat
+        mask_to_update = kondisi & (relevant_variations != '')
+        if mask_to_update.any(): # Hanya lakukan update jika ada baris yang memenuhi syarat
+            new_product_names = rekap_df.loc[mask_to_update, 'Nama Produk'] + ' (' + relevant_variations[mask_to_update] + ')'
+            rekap_df.loc[mask_to_update, 'Nama Produk'] = new_product_names
 
     iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
