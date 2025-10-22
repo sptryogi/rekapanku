@@ -602,7 +602,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
             # Cari semua baris di SUMMARY yang merupakan variasi dari produk dasar ini
             # Kuncinya adalah menggunakan .str.startswith()
-            matching_summary_rows = summary_df['Nama Produk'].str.startswith(produk_base, na=False)
+            matching_summary_rows = summary_df[merge_key_iklan].str.startswith(produk_base, na=False)
             
             # Hitung ada berapa banyak variasi yang ditemukan
             num_variations = matching_summary_rows.sum()
@@ -625,10 +625,10 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
     
     # 3. Tambahkan Produk yang Hanya Ada di IKLAN (dan bukan produk khusus)
-    iklan_only_names = set(iklan_data['Nama Iklan']) - set(summary_df['Nama Produk'])
+    iklan_only_names = set(iklan_data['Nama Iklan']) - set(summary_df[merge_key_iklan])
     if iklan_only_names:
         iklan_only_df = iklan_data[iklan_data['Nama Iklan'].isin(iklan_only_names)].copy()
-        iklan_only_df.rename(columns={'Nama Iklan': 'Nama Produk', 'Biaya': 'Iklan Klik'}, inplace=True)
+        iklan_only_df.rename(columns={'Nama Iklan': merge_key_iklan, 'Biaya': 'Iklan Klik'}, inplace=True)
         summary_df = pd.concat([summary_df, iklan_only_df], ignore_index=True)
     
     # Pastikan semua nilai NaN di kolom numerik utama menjadi 0
