@@ -553,83 +553,14 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     rekap_copy = rekap_df.copy()
     rekap_copy['No. Pesanan'] = rekap_copy['No. Pesanan'].replace('', np.nan).ffill()
 
-    # Hapus baris dimana 'Nama Produk' kosong, NaN, atau hanya '0'
-    rekap_copy = rekap_copy[
-        rekap_copy['Nama Produk'].notna() &
-        (rekap_copy['Nama Produk'].astype(str).str.strip() != '') &
-        (rekap_copy['Nama Produk'].astype(str).str.strip() != '0')
-    ].copy()
-    # Jika setelah filter dataframe kosong, langsung return dataframe kosong
-    if rekap_copy.empty:
-        st.warning("Tidak ada data valid di REKAP setelah filtering.")
-        # Mengembalikan dataframe kosong dengan kolom yang diharapkan oleh SUMMARY
-        empty_cols = ['No', 'Nama Produk', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Produk', 'Voucher Ditanggung Penjual', 'Biaya Komisi AMS + PPN Shopee', 'Biaya Adm 8%', 'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 'Biaya Proses Pesanan', 'Iklan Klik', 'Penjualan Netto', 'Biaya Packing', 'Biaya Ekspedisi', 'Harga Beli', 'Harga Custom TLJ', 'Total Pembelian', 'M1', 'Persentase', 'Jumlah Pesanan', 'Penjualan Per Hari', 'Jumlah buku per pesanan']
-        return pd.DataFrame(columns=empty_cols)
-
-    # Definisikan aturan agregasi dasar
-    agg_base = {
+    # Agregasi data utama dari REKAP
+    summary_df = rekap_copy.groupby('Nama Produk').agg({
         'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
         'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
         'Total Penghasilan': 'sum'
-    }
-    
-    # Inisialisasi variabel di luar if/else
-    grouping_key = 'Nama Produk'
-    agg_dict_final = agg_base.copy() # Salin dari base
-    
-    # Buat kolom dummy sebelum if/else agar selalu ada
-    rekap_copy['Nama Produk Summary'] = rekap_copy['Nama Produk']
-    rekap_copy['Nama Produk Ringkas'] = rekap_copy['Nama Produk'] # Defaultnya sama
-    rekap_copy['Lookup Harga Beli Dama'] = '' # Kolom kosong by default
-
-    if store_type == 'DamaStore':
-        # 1. Buat kolom 'Nama Produk Ringkas' (tanpa variasi)
-        rekap_copy['Nama Produk Ringkas'] = rekap_copy['Nama Produk']
-        
-        # 2. Buat kolom 'Nama Produk + Var Relevan' untuk display dan grouping
-        rekap_copy['Nama Produk Summary'] = rekap_copy.apply(
-            lambda row: f"{row['Nama Produk Ringkas']} {extract_relevant_variation_part(row['Nama Variasi'])}".strip(),
-            axis=1
-        )
-        grouping_key = 'Nama Produk Summary' # Ganti grouping key
-        
-        # 3. Buat kolom 'Lookup Harga Beli Dama'
-        rekap_copy['Lookup Harga Beli Dama'] = rekap_copy['Nama Produk Ringkas'].apply(extract_last_size_for_dama_lookup)
-        
-        # Tambahkan Dama specific columns ke dictionary agregasi
-        agg_dict_final['Nama Produk Ringkas'] = 'first'
-        agg_dict_final['Lookup Harga Beli Dama'] = 'first'
-
-    # Definisikan pola yang tidak diinginkan (sama seperti sebelumnya)
-    unwanted_patterns = r'\b(COKLAT|COKELAT|CREAM|0)\b'
-    nama_produk_col_to_clean = grouping_key # Kolom yang akan digrouping
-
-    # Bersihkan kolom yang akan digunakan untuk grouping
-    rekap_copy[nama_produk_col_to_clean] = rekap_copy[nama_produk_col_to_clean].astype(str).str.replace(
-        unwanted_patterns, '', regex=True, flags=re.IGNORECASE
-    ).str.strip()
-    rekap_copy[nama_produk_col_to_clean] = rekap_copy[nama_produk_col_to_clean].str.replace(
-        r'\s{2,}', ' ', regex=True
-    ).str.strip()
-    
-    # Filter lagi SETELAH pembersihan nama produk, untuk menghapus baris yang mungkin jadi kosong
-    rekap_copy = rekap_copy[
-        rekap_copy[nama_produk_col_to_clean].notna() &
-        (rekap_copy[nama_produk_col_to_clean] != '')
-    ].copy()
-    if rekap_copy.empty:
-        st.warning("Tidak ada data valid di REKAP setelah pembersihan nama produk.")
-        # Kembalikan dataframe kosong (kode ini sudah ada sebelumnya)
-        # ...
-        empty_cols = ['No', 'Nama Produk', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Produk', 'Voucher Ditanggung Penjual', 'Biaya Komisi AMS + PPN Shopee', 'Biaya Adm 8%', 'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 'Biaya Proses Pesanan', 'Iklan Klik', 'Penjualan Netto', 'Biaya Packing', 'Biaya Ekspedisi', 'Harga Beli', 'Harga Custom TLJ', 'Total Pembelian', 'M1', 'Persentase', 'Jumlah Pesanan', 'Penjualan Per Hari', 'Jumlah buku per pesanan']
-        return pd.DataFrame(columns=empty_cols)
-        
-    # Agregasi data utama dari REKAP menggunakan aturan yang sudah ditentukan
-    summary_df = rekap_copy.groupby(grouping_key).agg(agg_dict_final).reset_index()
-
-    merge_key_iklan = 'Nama Produk Ringkas' if store_type == 'DamaStore' else grouping_key
+    }).reset_index()
 
     # --- LOGIKA BARU: Tambahkan Produk dari IKLAN yang tidak ada di REKAP ---
     # Siapkan kolom 'Iklan Klik' dengan nilai default 0
@@ -655,7 +586,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
             # Cari semua baris di SUMMARY yang merupakan variasi dari produk dasar ini
             # Kuncinya adalah menggunakan .str.startswith()
-            matching_summary_rows = summary_df[merge_key_iklan].str.startswith(produk_base, na=False)
+            matching_summary_rows = summary_df['Nama Produk'].str.startswith(produk_base, na=False)
             
             # Hitung ada berapa banyak variasi yang ditemukan
             num_variations = matching_summary_rows.sum()
@@ -670,7 +601,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     # 2. Proses Produk Normal (yang tersisa di iklan_data)
     # Gunakan merge untuk produk yang namanya cocok persis
-    summary_df = pd.merge(summary_df, iklan_data, left_on=merge_key_iklan, right_on='Nama Iklan', how='left')
+    summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk', right_on='Nama Iklan', how='left')
     
     # Gabungkan hasil merge dengan kolom 'Iklan Klik' yang sudah ada
     # `summary_df['Biaya']` akan berisi biaya untuk produk normal
@@ -678,32 +609,15 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
     
     # 3. Tambahkan Produk yang Hanya Ada di IKLAN (dan bukan produk khusus)
-    iklan_only_names = set(iklan_data['Nama Iklan']) - set(summary_df[merge_key_iklan])
+    iklan_only_names = set(iklan_data['Nama Iklan']) - set(summary_df['Nama Produk'])
     if iklan_only_names:
         iklan_only_df = iklan_data[iklan_data['Nama Iklan'].isin(iklan_only_names)].copy()
-        iklan_only_df.rename(columns={'Nama Iklan': merge_key_iklan, 'Biaya': 'Iklan Klik'}, inplace=True)
+        iklan_only_df.rename(columns={'Nama Iklan': 'Nama Produk', 'Biaya': 'Iklan Klik'}, inplace=True)
         summary_df = pd.concat([summary_df, iklan_only_df], ignore_index=True)
     
     # Pastikan semua nilai NaN di kolom numerik utama menjadi 0
     summary_df.fillna(0, inplace=True)
-    
-    # --- TAMBAHAN: BERSIHKAN NAMA PRODUK DARI IKLAN ONLY & FILTER AKHIR ---
-    nama_produk_col_final = grouping_key # Kolom nama produk di summary_df
-
-    # Terapkan pembersihan lagi ke seluruh kolom nama produk di summary_df
-    # (Ini akan membersihkan nama produk dari 'iklan only' juga)
-    summary_df[nama_produk_col_final] = summary_df[nama_produk_col_final].astype(str).str.replace(
-        unwanted_patterns, '', regex=True, flags=re.IGNORECASE
-    ).str.strip()
-    summary_df[nama_produk_col_final] = summary_df[nama_produk_col_final].str.replace(
-        r'\s{2,}', ' ', regex=True
-    ).str.strip()
-
-    # Filter TERAKHIR untuk menghapus baris yang nama produknya menjadi kosong setelah dibersihkan
-    summary_df = summary_df[
-        summary_df[nama_produk_col_final].notna() &
-        (summary_df[nama_produk_col_final] != '')
-    ].copy().reset_index(drop=True) # Reset index setelah filter terakhir
+    # --- AKHIR LOGIKA BARU ---
 
     # Sisa fungsi sama seperti sebelumnya, dengan penyesuaian pada pemanggilan `get_harga_beli_fuzzy`
     summary_df['Penjualan Netto'] = (
@@ -723,28 +637,16 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
 
     # --- PERUBAHAN PADA PEMANGGILAN FUNGSI ---
     # Pastikan rekap_df (rekap_copy) yang belum diagregasi digunakan untuk lookup variasi
-    if store_type == 'DamaStore':
-        # Untuk DamaStore, gunakan NAMA PRODUK RINGKAS + UKURAN TERAKHIR sebagai input
-        summary_df['Harga Beli'] = summary_df.apply(
-            lambda row: get_harga_beli_fuzzy(
-                # Gabungkan nama ringkas dengan ukuran terakhir yang diekstrak
-                f"{row['Nama Produk Ringkas']} {row['Lookup Harga Beli Dama']}".strip(),
-                katalog_df
-            ),
-            axis=1
-        )
-    else:
-        # Untuk toko lain, gunakan nama produk hasil grouping (bisa jadi sudah + variasi)
-        summary_df['Harga Beli'] = summary_df[grouping_key].apply(
-            lambda x: get_harga_beli_fuzzy(x, katalog_df)
-        )
+    summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(
+        lambda x: get_harga_beli_fuzzy(x, katalog_df)
+    )
 
     # --- LOGIKA BARU UNTUK HARGA CUSTOM TLJ ---
     # 1. Gabungkan dengan data harga custom berdasarkan 'Nama Produk' yang cocok dengan 'LOOKUP_KEY'
     summary_df = pd.merge(
         summary_df,
         harga_custom_tlj_df[['LOOKUP_KEY', 'HARGA CUSTOM TLJ']],
-        left_on=grouping_key,
+        left_on='Nama Produk',
         right_on='LOOKUP_KEY',
         how='left'
     )
@@ -756,7 +658,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # --- LOGIKA BARU UNTUK TOTAL PEMBELIAN ---
     produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI"
     # Kondisi: jika Nama Produk mengandung string produk custom
-    kondisi_custom = summary_df[grouping_key].str.contains(produk_custom_str, na=False)
+    kondisi_custom = summary_df['Nama Produk'].str.contains(produk_custom_str, na=False)
     
     # Hitung Total Pembelian dengan rumus berbeda jika kondisi terpenuhi
     summary_df['Total Pembelian'] = np.where(
@@ -777,7 +679,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_df['Jumlah buku per pesanan'] = round(summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1), 1)
     
     summary_final_data = {
-        'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df[grouping_key],
+        'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'],
         'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Harga Produk': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
         'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
@@ -816,6 +718,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ']:
         if col in total_row.columns: total_row[col] = None
     summary_with_total = pd.concat([summary_final, total_row], ignore_index=True)
+    
     return summary_with_total
 
 def get_harga_beli_fuzzy_tiktok(nama_produk, variasi, katalog_df, score_threshold_primary=80, score_threshold_fallback=75):
