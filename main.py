@@ -41,63 +41,6 @@ def clean_columns(df):
     """Menghapus spasi di awal dan akhir dari semua nama kolom DataFrame."""
     df.columns = df.columns.str.strip()
     return df
-
-def extract_relevant_variation_part(variation):
-    """
-    Ekstrak bagian relevan dari Nama Variasi (ukuran atau paket),
-    abaikan warna atau kata 'RANDOM'.
-    """
-    if pd.isna(variation):
-        return ''
-    
-    var_str = str(variation).strip()
-    
-    # Prioritas: Cari Pola Paket (misal: PAKET 10)
-    package_match = re.search(r'(PAKET\s*\d+)', var_str, re.IGNORECASE)
-    if package_match:
-        return package_match.group(1).upper() # Kembalikan 'PAKET X'
-
-    # Cari Pola Ukuran (misal: A5, B5, A5 (kwarto))
-    size_match = re.search(r'\b((A|B)\d{1,2}(\s*\(.*?\))?)\b', var_str, re.IGNORECASE)
-    if size_match:
-        return size_match.group(1).strip() # Kembalikan 'A5' atau 'A5 (kwarto)'
-
-    # Jika tidak ada pola spesifik, cek apakah hanya warna/random
-    colors_random = {'PINK', 'MERAH', 'BIRU', 'HIJAU', 'RANDOM', 'GOLD'}
-    # Bersihkan variasi dari tanda baca, pisah kata, ubah ke uppercase
-    cleaned_parts = re.split(r'[,\s]+', re.sub(r'[^\w\s,]', '', var_str))
-    is_only_color_random = all(part.upper() in colors_random for part in cleaned_parts if part)
-    
-    if is_only_color_random:
-        return '' # Abaikan jika hanya warna/random
-    else:
-        # Jika bukan hanya warna tapi tidak cocok pola, kembalikan bagian pertama (asumsi)
-        return cleaned_parts[0] if cleaned_parts else ''
-
-def extract_last_size_for_dama_lookup(nama_produk):
-    """
-    Ekstrak ukuran terakhir dari Nama Produk DamaStore untuk lookup harga beli.
-    Contoh: '... A5 A6 A7 (Hijau, A7)' -> 'A7'
-    Contoh: '... HVS A5 A6' -> 'A6'
-    """
-    if pd.isna(nama_produk):
-        return ''
-    
-    nama_upper = str(nama_produk).upper()
-    
-    # Cari semua ukuran A/B digit
-    sizes_found = re.findall(r'\b(A|B)\d{1,2}\b', nama_upper)
-    
-    if sizes_found:
-        # Ambil ukuran terakhir yang ditemukan
-        return sizes_found[-1]
-    else:
-        # Jika tidak ada ukuran A/B, coba cari ukuran dalam format (... , A7)
-        specific_size_match = re.search(r'\(\s*[^,]+,\s*((A|B)\d{1,2})\s*\)', nama_upper)
-        if specific_size_match:
-            return specific_size_match.group(1)
-        
-    return '' # Kembalikan string kosong jika tidak ada ukuran ditemukan
     
 def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     """
@@ -130,15 +73,42 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
 
     if 'Nama Variasi' in rekap_df.columns:
-        # Ekstrak bagian relevan dari variasi HANYA untuk produk khusus
-        relevant_variations = rekap_df.loc[kondisi, 'Nama Variasi'].apply(extract_relevant_variation_part)
+        # Buat Series baru untuk menampung hasil modifikasi
+        new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy() # Salin nama produk asli dulu
     
-        # Buat nama baru HANYA jika ada bagian relevan yang ditemukan
-        # Gunakan Series boolean `kondisi` dan `relevant_variations != ''` untuk filter yang tepat
-        mask_to_update = kondisi & (relevant_variations != '')
-        if mask_to_update.any(): # Hanya lakukan update jika ada baris yang memenuhi syarat
-            new_product_names = rekap_df.loc[mask_to_update, 'Nama Produk'] + ' (' + relevant_variations[mask_to_update] + ')'
-            rekap_df.loc[mask_to_update, 'Nama Produk'] = new_product_names
+        # Loop melalui index baris yang memenuhi kondisi produk khusus
+        for idx in new_product_names.index:
+            nama_variasi_ori = rekap_df.loc[idx, 'Nama Variasi']
+    
+            if pd.notna(nama_variasi_ori):
+                var_str = str(nama_variasi_ori).strip()
+                part_to_append = ''
+    
+                if ',' in var_str:
+                    parts = [p.strip().upper() for p in var_str.split(',')]
+                    # Definisikan kata kunci UKURAN/JENIS KERTAS yang ingin diambil
+                    # (Anda bisa tambahkan 'A5', 'B5', 'HVS', dll. jika perlu)
+                    size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7'} 
+    
+                    # Cari bagian yang cocok dengan keywords ukuran/jenis
+                    relevant_parts = [p for p in parts if p in size_keywords]
+    
+                    if relevant_parts:
+                        # Jika ditemukan, ambil yang pertama (atau gabungkan jika ada > 1)
+                        part_to_append = relevant_parts[0] 
+                        # Jika ingin menggabung: part_to_append = ' '.join(relevant_parts)
+                    # Jika tidak ada bagian relevan setelah split (misal "HITAM,BIRU"), part_to_append tetap ''
+    
+                else:
+                    # Tidak ada koma, ambil seluruh variasi
+                    part_to_append = var_str
+    
+                # Hanya gabungkan jika part_to_append tidak kosong
+                if part_to_append:
+                    new_product_names.loc[idx] = f"{rekap_df.loc[idx, 'Nama Produk']} ({part_to_append})"
+
+        # Update DataFrame asli dengan nama produk yang sudah dimodifikasi
+        rekap_df.loc[kondisi, 'Nama Produk'] = new_product_names
 
     # Gabungkan dengan data seller conversion
     iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
@@ -253,15 +223,42 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
 
     if 'Nama Variasi' in rekap_df.columns:
-        # Ekstrak bagian relevan dari variasi HANYA untuk produk khusus
-        relevant_variations = rekap_df.loc[kondisi, 'Nama Variasi'].apply(extract_relevant_variation_part)
+        # Buat Series baru untuk menampung hasil modifikasi
+        new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy() # Salin nama produk asli dulu
     
-        # Buat nama baru HANYA jika ada bagian relevan yang ditemukan
-        # Gunakan Series boolean `kondisi` dan `relevant_variations != ''` untuk filter yang tepat
-        mask_to_update = kondisi & (relevant_variations != '')
-        if mask_to_update.any(): # Hanya lakukan update jika ada baris yang memenuhi syarat
-            new_product_names = rekap_df.loc[mask_to_update, 'Nama Produk'] + ' (' + relevant_variations[mask_to_update] + ')'
-            rekap_df.loc[mask_to_update, 'Nama Produk'] = new_product_names
+        # Loop melalui index baris yang memenuhi kondisi produk khusus
+        for idx in new_product_names.index:
+            nama_variasi_ori = rekap_df.loc[idx, 'Nama Variasi']
+    
+            if pd.notna(nama_variasi_ori):
+                var_str = str(nama_variasi_ori).strip()
+                part_to_append = ''
+    
+                if ',' in var_str:
+                    parts = [p.strip().upper() for p in var_str.split(',')]
+                    # Definisikan kata kunci UKURAN/JENIS KERTAS yang ingin diambil
+                    # (Anda bisa tambahkan 'A5', 'B5', 'HVS', dll. jika perlu)
+                    size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7'} 
+    
+                    # Cari bagian yang cocok dengan keywords ukuran/jenis
+                    relevant_parts = [p for p in parts if p in size_keywords]
+    
+                    if relevant_parts:
+                        # Jika ditemukan, ambil yang pertama (atau gabungkan jika ada > 1)
+                        part_to_append = relevant_parts[0] 
+                        # Jika ingin menggabung: part_to_append = ' '.join(relevant_parts)
+                    # Jika tidak ada bagian relevan setelah split (misal "HITAM,BIRU"), part_to_append tetap ''
+    
+                else:
+                    # Tidak ada koma, ambil seluruh variasi
+                    part_to_append = var_str
+    
+                # Hanya gabungkan jika part_to_append tidak kosong
+                if part_to_append:
+                    new_product_names.loc[idx] = f"{rekap_df.loc[idx, 'Nama Produk']} ({part_to_append})"
+    
+        # Update DataFrame asli dengan nama produk yang sudah dimodifikasi
+        rekap_df.loc[kondisi, 'Nama Produk'] = new_product_names
 
     iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
