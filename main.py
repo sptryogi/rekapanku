@@ -72,43 +72,51 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
 
-    # --- PERUBAHAN 2: Buat kolom sementara yang bersih di rekap_df ---
     if 'Nama Produk' in rekap_df.columns:
         rekap_df['Nama Produk Clean Temp'] = rekap_df['Nama Produk'].astype(str).str.replace('\xa0', ' ').str.replace(r'\s+', ' ', regex=True).str.strip()
-        # Gunakan kolom bersih ini untuk pengecekan kondisi
         kondisi = rekap_df['Nama Produk Clean Temp'].isin(produk_khusus)
     else:
-        # Jika kolom 'Nama Produk' tidak ada, kondisi selalu False
         kondisi = pd.Series([False] * len(rekap_df), index=rekap_df.index)
     
-    
     if 'Nama Variasi' in rekap_df.columns:
-        new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy() # Salin nama produk asli (belum bersih)
+        new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy()
     
         for idx in new_product_names.index:
+            nama_produk_asli = rekap_df.loc[idx, 'Nama Produk'] # Ambil nama produk asli (belum bersih)
+            nama_produk_clean = rekap_df.loc[idx, 'Nama Produk Clean Temp'] # Ambil nama produk bersih
             nama_variasi_ori = rekap_df.loc[idx, 'Nama Variasi']
     
             if pd.notna(nama_variasi_ori):
                 var_str = str(nama_variasi_ori).strip()
                 part_to_append = ''
     
-                if ',' in var_str:
+                # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
+                if "CUSTOM AL QURAN MENGENANG" in nama_produk_clean:
+                    if ',' in var_str:
+                        # Ambil bagian sebelum koma pertama
+                        part_to_append = var_str.split(',', 1)[0].strip()
+                    else:
+                        # Jika tidak ada koma (meskipun seharusnya ada), ambil seluruhnya
+                        part_to_append = var_str
+                # --- AKHIR LOGIKA KHUSUS ---
+    
+                # --- Logika Lama untuk Produk Khusus Lainnya ---
+                elif ',' in var_str: # Hanya proses jika ada koma untuk produk lain
                     parts = [p.strip().upper() for p in var_str.split(',')]
-                    size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7', 'HVS', 'KORAN'} # Tambahkan jenis kertas jika perlu
+                    size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7', 'HVS', 'KORAN'}
                     relevant_parts = [p for p in parts if p in size_keywords]
                     if relevant_parts:
                         part_to_append = relevant_parts[0]
-                else:
+                else: # Tidak ada koma, ambil seluruh variasi
                     part_to_append = var_str
+                # --- Akhir Logika Lama ---
     
+                # Gabungkan HANYA jika part_to_append tidak kosong
                 if part_to_append:
-                    # Gabungkan dengan nama produk ASLI (bukan yang bersih)
-                    new_product_names.loc[idx] = f"{rekap_df.loc[idx, 'Nama Produk']} ({part_to_append})"
+                    new_product_names.loc[idx] = f"{nama_produk_asli} ({part_to_append})"
     
-        # Update DataFrame asli dengan nama produk yang sudah dimodifikasi
         rekap_df.loc[kondisi, 'Nama Produk'] = new_product_names
     
-    # --- PERUBAHAN 3: Hapus kolom sementara ---
     if 'Nama Produk Clean Temp' in rekap_df.columns:
         rekap_df.drop(columns=['Nama Produk Clean Temp'], inplace=True)
 
@@ -224,43 +232,51 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
 
-    # --- PERUBAHAN 2: Buat kolom sementara yang bersih di rekap_df ---
     if 'Nama Produk' in rekap_df.columns:
         rekap_df['Nama Produk Clean Temp'] = rekap_df['Nama Produk'].astype(str).str.replace('\xa0', ' ').str.replace(r'\s+', ' ', regex=True).str.strip()
-        # Gunakan kolom bersih ini untuk pengecekan kondisi
         kondisi = rekap_df['Nama Produk Clean Temp'].isin(produk_khusus)
     else:
-        # Jika kolom 'Nama Produk' tidak ada, kondisi selalu False
         kondisi = pd.Series([False] * len(rekap_df), index=rekap_df.index)
     
-    
     if 'Nama Variasi' in rekap_df.columns:
-        new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy() # Salin nama produk asli (belum bersih)
+        new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy()
     
         for idx in new_product_names.index:
+            nama_produk_asli = rekap_df.loc[idx, 'Nama Produk'] # Ambil nama produk asli (belum bersih)
+            nama_produk_clean = rekap_df.loc[idx, 'Nama Produk Clean Temp'] # Ambil nama produk bersih
             nama_variasi_ori = rekap_df.loc[idx, 'Nama Variasi']
     
             if pd.notna(nama_variasi_ori):
                 var_str = str(nama_variasi_ori).strip()
                 part_to_append = ''
     
-                if ',' in var_str:
+                # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
+                if "CUSTOM AL QURAN MENGENANG" in nama_produk_clean:
+                    if ',' in var_str:
+                        # Ambil bagian sebelum koma pertama
+                        part_to_append = var_str.split(',', 1)[0].strip()
+                    else:
+                        # Jika tidak ada koma (meskipun seharusnya ada), ambil seluruhnya
+                        part_to_append = var_str
+                # --- AKHIR LOGIKA KHUSUS ---
+    
+                # --- Logika Lama untuk Produk Khusus Lainnya ---
+                elif ',' in var_str: # Hanya proses jika ada koma untuk produk lain
                     parts = [p.strip().upper() for p in var_str.split(',')]
-                    size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7', 'HVS', 'KORAN'} # Tambahkan jenis kertas jika perlu
+                    size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7', 'HVS', 'KORAN'}
                     relevant_parts = [p for p in parts if p in size_keywords]
                     if relevant_parts:
                         part_to_append = relevant_parts[0]
-                else:
+                else: # Tidak ada koma, ambil seluruh variasi
                     part_to_append = var_str
+                # --- Akhir Logika Lama ---
     
+                # Gabungkan HANYA jika part_to_append tidak kosong
                 if part_to_append:
-                    # Gabungkan dengan nama produk ASLI (bukan yang bersih)
-                    new_product_names.loc[idx] = f"{rekap_df.loc[idx, 'Nama Produk']} ({part_to_append})"
+                    new_product_names.loc[idx] = f"{nama_produk_asli} ({part_to_append})"
     
-        # Update DataFrame asli dengan nama produk yang sudah dimodifikasi
         rekap_df.loc[kondisi, 'Nama Produk'] = new_product_names
     
-    # --- PERUBAHAN 3: Hapus kolom sementara ---
     if 'Nama Produk Clean Temp' in rekap_df.columns:
         rekap_df.drop(columns=['Nama Produk Clean Temp'], inplace=True)
 
