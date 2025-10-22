@@ -66,7 +66,8 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
     produk_khusus = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
-        "AL QUR'AN GOLD TERMURAH"
+        "AL QUR'AN GOLD TERMURAH",
+        "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
@@ -180,7 +181,8 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
     produk_khusus = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
-        "AL QUR'AN GOLD TERMURAH"
+        "AL QUR'AN GOLD TERMURAH",
+        "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
