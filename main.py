@@ -1495,7 +1495,15 @@ if marketplace_choice:
     
     # Kondisi untuk menampilkan tombol proses
     show_shopee_button = marketplace_choice == "Shopee" and uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller
-    show_tiktok_button = marketplace_choice == "TikTok" and uploaded_income_tiktok and uploaded_semua_pesanan and uploaded_creator_order and uploaded_pdfs
+    tiktok_files_ok = marketplace_choice == "TikTok" and uploaded_income_tiktok and uploaded_semua_pesanan
+    
+    show_tiktok_button = False # Inisialisasi
+    if tiktok_files_ok and store_choice == "DamaStore":
+        # DamaStore tidak butuh creator order, tapi butuh PDF
+        show_tiktok_button = uploaded_pdfs
+    elif tiktok_files_ok and store_choice != "DamaStore":
+        # Toko lain (HumanStore) butuh creator order dan PDF
+        show_tiktok_button = uploaded_creator_order and uploaded_pdfs
 
     if show_shopee_button or show_tiktok_button:
         button_label = f"🚀 Mulai Proses untuk {marketplace_choice} - {store_choice}"
@@ -1573,7 +1581,14 @@ if marketplace_choice:
                     # --- ALUR PROSES TIKTOK BARU ---
                     status_text.text("Membaca file TikTok...")
                     # Baca sheet 'Order details' dan langsung bersihkan kolomnya
-                    order_details_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Order details', header=0)
+                    order_details_df = pd.read_excel(
+                        uploaded_income_tiktok, 
+                        sheet_name='Order details', 
+                        header=0,
+                        # Ini memaksa kolom dibaca sebagai Teks, bukan Angka
+                        # Kita masukkan 2 versi (huruf besar/kecil) untuk berjaga-jaga
+                        dtype={'ORDER/ADJUSTMENT ID': str, 'Order/adjustment ID': str}
+                    )
                     order_details_df = clean_columns(order_details_df)
                     order_details_df.columns = [col.upper() for col in order_details_df.columns]
                     # Baca sheet 'Reports' dan langsung bersihkan kolomnya
@@ -1602,8 +1617,19 @@ if marketplace_choice:
                     semua_pesanan_df.columns = semua_pesanan_df.columns.str.strip()
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
                     semua_pesanan_df.columns = [col.upper() for col in semua_pesanan_df.columns]
-                    creator_order_all_df = clean_columns(pd.read_excel(uploaded_creator_order))
-                    creator_order_all_df.columns = [col.upper() for col in creator_order_all_df.columns]
+                    if uploaded_creator_order:
+                        creator_order_all_df = clean_columns(
+                            pd.read_excel(
+                                uploaded_creator_order,
+                                # Paksa kolom ID Pesanan dibaca sebagai Teks
+                                dtype={'ID PESANAN': str, 'Id Pesanan': str} 
+                            )
+                        )
+                        creator_order_all_df.columns = [col.upper() for col in creator_order_all_df.columns]
+                    else:
+                        # Buat DataFrame kosong jika file tidak di-upload (kasus DamaStore)
+                        # Ini penting agar `process_rekap_tiktok` tidak error
+                        creator_order_all_df = pd.DataFrame()
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
                     status_text.text(f"Memproses {len(uploaded_pdfs)} file PDF nota resi...")
