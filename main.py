@@ -1006,35 +1006,42 @@ def parse_pdf_receipt(pdf_file):
 
 # KODE BARU (Ganti seluruh fungsi ini)
 def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_df, store_choice):
-    """Fungsi untuk memproses dan membuat sheet 'REKAP' untuk TikTok dengan logika baru."""
+    """Fungsi untuk memproses dan membuat sheet 'REKAP' untuk TikTok dengan logika baru (tanpa groupby kedua)."""
     # 1. PREPARASI DATA & MERGE AWAL
-    order_details_df['ORDER/ADJUSTMENT ID'] = order_details_df['ORDER/ADJUSTMENT ID'].astype(str)
-    semua_pesanan_df['ORDER ID'] = semua_pesanan_df['ORDER ID'].astype(str)
-    creator_order_all_df['ID PESANAN'] = creator_order_all_df['ID PESANAN'].astype(str)
+    # Pastikan ID dikonversi ke string SEBELUM merge
+    order_details_df['ORDER/ADJUSTMENT ID'] = order_details_df['ORDER/ADJUSTMENT ID'].astype(str).str.replace(r'\.0$', '', regex=True) # Hapus .0 jika ada
+    semua_pesanan_df['ORDER ID'] = semua_pesanan_df['ORDER ID'].astype(str).str.replace(r'\.0$', '', regex=True)
+    creator_order_all_df['ID PESANAN'] = creator_order_all_df['ID PESANAN'].astype(str).str.replace(r'\.0$', '', regex=True)
 
-    # Pastikan nama kolom konsisten (misal: UPPERCASE seperti di kode Anda selanjutnya)
     order_details_df.columns = [col.upper().strip() for col in order_details_df.columns]
     semua_pesanan_df.columns = [col.upper().strip() for col in semua_pesanan_df.columns]
     creator_order_all_df.columns = [col.upper().strip() for col in creator_order_all_df.columns]
 
-    # 2. MERGE AWAL (Kode Anda yang sudah ada)
+    # 2. MERGE AWAL
     rekap_df = pd.merge(
         order_details_df,
         semua_pesanan_df,
         left_on='ORDER/ADJUSTMENT ID',
         right_on='ORDER ID',
-        how='left'
+        how='left' # Gunakan left merge untuk menjaga semua order details
     )
 
-    # 3. FILTER PESANAN BATAL/REFUND & SETTLEMENT NOL (Kode Anda yang sudah ada)
-    # ... (Blok filter Cancel/Return Anda) ...
+    # Isi NaN pada kolom hasil merge (jika ada order details tanpa padanan di semua_pesanan)
+    cols_from_semua_pesanan = ['PRODUCT NAME', 'VARIATION', 'QUANTITY', 
+                               'SKU UNIT ORIGINAL PRICE', 'SKU SUBTOTAL BEFORE DISCOUNT', 
+                               'SKU SELLER DISCOUNT'] # Sesuaikan jika ada kolom lain
+    for col in cols_from_semua_pesanan:
+        if col not in rekap_df.columns:
+             rekap_df[col] = np.nan # Tambahkan kolom jika tidak ada sama sekali
+
+
+    # 3. FILTER PESANAN BATAL/REFUND & SETTLEMENT NOL
     if 'CANCELLATION/RETURN TYPE' in rekap_df.columns:
         cancelled_orders = rekap_df[rekap_df['CANCELLATION/RETURN TYPE'].fillna('').isin(['Cancel', 'Return/Refund'])]['ORDER ID'].unique()
         if len(cancelled_orders) > 0:
             st.warning(f"Menghapus {len(cancelled_orders)} pesanan karena status Cancel/Return...")
             rekap_df = rekap_df[~rekap_df['ORDER ID'].isin(cancelled_orders)].copy()
 
-    # ... (Blok filter Total Settlement Amount Anda) ...
     if 'TOTAL SETTLEMENT AMOUNT' in order_details_df.columns and 'ORDER/ADJUSTMENT ID' in order_details_df.columns:
          zero_settlement_ids = order_details_df[pd.to_numeric(order_details_df['TOTAL SETTLEMENT AMOUNT'], errors='coerce').fillna(0) == 0]['ORDER/ADJUSTMENT ID'].astype(str).unique()
          if len(zero_settlement_ids) > 0:
@@ -1045,151 +1052,145 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
              if removed_count > 0:
                  st.warning(f"Menghapus {removed_count} pesanan tambahan karena Total Settlement Amount = 0.")
 
+    # Jika rekap_df kosong setelah filter, hentikan lebih awal
+    if rekap_df.empty:
+        st.warning("Tidak ada data REKAP yang tersisa setelah filter.")
+        # Kembalikan DataFrame kosong dengan kolom yang diharapkan
+        empty_cols = ['No.', 'No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Nama Produk',
+                      'Variasi', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Sebelum Diskon',
+                      'Diskon Penjual', 'Total Harga Setelah Diskon', 'Komisi Affiliate',
+                      'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Biaya Layanan Cashback Bonus 1,5%',
+                      'Biaya Layanan Voucher Xtra', 'Biaya Proses Pesanan', 'Total Penghasilan']
+        return pd.DataFrame(columns=empty_cols)
 
-    # 4. EKSTRAKSI VARIASI & PEMBERSIHAN DATA SEBELUM GROUPBY (Kode Anda yang sudah ada)
-    rekap_df['Variasi'] = rekap_df['VARIATION'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
-    if 'PRODUCT NAME' in rekap_df.columns:
-        rekap_df['PRODUCT NAME'] = rekap_df['PRODUCT NAME'].astype(str).str.strip()
-    if 'Variasi' in rekap_df.columns:
-        rekap_df['Variasi'] = rekap_df['Variasi'].astype(str).str.strip()
+
+    # 4. EKSTRAKSI VARIASI & PEMBERSIHAN DATA
+    # Isi NaN di VARIATION sebelum ekstraksi
+    rekap_df['VARIATION'] = rekap_df['VARIATION'].fillna('')
+    rekap_df['Variasi'] = rekap_df['VARIATION'].astype(str).str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+    rekap_df['PRODUCT NAME'] = rekap_df['PRODUCT NAME'].astype(str).str.strip().fillna('N/A') # Isi NaN Product Name
+    rekap_df['Variasi'] = rekap_df['Variasi'].astype(str).str.strip()
 
     cols_to_clean = [
-        'SKU SUBTOTAL BEFORE DISCOUNT', 'SKU SELLER DISCOUNT', 'QUANTITY', 
+        'SKU SUBTOTAL BEFORE DISCOUNT', 'SKU SELLER DISCOUNT', 'QUANTITY',
         'BONUS CASHBACK SERVICE FEE', 'VOUCHER XTRA SERVICE FEE', 'TOTAL SETTLEMENT AMOUNT',
-        'SKU UNIT ORIGINAL PRICE' # Penting untuk Harga Satuan nanti
+        'SKU UNIT ORIGINAL PRICE'
     ]
     for col in cols_to_clean:
         if col in rekap_df.columns:
-            # Menggunakan regex yang lebih sederhana untuk angka (termasuk desimal jika ada)
             rekap_df[col] = (rekap_df[col].astype(str)
-                             .str.replace(r'[^\d\.\-]', '', regex=True)) # Izinkan titik dan minus
-            rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0).abs() # .abs() sebaiknya di akhir
+                             .str.replace(r'[^\d\.\-]', '', regex=True))
+            rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0).abs()
 
 
-    # 2. LOGIKA AGREGASI PRODUK (Sekarang akan bekerja dengan benar)
+    # 5. LOGIKA AGREGASI PRODUK (GROUPBY PERTAMA)
     agg_rules = {
-        'QUANTITY': 'sum', # <-- Penjumlahan Kuantitas terjadi di sini
+        'QUANTITY': 'sum',
         'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
         'SKU SELLER DISCOUNT': 'sum',
         'ORDER CREATED TIME(UTC)': 'first',
         'ORDER SETTLED TIME(UTC)': 'first',
-        'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga satuan pertama
-        'BONUS CASHBACK SERVICE FEE': 'sum', # Jumlahkan biaya ini
-        'VOUCHER XTRA SERVICE FEE': 'sum',   # Jumlahkan biaya ini
-        'TOTAL SETTLEMENT AMOUNT': 'first' # Ambil settlement amount pertama (biasanya sama per pesanan)
+        'SKU UNIT ORIGINAL PRICE': 'first',
+        'BONUS CASHBACK SERVICE FEE': 'sum',
+        'VOUCHER XTRA SERVICE FEE': 'sum',
+        'TOTAL SETTLEMENT AMOUNT': 'first'
     }
-    # Grouping berdasarkan ID Pesanan, Nama Produk, dan Variasi
-    rekap_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False).agg(agg_rules)
-    rekap_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True) # Ganti nama setelah agregasi
-    
-    # 3. MENGHITUNG BIAYA-BIAYA BARU (setelah agregasi)
-    rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'] - rekap_df['SKU SELLER DISCOUNT']
-    rekap_df['Biaya Komisi Platform 8%'] = rekap_df['Total Harga Setelah Diskon'] * 0.08
-    rekap_df['Komisi Dinamis 5%'] = rekap_df['Total Harga Setelah Diskon'] * 0.05
-    
-    product_count = rekap_df.groupby('ORDER ID')['ORDER ID'].transform('size')
-    rekap_df['Biaya Layanan Cashback Bonus 1,5%'] = rekap_df['BONUS CASHBACK SERVICE FEE'] / product_count
-    rekap_df['Biaya Layanan Voucher Xtra'] = rekap_df['VOUCHER XTRA SERVICE FEE'] / product_count
-    rekap_df['Biaya Proses Pesanan'] = 1250 / product_count
+    # Penting: Pastikan kolom grouping tidak ada NaN sebelum groupby
+    rekap_df['ORDER ID'] = rekap_df['ORDER ID'].fillna('UNKNOWN_ORDER')
+    rekap_df['PRODUCT NAME'] = rekap_df['PRODUCT NAME'].fillna('UNKNOWN_PRODUCT')
+    rekap_df['Variasi'] = rekap_df['Variasi'].fillna('') # Variasi kosong itu valid
 
-    # 4. MENGAMBIL KOMISI AFFILIATE
-    creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
-    # Merge affiliate HANYA jika bukan DamaStore
-    if store_choice != "DamaStore":
-        rekap_df = pd.merge(
-            rekap_df,
-            creator_order_all_df[['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL']],
-            left_on=['ORDER ID', 'PRODUCT NAME', 'Variasi'],
-            right_on=['ID PESANAN', 'PRODUK', 'Variasi_Clean'],
-            how='left'
-        )
-        rekap_df.rename(columns={'PEMBAYARAN KOMISI AKTUAL': 'Komisi Affiliate'}, inplace=True)
-        rekap_df['Komisi Affiliate'] = pd.to_numeric(rekap_df['Komisi Affiliate'], errors='coerce').fillna(0).abs() # Pastikan numerik dan positif
-        rekap_df.drop(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean'], inplace=True, errors='ignore')
+    rekap_aggregated_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False).agg(agg_rules)
+    rekap_aggregated_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True)
+
+    # Jika hasil agregasi kosong, hentikan
+    if rekap_aggregated_df.empty:
+         st.warning("DataFrame menjadi kosong setelah agregasi pertama.")
+         # Kembalikan DataFrame kosong
+         empty_cols = ['No.', 'No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Nama Produk',
+                       'Variasi', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Sebelum Diskon',
+                       'Diskon Penjual', 'Total Harga Setelah Diskon', 'Komisi Affiliate',
+                       'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Biaya Layanan Cashback Bonus 1,5%',
+                       'Biaya Layanan Voucher Xtra', 'Biaya Proses Pesanan', 'Total Penghasilan']
+         return pd.DataFrame(columns=empty_cols)
+
+
+    # 6. MENGHITUNG BIAYA-BIAYA BARU (setelah agregasi pertama)
+    rekap_aggregated_df['Total Harga Setelah Diskon'] = rekap_aggregated_df['SKU SUBTOTAL BEFORE DISCOUNT'] - rekap_aggregated_df['SKU SELLER DISCOUNT']
+    rekap_aggregated_df['Biaya Komisi Platform 8%'] = rekap_aggregated_df['Total Harga Setelah Diskon'] * 0.08
+    rekap_aggregated_df['Komisi Dinamis 5%'] = rekap_aggregated_df['Total Harga Setelah Diskon'] * 0.05
+
+    product_count = rekap_aggregated_df.groupby('ORDER ID')['ORDER ID'].transform('size')
+    # Hindari pembagian dengan nol
+    rekap_aggregated_df['Biaya Layanan Cashback Bonus 1,5%'] = np.where(product_count > 0, rekap_aggregated_df['BONUS CASHBACK SERVICE FEE'] / product_count, 0)
+    rekap_aggregated_df['Biaya Layanan Voucher Xtra'] = np.where(product_count > 0, rekap_aggregated_df['VOUCHER XTRA SERVICE FEE'] / product_count, 0)
+    rekap_aggregated_df['Biaya Proses Pesanan'] = np.where(product_count > 0, 1250 / product_count, 0)
+
+
+    # 7. MENGAMBIL KOMISI AFFILIATE
+    if not creator_order_all_df.empty and 'ID PESANAN' in creator_order_all_df.columns:
+        creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].astype(str).str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+        if store_choice != "DamaStore":
+            rekap_aggregated_df = pd.merge(
+                rekap_aggregated_df,
+                creator_order_all_df[['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL']],
+                left_on=['ORDER ID', 'PRODUCT NAME', 'Variasi'],
+                right_on=['ID PESANAN', 'PRODUK', 'Variasi_Clean'],
+                how='left'
+            )
+            rekap_aggregated_df.rename(columns={'PEMBAYARAN KOMISI AKTUAL': 'Komisi Affiliate'}, inplace=True)
+            rekap_aggregated_df['Komisi Affiliate'] = pd.to_numeric(rekap_aggregated_df['Komisi Affiliate'], errors='coerce').fillna(0).abs()
+            rekap_aggregated_df.drop(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean'], inplace=True, errors='ignore')
+        else:
+            rekap_aggregated_df['Komisi Affiliate'] = 0
     else:
-        # Jika DamaStore, buat kolom Komisi Affiliate berisi 0
-        rekap_df['Komisi Affiliate'] = 0
+        # Jika creator_order_all_df kosong atau tidak punya ID PESANAN
+        rekap_aggregated_df['Komisi Affiliate'] = 0
 
-    # 5. RUMUS BARU UNTUK TOTAL PENGHASILAN
-    rekap_df['Total Penghasilan'] = (
-        rekap_df['Total Harga Setelah Diskon'] -
-        rekap_df['Komisi Affiliate'] -
-        rekap_df['Biaya Komisi Platform 8%'] -
-        rekap_df['Komisi Dinamis 5%'] -
-        rekap_df['Biaya Layanan Cashback Bonus 1,5%'] -
-        rekap_df['Biaya Layanan Voucher Xtra'] -
-        rekap_df['Biaya Proses Pesanan']
+
+    # 8. RUMUS BARU UNTUK TOTAL PENGHASILAN
+    rekap_aggregated_df['Total Penghasilan'] = (
+        rekap_aggregated_df['Total Harga Setelah Diskon'] -
+        rekap_aggregated_df['Komisi Affiliate'] -
+        rekap_aggregated_df['Biaya Komisi Platform 8%'] -
+        rekap_aggregated_df['Komisi Dinamis 5%'] -
+        rekap_aggregated_df['Biaya Layanan Cashback Bonus 1,5%'] -
+        rekap_aggregated_df['Biaya Layanan Voucher Xtra'] -
+        rekap_aggregated_df['Biaya Proses Pesanan']
     )
 
-    # 6. MEMBUAT FINAL DATAFRAME
+    # 9. MEMBUAT FINAL DATAFRAME (Langsung dari hasil agregasi pertama)
     rekap_final = pd.DataFrame({
-        'No.': np.arange(1, len(rekap_df) + 1),
-        'No. Pesanan': rekap_df['ORDER ID'],
-        'Waktu Pesanan Dibuat': rekap_df['ORDER CREATED TIME(UTC)'],
-        'Waktu Dana Dilepas': rekap_df['ORDER SETTLED TIME(UTC)'],
-        'Nama Produk': rekap_df['PRODUCT NAME'],
-        'Variasi': rekap_df['Variasi'],
-        'Jumlah Terjual': rekap_df['Jumlah Terjual'],
-        'Harga Satuan': rekap_df['SKU UNIT ORIGINAL PRICE'],
-        'Total Harga Sebelum Diskon': rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'],
-        'Diskon Penjual': rekap_df['SKU SELLER DISCOUNT'],
-        'Total Harga Setelah Diskon': rekap_df['Total Harga Setelah Diskon'],
-        'Komisi Affiliate': rekap_df['Komisi Affiliate'],
-        'Biaya Komisi Platform 8%': rekap_df['Biaya Komisi Platform 8%'],
-        'Komisi Dinamis 5%': rekap_df['Komisi Dinamis 5%'],
-        'Biaya Layanan Cashback Bonus 1,5%': rekap_df['Biaya Layanan Cashback Bonus 1,5%'],
-        'Biaya Layanan Voucher Xtra': rekap_df['Biaya Layanan Voucher Xtra'],
-        'Biaya Proses Pesanan': rekap_df['Biaya Proses Pesanan'],
-        'Total Penghasilan': rekap_df['Total Penghasilan']
+        'No.': np.arange(1, len(rekap_aggregated_df) + 1),
+        'No. Pesanan': rekap_aggregated_df['ORDER ID'],
+        'Waktu Pesanan Dibuat': rekap_aggregated_df['ORDER CREATED TIME(UTC)'],
+        'Waktu Dana Dilepas': rekap_aggregated_df['ORDER SETTLED TIME(UTC)'],
+        'Nama Produk': rekap_aggregated_df['PRODUCT NAME'],
+        'Variasi': rekap_aggregated_df['Variasi'],
+        'Jumlah Terjual': rekap_aggregated_df['Jumlah Terjual'],
+        'Harga Satuan': rekap_aggregated_df['SKU UNIT ORIGINAL PRICE'],
+        'Total Harga Sebelum Diskon': rekap_aggregated_df['SKU SUBTOTAL BEFORE DISCOUNT'],
+        'Diskon Penjual': rekap_aggregated_df['SKU SELLER DISCOUNT'],
+        'Total Harga Setelah Diskon': rekap_aggregated_df['Total Harga Setelah Diskon'],
+        'Komisi Affiliate': rekap_aggregated_df['Komisi Affiliate'],
+        'Biaya Komisi Platform 8%': rekap_aggregated_df['Biaya Komisi Platform 8%'],
+        'Komisi Dinamis 5%': rekap_aggregated_df['Komisi Dinamis 5%'],
+        'Biaya Layanan Cashback Bonus 1,5%': rekap_aggregated_df['Biaya Layanan Cashback Bonus 1,5%'],
+        'Biaya Layanan Voucher Xtra': rekap_aggregated_df['Biaya Layanan Voucher Xtra'],
+        'Biaya Proses Pesanan': rekap_aggregated_df['Biaya Proses Pesanan'],
+        'Total Penghasilan': rekap_aggregated_df['Total Penghasilan']
     })
 
-    # 1. Tentukan kolom mana yang akan dijumlahkan dan mana yang akan diambil nilai pertamanya
-    cols_to_sum = [
-        'Jumlah Terjual',
-        'Total Harga Sebelum Diskon',
-        'Diskon Penjual',
-        'Komisi Affiliate'        
-    ]
-    
-    # Kolom yang nilainya sama untuk semua duplikat, jadi kita ambil yang pertama
-    cols_to_first = [
-        'Waktu Pesanan Dibuat',
-        'Waktu Dana Dilepas',
-        'Harga Satuan',
-        'Biaya Layanan Cashback Bonus 1,5%',
-        'Biaya Layanan Voucher Xtra',
-        'Biaya Proses Pesanan'
-    ]
-    
-    # Buat dictionary aturan agregasi
-    agg_rules_final = {col: 'sum' for col in cols_to_sum}
-    agg_rules_final.update({col: 'first' for col in cols_to_first})
-    
-    # 2. Lakukan grouping berdasarkan No. Pesanan, Nama Produk, dan Variasi
-    #    'as_index=False' penting agar kolom grouping tidak menjadi index
-    rekap_final = rekap_final.groupby(['No. Pesanan', 'Nama Produk', 'Variasi'], as_index=False).agg(agg_rules_final)
-    
-    # 3. Hitung ulang kolom-kolom yang bergantung pada hasil agregasi
-    
-    # Hitung ulang Total Harga Setelah Diskon dari komponen yang sudah dijumlahkan
-    rekap_final['Total Harga Setelah Diskon'] = rekap_final['Total Harga Sebelum Diskon'] - rekap_final['Diskon Penjual']
-    
-    # Hitung ulang biaya berbasis persentase
-    rekap_final['Biaya Komisi Platform 8%'] = rekap_final['Total Harga Setelah Diskon'] * 0.08
-    rekap_final['Komisi Dinamis 5%'] = rekap_final['Total Harga Setelah Diskon'] * 0.05
-    
-    # Hitung ulang Total Penghasilan
-    rekap_final['Total Penghasilan'] = (
-        rekap_final['Total Harga Setelah Diskon'] -
-        rekap_final['Komisi Affiliate'] -
-        rekap_final['Biaya Komisi Platform 8%'] -
-        rekap_final['Komisi Dinamis 5%'] -
-        rekap_final['Biaya Layanan Cashback Bonus 1,5%'] -
-        rekap_final['Biaya Layanan Voucher Xtra'] -
-        rekap_final['Biaya Proses Pesanan']
-    )
-    
-    # 4. Susun ulang kolom dan perbarui nomor baris 'No.'
+    # --- HAPUS BLOK GROUPBY KEDUA YANG REDUNDAN ---
+    # Blok kode yang dimulai dengan:
+    # # 1. Tentukan kolom mana yang akan dijumlahkan...
+    # # ...
+    # rekap_final = rekap_final.groupby(['No. Pesanan', 'Nama Produk', 'Variasi'], as_index=False).agg(agg_rules_final)
+    # # ... sampai sebelum baris ini:
+    # cols_to_blank = ['No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas']
+    # --- AKHIR PENGHAPUSAN ---
+
+    # Susun ulang kolom jika perlu (sesuaikan dengan final_columns_order Anda sebelumnya)
     final_columns_order = [
         'No.', 'No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Nama Produk',
         'Variasi', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Sebelum Diskon',
@@ -1197,11 +1198,20 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Biaya Layanan Cashback Bonus 1,5%',
         'Biaya Layanan Voucher Xtra', 'Biaya Proses Pesanan', 'Total Penghasilan'
     ]
-    rekap_final = rekap_final.reindex(columns=final_columns_order)
-    rekap_final['No.'] = np.arange(1, len(rekap_final) + 1)
+    # Pastikan semua kolom ada sebelum reindex
+    for col in final_columns_order:
+        if col not in rekap_final.columns:
+             rekap_final[col] = 0 # Atau np.nan jika lebih sesuai
+    rekap_final = rekap_final[final_columns_order] # Reorder pakai slicing
 
+    # Kosongkan sel duplikat (tetap diperlukan)
     cols_to_blank = ['No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas']
+    # Pastikan 'No. Pesanan' tidak kosong sebelum duplicated()
+    rekap_final['No. Pesanan'] = rekap_final['No. Pesanan'].fillna('UNKNOWN_ORDER')
     rekap_final.loc[rekap_final['No. Pesanan'].duplicated(), cols_to_blank] = ''
+    # Kembalikan 'UNKNOWN_ORDER' ke kosong jika perlu
+    rekap_final['No. Pesanan'] = rekap_final['No. Pesanan'].replace('UNKNOWN_ORDER', '')
+
 
     return rekap_final.fillna(0)
 
