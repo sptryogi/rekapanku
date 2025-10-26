@@ -1244,7 +1244,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     )
     
     # 3. Isi nilai yang tidak cocok (NaN) dengan 0
-    summary_df['Biaya Ekspedisi'] = summary_df['Biaya Ekspedisi'].fillna(0)
+    summary_df['Biaya Ekspedisi'] = pd.to_numeric(summary_df['Biaya Ekspedisi'], errors='coerce').fillna(0)
 
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
