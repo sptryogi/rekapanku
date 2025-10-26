@@ -1581,16 +1581,25 @@ if marketplace_choice:
                     # --- ALUR PROSES TIKTOK BARU ---
                     status_text.text("Membaca file TikTok...")
                     # Baca sheet 'Order details' dan langsung bersihkan kolomnya
-                    order_details_df = pd.read_excel(
-                        uploaded_income_tiktok, 
-                        sheet_name='Order details', 
-                        header=0,
-                        # Ini memaksa kolom dibaca sebagai Teks, bukan Angka
-                        # Kita masukkan 2 versi (huruf besar/kecil) untuk berjaga-jaga
-                        dtype={'ORDER/ADJUSTMENT ID': str, 'Order/adjustment ID': str}
-                    )
+                    # 1. Baca file Excel seperti biasa (tanpa dtype map)
+                    order_details_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Order details', header=0)
+                    
+                    # 2. SEGERA bersihkan nama kolom (hapus spasi, dll)
                     order_details_df = clean_columns(order_details_df)
                     order_details_df.columns = [col.upper() for col in order_details_df.columns]
+                    
+                    # 3. Sekarang kita TAHU kolomnya bernama "ORDER/ADJUSTMENT ID"
+                    #    Konversi kolom itu dari scientific notation (float) ke string utuh
+                    if 'ORDER/ADJUSTMENT ID' in order_details_df.columns:
+                        # Ubah ke angka (jika dibaca sbg float/scientific notation)
+                        order_details_df['ORDER/ADJUSTMENT ID'] = pd.to_numeric(order_details_df['ORDER/ADJUSTMENT ID'], errors='coerce')
+                        # Format angka itu jadi string tanpa desimal/scientific notation
+                        order_details_df['ORDER/ADJUSTMENT ID'] = order_details_df['ORDER/ADJUSTMENT ID'].apply(lambda x: f"{x:.0f}" if pd.notna(x) else '')
+                        # Ganti string 'nan' (jika ada) menjadi kosong
+                        order_details_df['ORDER/ADJUSTMENT ID'] = order_details_df['ORDER/ADJUSTMENT ID'].replace('nan', '')
+                    else:
+                        st.error("FATAL: Kolom 'ORDER/ADJUSTMENT ID' tidak ditemukan di file 'Order details'.")
+                        st.stop()
                     # Baca sheet 'Reports' dan langsung bersihkan kolomnya
                     reports_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=0)
                     reports_df = clean_columns(reports_df)
@@ -1618,17 +1627,27 @@ if marketplace_choice:
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
                     semua_pesanan_df.columns = [col.upper() for col in semua_pesanan_df.columns]
                     if uploaded_creator_order:
-                        creator_order_all_df = clean_columns(
-                            pd.read_excel(
-                                uploaded_creator_order,
-                                # Paksa kolom ID Pesanan dibaca sebagai Teks
-                                dtype={'ID PESANAN': str, 'Id Pesanan': str} 
-                            )
-                        )
+                        # 1. Baca file Excel
+                        creator_order_all_df = pd.read_excel(uploaded_creator_order)
+                        
+                        # 2. SEGERA bersihkan nama kolom
+                        creator_order_all_df = clean_columns(creator_order_all_df)
                         creator_order_all_df.columns = [col.upper() for col in creator_order_all_df.columns]
+                        
+                        # 3. Konversi kolom ID dari scientific notation (float) ke string utuh
+                        if 'ID PESANAN' in creator_order_all_df.columns:
+                            creator_order_all_df['ID PESANAN'] = pd.to_numeric(creator_order_all_df['ID PESANAN'], errors='coerce')
+                            creator_order_all_df['ID PESANAN'] = creator_order_all_df['ID PESANAN'].apply(lambda x: f"{x:.0f}" if pd.notna(x) else '')
+                            creator_order_all_df['ID PESANAN'] = creator_order_all_df['ID PESANAN'].replace('nan', '')
+                        else:
+                            # Jika DamaStore, ini normal. Jika HumanStore, ini peringatan.
+                            if store_choice != "DamaStore":
+                                st.warning("Kolom 'ID PESANAN' tidak ditemukan di file 'creator order-all'. Komisi Affiliate mungkin 0.")
+                            # Buat kolom kosong agar sisa kode tidak error
+                            creator_order_all_df['ID PESANAN'] = ''
+
                     else:
                         # Buat DataFrame kosong jika file tidak di-upload (kasus DamaStore)
-                        # Ini penting agar `process_rekap_tiktok` tidak error
                         creator_order_all_df = pd.DataFrame()
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
