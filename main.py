@@ -711,9 +711,14 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_df.drop(columns=['LOOKUP_KEY', 'temp_lookup_key'], inplace=True, errors='ignore')
 
     # --- LOGIKA BARU UNTUK TOTAL PEMBELIAN ---
-    produk_custom_str = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan (Custom sisipan 1 hal)"]
+    produk_custom_list = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan (Custom sisipan 1 hal)"]
+    
+    # Ubah list menjadi satu string regex, pisahkan dengan '|' (OR)
+    # Kita gunakan re.escape() untuk memastikan karakter '|' di dalam string tahlilan tidak merusak regex
+    produk_custom_regex = '|'.join(re.escape(s) for s in produk_custom_list)
+
     # Kondisi: jika Nama Produk mengandung string produk custom
-    kondisi_custom = summary_df['Nama Produk'].str.contains(produk_custom_str, na=False)
+    kondisi_custom = summary_df['Nama Produk'].str.contains(produk_custom_regex, na=False)
     
     # Hitung Total Pembelian dengan rumus berbeda jika kondisi terpenuhi
     summary_df['Total Pembelian'] = np.where(
