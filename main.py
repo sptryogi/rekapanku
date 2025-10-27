@@ -57,6 +57,51 @@ def extract_relevant_variation_part(var_str):
             return part # Kembalikan bagian relevan pertama yang ditemukan
     
     return None # Kembalikan None (atau string kosong) jika tidak ada yang cocok
+
+def extract_paper_and_size_variation(var_str):
+    """
+    Mengekstrak Jenis Kertas (HVS, QPP, KK, KORAN, dll.) ATAU 
+    Ukuran/Paket (A5, B5, PAKET 10, dll.) dari string variasi.
+    Mengembalikan bagian relevan yang ditemukan, dipisahkan spasi.
+    """
+    if pd.isna(var_str):
+        return '' # Kembalikan string kosong jika input NaN
+
+    var_str_clean = str(var_str).strip().upper()
+    
+    # Definisikan keywords dan patterns yang dicari
+    # Anda bisa tambahkan jenis kertas atau pola lain di sini
+    paper_types = {'HVS', 'QPP', 'KORAN', 'KK', 'KWARTO', 'BIGBOS', 'ART PAPER'} 
+    size_package_patterns = [
+        r'\b(PAKET\s*\d+)\b',      # Contoh: PAKET 10, PAKET 5
+        r'\b((A|B)\d{1,2})\b'     # Contoh: A5, B5, A6, A7 (hanya kode ukuran)
+    ]
+    
+    relevant_parts_found = []
+    
+    # 1. Cari Jenis Kertas (sebagai kata utuh)
+    # Gunakan regex \b untuk memastikan kata utuh
+    for paper in paper_types:
+        if re.search(r'\b' + re.escape(paper) + r'\b', var_str_clean):
+            # Map KK ke KORAN jika ditemukan
+            relevant_parts_found.append('KORAN' if paper == 'KK' else paper)
+            
+    # 2. Cari Ukuran/Paket menggunakan pola regex
+    for pattern in size_package_patterns:
+        matches = re.findall(pattern, var_str_clean)
+        # findall bisa mengembalikan tuple jika ada group, ambil group utama
+        for match in matches:
+             if isinstance(match, tuple):
+                 # Ambil group pertama yang cocok (misal 'PAKET 10' atau 'A5')
+                 relevant_parts_found.append(match[0].strip()) 
+             else:
+                 relevant_parts_found.append(match.strip())
+
+    # Hilangkan duplikat (jika ada) dan gabungkan dengan spasi
+    # Urutkan agar konsisten (misal selalu 'A5 HVS', bukan kadang 'HVS A5')
+    unique_parts = sorted(list(set(relevant_parts_found)))
+    
+    return ' '.join(unique_parts) # Gabungkan bagian yang relevan
     
 def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     """
@@ -793,13 +838,20 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_
     # --- LOGIKA KHUSUS DAMASTORE ---
     rekap_copy['Nama Produk Original'] = rekap_copy['Nama Produk']
     if 'Nama Variasi' in rekap_copy.columns:
+        # Terapkan fungsi ekstraksi baru
+        rekap_copy['Extracted Variation'] = rekap_copy['Nama Variasi'].apply(extract_paper_and_size_variation)
+        
+        # Buat Nama Produk Display: Gabungkan jika ada hasil ekstraksi
         rekap_copy['Nama Produk Display'] = rekap_copy.apply(
-            lambda row: f"{row['Nama Produk Original']} ({extract_relevant_variation_part(row['Nama Variasi'])})"
-                        if extract_relevant_variation_part(row['Nama Variasi']) else row['Nama Produk Original'],
+            lambda row: f"{row['Nama Produk Original']} ({row['Extracted Variation']})" 
+                        if row['Extracted Variation'] else row['Nama Produk Original'],
             axis=1
         )
     else:
+         # Jika tidak ada kolom Nama Variasi
          rekap_copy['Nama Produk Display'] = rekap_copy['Nama Produk Original']
+         rekap_copy['Extracted Variation'] = '' # Pastikan kolom ada
+
     grouping_key = 'Nama Produk Display'
     # --- AKHIR LOGIKA KHUSUS DAMASTORE ---
 
@@ -807,6 +859,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_
     agg_dict = {
         'Nama Produk Original': 'first',
         'Nama Produk Display': 'first',
+        'Extracted Variation': 'first', # <-- Tambahkan ini jika perlu
         'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
         'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
