@@ -889,13 +889,11 @@ def format_variation_dama(variation, product_name):
 
     return ' '.join(unique_parts_ordered)
 
-def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold=75): # Turunkan threshold sedikit
+def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_primary=80, score_threshold_fallback=75):
     """
-    Mencari harga beli dari KATALOG_DAMA dengan logika baru:
-    1. Fuzzy match nama dasar.
-    2. Hitung skor 'kecocokan atribut' (jenis, ukuran, paket).
-    3. Pilih kandidat dengan skor nama tinggi DAN skor atribut terbaik.
-    4. Fallback ke skor nama saja jika tidak ada atribut yang cocok.
+    Mencari harga beli dari KATALOG_DAMA dengan logika 2-pass (ketat lalu longgar).
+    Pass 1: Fuzzy match nama (>=80) DAN atribut (jenis, ukuran, paket) harus cocok.
+    Pass 2 (Fallback): Jika Pass 1 gagal, cari fuzzy match nama (>=75) saja.
     """
     try:
         if pd.isna(summary_product_name) or not summary_product_name.strip():
@@ -911,11 +909,10 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold=7
 
         base_name_upper_clean = re.sub(r'\s+', ' ', base_name.upper()).strip()
 
-        # 2. Ekstrak Atribut dari Variasi Part (Sama seperti sebelumnya)
+        # 2. Ekstrak Atribut dari Variasi Part
         ukuran_in_var = ''
         jenis_in_var = ''
         paket_in_var = ''
-        # (Anda bisa tambahkan 'warna_in_var' jika diperlukan lagi)
 
         size_match = re.search(r'\b((A|B)\d{1,2})\b', variasi_part)
         if size_match: ukuran_in_var = size_match.group(1)
@@ -928,76 +925,72 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold=7
                 break
 
         package_match = re.search(r'\b(PAKET\s*\d+)\b', variasi_part)
-        if package_match: paket_in_var = package_match.group(1)
+        if package_match: 
+            # Bersihkan spasi agar "PAKET 10" menjadi "PAKET10" untuk pencocokan
+            paket_in_var = package_match.group(1).replace(' ', '') 
+        
+        # --- Inisialisasi untuk 2-Pass ---
+        best_strict_score = -1
+        best_strict_price = 0
+        
+        best_fallback_score = -1
+        best_fallback_price = 0
 
-        # 3. Iterasi Katalog Dama dan Hitung Skor
-        best_overall_score = -1 # Skor gabungan nama + atribut
-        best_name_only_score = -1 # Skor nama saja (fallback)
-        best_price = 0
-        best_price_name_only = 0
-
+        # 3. Iterasi Katalog Dama
         for index, row in katalog_dama_df.iterrows():
-            katalog_name = row['NAMA PRODUK'] # Nama produk di katalog
+            katalog_name = row['NAMA PRODUK']
             katalog_jenis = row['JENIS AL QUR\'AN']
             katalog_ukuran = row['UKURAN']
-            katalog_paket = row['PAKET']
-            # katalog_warna = row['WARNA'] # Jika perlu
-
+            # Bersihkan spasi di data katalog juga untuk pencocokan yang adil
+            katalog_paket = row['PAKET'].replace(' ', '') 
+            
             # Hitung Skor Nama (Fuzzy Match)
             name_score = fuzz.token_set_ratio(base_name_upper_clean, katalog_name)
 
-            # Jika skor nama kurang dari threshold, lewati baris ini
-            if name_score < score_threshold:
-                continue
+            # --- Pass 1: Cek Logika Ketat (Primary Threshold) ---
+            if name_score >= score_threshold_primary:
+                match_ok = True # Asumsikan cocok
 
-            # Hitung Skor Atribut (Manual)
-            attribute_score = 0
-            # Beri poin jika atribut cocok atau jika atribut di variasi kosong (tidak perlu dicocokkan)
-            if jenis_in_var == katalog_jenis or not jenis_in_var:
-                attribute_score += 1
-            if ukuran_in_var == katalog_ukuran or not ukuran_in_var:
-                attribute_score += 1
-            if paket_in_var == katalog_paket or not paket_in_var:
-                 # Jika ada paket di variasi, harus sama persis
-                 if paket_in_var and paket_in_var == katalog_paket:
-                      attribute_score += 1
-                 # Jika tidak ada paket di variasi, pastikan di katalog juga kosong
-                 elif not paket_in_var and katalog_paket == '':
-                      attribute_score += 1
-                 # Kasus lain (paket beda/salah satu kosong) tidak menambah skor
+                # Cek Atribut: Hanya filter JIKA atribut ada di variasi
+                if jenis_in_var and katalog_jenis != jenis_in_var:
+                    match_ok = False
+                if ukuran_in_var and katalog_ukuran != ukuran_in_var:
+                    match_ok = False
+                
+                # Logika Paket: Harus sama persis, atau keduanya kosong
+                if paket_in_var and katalog_paket != paket_in_var:
+                    # Variasi minta paket, tapi paket di katalog BEDA
+                    match_ok = False
+                elif not paket_in_var and katalog_paket != '':
+                    # Variasi TIDAK minta paket, tapi katalog PUNYA paket
+                    match_ok = False
 
-            # (Tambahkan pengecekan warna jika perlu)
+                # Jika semua cek atribut lolos
+                if match_ok:
+                    if name_score > best_strict_score:
+                        best_strict_score = name_score
+                        best_strict_price = row['HARGA']
 
-            # Hitung Skor Gabungan (prioritaskan atribut)
-            # Bobot skor atribut lebih tinggi
-            # Contoh: 3 poin per atribut cocok, 1 poin per 10% skor nama
-            overall_score = (attribute_score * 30) + (name_score / 10) # Sesuaikan bobot jika perlu
+            # --- Pass 2: Simpan Skor Fallback ---
+            if name_score >= score_threshold_fallback:
+                if name_score > best_fallback_score:
+                    best_fallback_score = name_score
+                    best_fallback_price = row['HARGA']
 
-            # Update harga terbaik jika skor gabungan lebih baik
-            if overall_score > best_overall_score:
-                best_overall_score = overall_score
-                best_price = row['HARGA']
+        # 4. Kembalikan Hasil
+        # Prioritaskan hasil dari Pass 1 (strict)
+        if best_strict_score != -1: # Jika ada kecocokan ketat
+            return best_strict_price
+        
+        # Jika tidak ada kecocokan ketat, gunakan hasil Pass 2 (fallback)
+        if best_fallback_score != -1:
+            return best_fallback_price
 
-            # Simpan juga skor nama terbaik sebagai fallback
-            if name_score > best_name_only_score:
-                best_name_only_score = name_score
-                best_price_name_only = row['HARGA']
-
-
-        # 4. Kembalikan Harga
-        # Jika ada kecocokan atribut yang ditemukan (skor > 0 berarti minimal nama mirip)
-        if best_overall_score > (score_threshold / 10): # Pastikan minimal nama mirip
-             # Cek apakah ada kecocokan atribut sama sekali
-             if best_overall_score > (name_score / 10): # Jika skor > skor nama dasar
-                 return best_price
-             else: # Jika tidak ada atribut cocok, gunakan fallback skor nama
-                 return best_price_name_only
-        else:
-             # Jika skor nama pun tidak mencapai threshold, kembalikan 0
-             return 0
+        # Jika tidak ada yang cocok sama sekali
+        return 0
 
     except Exception as e:
-        # st.error(f"Error di get_harga_beli_dama for '{summary_product_name}': {e}") # Uncomment for debugging
+        # st.error(f"Error di get_harga_beli_dama for '{summary_product_name}': {e}")
         return 0
         
 # --- TAMBAHKAN FUNGSI BARU INI ---
