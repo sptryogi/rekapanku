@@ -357,8 +357,8 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     #    Hitung dulu ada berapa produk dalam satu pesanan
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
     #    Bagi 1250 dengan jumlah produk tersebut
-    # rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
-    rekap_df['Biaya Proses Pesanan Dibagi'] = 0
+    rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
+    # rekap_df['Biaya Proses Pesanan Dibagi'] = 0
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
