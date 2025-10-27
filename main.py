@@ -826,179 +826,175 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     return summary_with_total
 
-def format_dama_variation(nama_produk, nama_variasi, color_list_regex):
+def format_variation_dama(variation, product_name):
     """
-    Memformat string variasi DamaStore.
-    - Menghapus warna (dan koma/spasi sekitarnya), kecuali produknya Hijab/Pashmina.
+    Format variasi untuk DamaStore SUMMARY.
+    Menghapus warna kecuali produk adalah Hijab/Pashmina.
     """
-    if pd.isna(nama_variasi):
-        return ''
-    
-    var_str = str(nama_variasi).strip()
-    if not var_str:
+    if pd.isna(variation):
         return ''
 
-    # Cek apakah produk ini harus menyertakan warna
-    nama_produk_lower = str(nama_produk).lower()
-    include_colors = 'hijab' in nama_produk_lower or 'pashmina' in nama_produk_lower or 'pasmina' in nama_produk_lower
+    var_str = str(variation).strip()
+    product_name_upper = str(product_name).upper()
 
-    if include_colors:
-        # Kembalikan semua variasi, hanya bersihkan spasi
-        return re.sub(r'\s+', ' ', var_str).strip(' ,')
+    # Keywords warna (lowercase untuk perbandingan case-insensitive)
+    color_keywords = {'merah', 'biru', 'hijau', 'kuning', 'hitam', 'putih', 'ungu', 'coklat',
+                      'abu', 'pink', 'gold', 'silver', 'cream', 'navy', 'maroon', 'random',
+                      'army', 'olive', 'mocca', 'dusty', 'sage'}
+    # Keywords produk yang warnanya dipertahankan
+    hijab_keywords = {'HIJAB', 'PASHMINA', 'PASMINA'}
 
-    # Jika tidak include colors, filter warnanya
-    # Hapus warna, dan juga koma/spasi di sekitarnya
-    cleaned_var = re.sub(color_list_regex, ' ', var_str, flags=re.IGNORECASE)
-    
-    # Bersihkan spasi/koma ganda yang mungkin tersisa
-    cleaned_var = re.sub(r'[,\s]+', ' ', cleaned_var).strip(' ,')
-    
-    return cleaned_var
+    # Cek apakah warna perlu dipertahankan
+    keep_color = any(keyword in product_name_upper for keyword in hijab_keywords)
 
-def get_harga_beli_dama(summary_product_name, katalog_dama_df, color_list_regex_simple):
-    """Mencari harga beli dari katalog DamaStore."""
-    if pd.isna(summary_product_name) or not summary_product_name:
-        return 0
-    if katalog_dama_df.empty:
-        return 0
+    if keep_color:
+        # Jika warna dipertahankan, kembalikan variasi asli (dibersihkan)
+        return var_str
+    else:
+        # Jika warna perlu dihapus
+        parts = re.split(r'[\s,]+', var_str) # Pisahkan berdasarkan spasi atau koma
+        filtered_parts = [part for part in parts if part.lower() not in color_keywords and part] # Hapus bagian warna & kosong
+        return ' '.join(filtered_parts) # Gabungkan kembali bagian non-warna
 
+def get_harga_beli_dama(summary_product_name, katalog_dama_df):
+    """
+    Mencari harga beli dari KATALOG_DAMA berdasarkan Nama Produk (Variasi).
+    """
     try:
-        # 1. Parse Input: Pisahkan Nama Produk dan (Variasi)
-        base_name_match = summary_product_name.split(' (')[0]
-        base_name = base_name_match.strip().upper()
-        
-        variation_search = re.search(r'\((.*?)\)', summary_product_name)
-        variation_str = (variation_search.group(1) if variation_search else '').upper()
+        if pd.isna(summary_product_name) or not summary_product_name.strip():
+            return 0
 
-        # 2. Extract Features from Variation (Priority)
-        uk_var = re.search(r'\b(A\d|B\d)\b', variation_str)
-        kertas_var = re.search(r'\b(HVS|QPP|KORAN|KK)\b', variation_str)
-        paket_var = re.search(r'\b(PAKET \d+)\b', variation_str)
-        warna_var = re.search(color_list_regex_simple, variation_str) # Cari warna di variasi
+        # 1. Parse Nama Produk Summary: Ekstrak Base Name dan Variasi Part
+        base_name = summary_product_name.strip()
+        variasi_part = ''
+        match = re.match(r'^(.*?)\s*\((.*?)\)$', summary_product_name.strip())
+        if match:
+            base_name = match.group(1).strip()
+            variasi_part = match.group(2).strip().upper() # Variasi sudah uppercase
 
-        # 3. Extract Features from Base Name (Fallback, jika tidak ada di variasi)
-        uk_base = re.search(r'\b(A\d|B\d)\b', base_name)
-        kertas_base = re.search(r'\b(HVS|QPP|KORAN|KK)\b', base_name)
-        
-        # 4. Determine Final Features (Prioritaskan Variasi)
-        ukuran_final = (uk_var.group(0) if uk_var else (uk_base.group(0) if uk_base else None))
-        kertas_final = (kertas_var.group(0) if kertas_var else (kertas_base.group(0) if kertas_base else None))
-        if kertas_final == 'KK': kertas_final = 'KORAN' # Normalisasi
-        
-        paket_final = (paket_var.group(0) if paket_var else None)
-        warna_final = (warna_var.group(1) if warna_var else None) # Group 1 adalah (HITAM|MERAH|...)
+        base_name_upper = base_name.upper()
 
-        # 5. Filter Kandidat
-        candidates = katalog_dama_df.copy()
-        
-        # A. Filter by Base Name (Fuzzy Match)
-        base_name_clean = re.sub(r'[^A-Z0-9\s]', ' ', base_name).strip()
-        candidates['match_score'] = candidates['NAMA PRODUK_NORM'].apply(
-            lambda x: fuzz.token_set_ratio(base_name_clean, x)
-        )
-        # Ambil kandidat dengan skor fuzzy di atas 80
-        candidates = candidates[candidates['match_score'] >= 80]
+        # 2. Ekstrak Keywords dari Variasi Part (Ukuran, Jenis, Paket, Warna)
+        ukuran_in_var = ''
+        jenis_in_var = ''
+        paket_in_var = ''
+        warna_in_var = '' # Warna dari variasi
 
-        if candidates.empty:
-            return 0 # Gagal di fuzzy match
+        size_match = re.search(r'\b((A|B)\d{1,2})\b', variasi_part)
+        if size_match: ukuran_in_var = size_match.group(1)
 
-        # B. Filter by Features
-        if ukuran_final:
-            candidates = candidates[candidates['UKURAN_NORM'] == ukuran_final]
-        if kertas_final:
-            candidates = candidates[candidates['JENIS AL QUR\'AN_NORM'] == kertas_final]
-        if paket_final:
-            candidates = candidates[candidates['PAKET_NORM'] == paket_final]
+        paper_keywords = {'HVS', 'QPP', 'KORAN', 'KK', 'KWARTO', 'BIGBOS', 'ART PAPER'}
+        for paper in paper_keywords:
+            if re.search(r'\b' + re.escape(paper) + r'\b', variasi_part):
+                jenis_in_var = 'KORAN' if paper == 'KK' else paper
+                break # Ambil yang pertama
+
+        package_match = re.search(r'\b(PAKET\s*\d+)\b', variasi_part)
+        if package_match: paket_in_var = package_match.group(1)
+
+        # Cari warna dari variasi
+        color_keywords_set = {'MERAH', 'BIRU', 'HIJAU', 'KUNING', 'HITAM', 'PUTIH', 'UNGU', 'COKLAT',
+                              'ABU', 'PINK', 'GOLD', 'SILVER', 'CREAM', 'NAVY', 'MAROON', 'RANDOM',
+                              'ARMY', 'OLIVE', 'MOCCA', 'DUSTY', 'SAGE'}
+        variasi_words = set(re.split(r'\s+', variasi_part))
+        found_colors = variasi_words.intersection(color_keywords_set)
+        if found_colors:
+            warna_in_var = list(found_colors)[0] # Ambil warna pertama jika ada
+
+        # 3. Tentukan apakah Warna perlu dicocokkan
+        hijab_keywords = {'HIJAB', 'PASHMINA', 'PASMINA'}
+        match_warna = any(keyword in base_name_upper for keyword in hijab_keywords)
+
+        # 4. Filter Katalog Dama
+        filtered_kat = katalog_dama_df.copy()
+
+        # Filter Nama Produk (Gunakan startswith untuk fleksibilitas)
+        filtered_kat = filtered_kat[filtered_kat['NAMA PRODUK'].str.startswith(base_name_upper, na=False)]
+        if filtered_kat.empty: return 0 # Jika nama dasar tidak cocok, stop
+
+        # Filter berdasarkan keyword dari Variasi (utamakan ini)
+        if jenis_in_var:
+            filtered_kat = filtered_kat[filtered_kat['JENIS AL QUR\'AN'] == jenis_in_var]
+        if ukuran_in_var:
+            filtered_kat = filtered_kat[filtered_kat['UKURAN'] == ukuran_in_var]
+        if paket_in_var:
+             # Gunakan contains jika format paket bisa bervariasi
+            filtered_kat = filtered_kat[filtered_kat['PAKET'].str.contains(paket_in_var, na=False)]
             
-        # C. Conditional Color Filter
-        nama_produk_lower = base_name.lower()
-        is_hijab_product = 'hijab' in nama_produk_lower or 'pashmina' in nama_produk_lower or 'pasmina' in nama_produk_lower
+        # Filter Warna secara Kondisional
+        if match_warna and warna_in_var:
+            filtered_kat = filtered_kat[filtered_kat['WARNA'] == warna_in_var]
+        elif match_warna and not warna_in_var:
+             # Jika perlu warna tapi tidak ada di variasi, mungkin filter agar WARNA kosong?
+             # Atau jangan filter warna sama sekali? (Pilih: jangan filter)
+             pass
+        elif not match_warna:
+             # Jika tidak perlu warna, pastikan kolom WARNA di katalog kosong ATAU abaikan saja
+             # Opsi 1: Abaikan kolom WARNA -> tidak perlu filter tambahan
+             # Opsi 2: Pastikan WARNA kosong -> filtered_kat = filtered_kat[filtered_kat['WARNA'] == '']
+             pass # Pilih Opsi 1: Abaikan
 
-        if is_hijab_product:
-            if warna_final:
-                # Produk hijab, HARUS cocok warna
-                candidates = candidates[candidates['WARNA_NORM'] == warna_final]
-            else:
-                # Produk hijab tapi tidak ada warna di variasi?
-                # Mungkin entri katalog juga tidak ada warna.
-                # Kita bisa asumsikan filter WARNA_NORM == '' (kosong)
-                candidates = candidates[candidates['WARNA_NORM'] == '']
+        # 5. Kembalikan Harga
+        if len(filtered_kat) == 1:
+            return filtered_kat['HARGA'].iloc[0]
         else:
-            # Bukan produk hijab, warna tidak penting untuk pencocokan.
-            pass
+            # Jika 0 atau > 1 hasil, kembalikan 0 (atau handle ambiguity)
+            # Anda bisa tambahkan st.warning jika len > 1 untuk debugging
+            # if len(filtered_kat) > 1:
+            #     st.warning(f"Ditemukan {len(filtered_kat)} kandidat harga untuk '{summary_product_name}', harga tidak dapat ditentukan.")
+            return 0
 
-        # 6. Return Price
-        if not candidates.empty:
-            # Jika ada sisa, return harga dari match terbaik (skor fuzzy tertinggi)
-            candidates = candidates.sort_values(by='match_score', ascending=False)
-            return float(candidates.iloc[0]['HARGA'])
-
-        return 0 # No match found
     except Exception as e:
-        # Non-aktifkan warning agar tidak flooding
-        # st.warning(f"Error di get_harga_beli_dama for '{summary_product_name}': {e}")
+        # st.error(f"Error di get_harga_beli_dama for '{summary_product_name}': {e}") # Uncomment for debugging
         return 0
         
 # --- TAMBAHKAN FUNGSI BARU INI ---
-def process_summary_dama(rekap_df, iklan_final_df, harga_custom_tlj_df, katalog_dama_df):
+def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom_tlj_df): # Tambah katalog_dama_df
     """
     Fungsi untuk memproses sheet 'SUMMARY' KHUSUS untuk DAMASTORE (Shopee).
-    Menggabungkan Nama Produk + Variasi (logic baru) & Harga Beli (logic baru).
+    Menggabungkan Nama Produk + Variasi Relevan (tanpa warna kecuali Hijab).
+    Menggunakan KATALOG_DAMA untuk Harga Beli.
     """
-    # --- DAFTAR WARNA UNTUK FILTERING ---
-    COLOR_LIST = [
-        'HITAM', 'PUTIH', 'MERAH', 'BIRU', 'HIJAU', 'KUNING', 'COKLAT', 'COKLAT', 'ABU', 'ABU-ABU', 
-        'NAVY', 'MAROON', 'MARUN', 'PINK', 'UNGU', 'ORANGE', 'JINGGA', 'CREAM', 'MINT', 'LILAC', 
-        'MOCCA', 'GOLD', 'SILVER', 'ARMY', 'MUSTARD', 'TOSCA', 'TOSKA', 'PEACH', 'KHAKI', 'BEIGE', 
-        'SALEM', 'DUSTY', 'OLIVE', 'DENIM', 'WARDAH', 'MILO', 'LATE', 'LATTE'
-    ]
-    # Regex untuk menghapus warna + spasi/koma di sekitarnya
-    color_list_regex = r'[,\s]*\b(' + '|'.join(COLOR_LIST) + r')\b[,\s]*'
-    # Regex untuk mencari warna
-    color_list_regex_simple = r'\b(' + '|'.join(COLOR_LIST) + r')\b'
-    # --- AKHIR DAFTAR WARNA ---
-    
     rekap_copy = rekap_df.copy()
     rekap_copy['No. Pesanan'] = rekap_copy['No. Pesanan'].replace('', np.nan).ffill()
 
-    # --- LOGIKA KHUSUS DAMASTORE (BARU) ---
+    # --- LOGIKA BARU PEMBUATAN NAMA PRODUK DISPLAY ---
     rekap_copy['Nama Produk Original'] = rekap_copy['Nama Produk']
     if 'Nama Variasi' in rekap_copy.columns:
-        # Terapkan fungsi ekstraksi variasi BARU
-        rekap_copy['Cleaned Variation'] = rekap_copy.apply(
-            lambda row: format_dama_variation(row['Nama Produk Original'], row['Nama Variasi'], color_list_regex), 
+        # Terapkan fungsi format variasi baru
+        rekap_copy['Formatted Variation'] = rekap_copy.apply(
+            lambda row: format_variation_dama(row['Nama Variasi'], row['Nama Produk Original']),
             axis=1
         )
-        
-        # Buat Nama Produk Display: Gabungkan jika ada hasil ekstraksi
+        # Buat Nama Produk Display
         rekap_copy['Nama Produk Display'] = rekap_copy.apply(
-            lambda row: f"{row['Nama Produk Original']} ({row['Cleaned Variation']})" 
-                        if row['Cleaned Variation'] else row['Nama Produk Original'],
+            lambda row: f"{row['Nama Produk Original']} ({row['Formatted Variation']})"
+                        if row['Formatted Variation'] else row['Nama Produk Original'],
             axis=1
         )
     else:
-         # Jika tidak ada kolom Nama Variasi
          rekap_copy['Nama Produk Display'] = rekap_copy['Nama Produk Original']
-         rekap_copy['Cleaned Variation'] = '' # Pastikan kolom ada
+         rekap_copy['Formatted Variation'] = ''
 
     grouping_key = 'Nama Produk Display'
-    # --- AKHIR LOGIKA KHUSUS DAMASTORE ---
+    # --- AKHIR LOGIKA BARU ---
 
     # Agregasi data utama dari REKAP
     agg_dict = {
         'Nama Produk Original': 'first',
         'Nama Produk Display': 'first',
-        'Cleaned Variation': 'first', # <-- Tambahkan ini jika perlu
         'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
         'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
         'Total Penghasilan': 'sum'
+        # Hapus agregasi 'Formatted Variation' jika tidak diperlukan di output
     }
     summary_df = rekap_copy.groupby(grouping_key, as_index=False).agg(agg_dict)
     summary_df.rename(columns={'Nama Produk Display': 'Nama Produk'}, inplace=True)
 
-    # --- LOGIKA PENAMBAHAN IKLAN (Disesuaikan untuk Dama) ---
+
+    # --- LOGIKA IKLAN (Tetap sama) ---
     summary_df['Iklan Klik'] = 0.0
     produk_khusus_raw = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "AL QUR'AN GOLD TERMURAH", "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN"]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
@@ -1025,7 +1021,7 @@ def process_summary_dama(rekap_df, iklan_final_df, harga_custom_tlj_df, katalog_
     summary_df.fillna(0, inplace=True)
     # --- AKHIR LOGIKA IKLAN ---
 
-    # Hitungan selanjutnya (Netto, Packing, dll.)
+    # Hitungan selanjutnya
     summary_df['Penjualan Netto'] = (
         summary_df['Total Harga Produk'] - summary_df['Voucher Ditanggung Penjual'] -
         summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 8%'] -
@@ -1033,39 +1029,25 @@ def process_summary_dama(rekap_df, iklan_final_df, harga_custom_tlj_df, katalog_
         summary_df['Biaya Proses Pesanan'] - summary_df['Iklan Klik']
     )
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
-
-    # DamaStore pakai Biaya Ekspedisi = 0
-    summary_df['Biaya Ekspedisi'] = 0
+    summary_df['Biaya Ekspedisi'] = 0 # DamaStore pakai Biaya Ekspedisi = 0
     biaya_ekspedisi_final = summary_df['Biaya Ekspedisi']
 
-    # --- LOGIKA HARGA BELI (BARU) ---
-    # Harga Beli (gunakan 'Nama Produk' yang sudah dimodifikasi dan katalog DAMA)
+    # --- PANGGIL FUNGSI HARGA BELI BARU ---
     summary_df['Harga Beli'] = summary_df['Nama Produk'].apply(
-        lambda x: get_harga_beli_dama(x, katalog_dama_df, color_list_regex_simple)
+        lambda x: get_harga_beli_dama(x, katalog_dama_df) # Panggil fungsi dama
     )
-    # --- AKHIR LOGIKA HARGA BELI (BARU) ---
-
+    # --- AKHIR PERUBAHAN ---
 
     # Harga Custom & Total Pembelian
-    # 1. Buat 'temp_lookup_key' yang formatnya SAMA DENGAN 'LOOKUP_KEY' di file Excel
-    #    Caranya: ganti ' (' menjadi ' ' dan hapus ')'
-    summary_df['temp_lookup_key'] = summary_df['Nama Produk'].astype(str).str.replace(' (', ' ', regex=False).str.replace(')', '', regex=False).str.strip()
-    
-    # 2. Gabungkan dengan data harga custom menggunakan 'temp_lookup_key'
     summary_df = pd.merge(
         summary_df,
         harga_custom_tlj_df[['LOOKUP_KEY', 'HARGA CUSTOM TLJ']],
-        left_on='temp_lookup_key', # <-- Mencocokkan dengan 'CUSTOM... AL AQEEL A6 HVS...'
-        right_on='LOOKUP_KEY',
-        how='left'
+        left_on='Nama Produk',
+        right_on='LOOKUP_KEY', how='left'
     )
-    
-    # 3. Ganti nama kolom dan isi nilai kosong dengan 0
     summary_df.rename(columns={'HARGA CUSTOM TLJ': 'Harga Custom TLJ'}, inplace=True)
     summary_df['Harga Custom TLJ'] = summary_df['Harga Custom TLJ'].fillna(0)
-    
-    # 4. Hapus kolom-kolom sementara
-    summary_df.drop(columns=['LOOKUP_KEY', 'temp_lookup_key'], inplace=True, errors='ignore')
+    summary_df.drop(columns=['LOOKUP_KEY'], inplace=True, errors='ignore')
 
     produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI"
     kondisi_custom = summary_df['Nama Produk Original'].str.contains(produk_custom_str, na=False)
@@ -1080,13 +1062,14 @@ def process_summary_dama(rekap_df, iklan_final_df, harga_custom_tlj_df, katalog_
         biaya_ekspedisi_final - summary_df['Total Pembelian']
     )
 
-    # Hitungan akhir (Persentase, dll.)
+    # ... (Sisa fungsi, termasuk pembuatan DataFrame Final dan baris Total, tetap sama) ...
+    # Pastikan kolom output 'Nama Produk' menggunakan `summary_df['Nama Produk']` (hasil display)
+    # Hapus kolom 'Nama Produk Original' sebelum membuat baris total
     summary_df['Persentase'] = (summary_df.apply(lambda row: row['M1'] / row['Total Harga Produk'] if row['Total Harga Produk'] != 0 else 0, axis=1))
     summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
     summary_df['Penjualan Per Hari'] = round(summary_df['Penjualan Netto'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = round(summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1), 1)
 
-    # Buat DataFrame Final
     summary_final_data = {
         'No': np.arange(1, len(summary_df) + 1),
         'Nama Produk': summary_df['Nama Produk'], # Nama produk display
@@ -1104,11 +1087,9 @@ def process_summary_dama(rekap_df, iklan_final_df, harga_custom_tlj_df, katalog_
     }
     summary_final = pd.DataFrame(summary_final_data)
 
-    # Hapus kolom original name sebelum total
     if 'Nama Produk Original' in summary_final.columns:
          summary_final = summary_final.drop(columns=['Nama Produk Original'])
 
-    # Buat baris total (logika tetap sama)
     total_row = pd.DataFrame(summary_final.sum(numeric_only=True)).T
     total_row['Nama Produk'] = 'Total'
     total_penjualan_netto = total_row['Penjualan Netto'].iloc[0]
@@ -1117,7 +1098,7 @@ def process_summary_dama(rekap_df, iklan_final_df, harga_custom_tlj_df, katalog_
     total_harga_produk = total_row['Total Harga Produk'].iloc[0]
     total_biaya_proses_pesanan = total_row['Biaya Proses Pesanan'].iloc[0]
     total_jumlah_terjual = total_row['Jumlah Terjual'].iloc[0]
-    total_biaya_ekspedisi = total_row['Biaya Ekspedisi'].iloc[0] # Dama pakai Biaya Ekspedisi
+    total_biaya_ekspedisi = total_row['Biaya Ekspedisi'].iloc[0]
     total_m1 = total_penjualan_netto - total_biaya_packing - total_biaya_ekspedisi - total_pembelian
     total_row['M1'] = total_m1
     total_row['Persentase'] = (total_m1 / total_harga_produk) if total_harga_produk != 0 else 0
@@ -1632,7 +1613,37 @@ if marketplace_choice:
     except Exception as e:
         st.error(f"Error saat membaca file 'Harga Custom TLJ.xlsx': {e}")
         st.stop()
-    
+
+    # --- TAMBAHKAN BLOK BARU INI UNTUK MEMBACA KATALOG DAMA ---
+    try:
+        katalog_dama_df = pd.read_excel('KATALOG_DAMA.xlsx') # Pastikan nama file benar
+
+        # Lakukan preprocessing
+        katalog_dama_df.columns = [str(c).strip().upper() for c in katalog_dama_df.columns]
+
+        # Pastikan kolom yang dibutuhkan ada
+        required_dama_cols = ['NAMA PRODUK', 'JENIS AL QUR\'AN', 'WARNA', 'UKURAN', 'PAKET', 'HARGA']
+        if not all(col in katalog_dama_df.columns for col in required_dama_cols):
+            st.error(f"File 'KATALOG_DAMA.xlsx' harus memiliki kolom: {', '.join(required_dama_cols)}")
+            st.stop()
+
+        # Konversi kolom harga ke numerik
+        katalog_dama_df['HARGA'] = pd.to_numeric(katalog_dama_df['HARGA'], errors='coerce').fillna(0)
+
+        # Bersihkan dan normalisasi kolom teks untuk pencocokan
+        for col in ['NAMA PRODUK', 'JENIS AL QUR\'AN', 'WARNA', 'UKURAN', 'PAKET']:
+            # Isi NaN dengan string kosong sebelum operasi string
+            katalog_dama_df[col] = katalog_dama_df[col].fillna('').astype(str).str.strip().str.upper()
+            # Hapus spasi ganda
+            katalog_dama_df[col] = katalog_dama_df[col].str.replace(r'\s+', ' ', regex=True)
+
+    except FileNotFoundError:
+        st.error("Error: File 'KATALOG_DAMA.xlsx' tidak ditemukan.")
+        st.stop()
+    except Exception as e:
+        st.error(f"Error saat membaca file 'KATALOG_DAMA.xlsx': {e}")
+        st.stop()
+        
     st.header("1. Import File Anda")
 
     if marketplace_choice == "Shopee":
@@ -1698,47 +1709,7 @@ if marketplace_choice:
                     if store_choice == "HumanStore":
                         service_fee_df = pd.read_excel(uploaded_income, sheet_name='Service Fee Details', skiprows=1)
                     iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
-                    seller_conversion_df = pd.read_csv(uploaded_seller)
-                    # --- PERUBAHAN: Muat KATALOG_DAMA.xlsx jika DamaStore ---
-                    katalog_dama_df = None # Inisialisasi
-                    if store_choice == "DamaStore":
-                        try:
-                            status_text.text("Membaca file KATALOG DAMA...")
-                            katalog_dama_df = pd.read_excel("KATALOG_DAMA.xlsx")
-                            # Pre-process KATALOG_DAMA
-                            katalog_dama_df.columns = [str(c).strip().upper() for c in katalog_dama_df.columns]
-                            
-                            # Kolom yang diperlukan untuk normalisasi
-                            req_cols = ['NAMA PRODUK', 'JENIS AL QUR\'AN', 'WARNA', 'UKURAN', 'PAKET', 'HARGA']
-                            
-                            for col in req_cols:
-                                if col not in katalog_dama_df.columns:
-                                    st.warning(f"Kolom {col} tidak ada di KATALOG_DAMA.xlsx")
-                                    katalog_dama_df[col] = '' # Buat kolom kosong jika tidak ada
-                            
-                            # Buat kolom _NORM untuk pencocokan
-                            katalog_dama_df['NAMA PRODUK_NORM'] = katalog_dama_df['NAMA PRODUK'].astype(str).str.upper().str.strip()
-                            katalog_dama_df['JENIS AL QUR\'AN_NORM'] = katalog_dama_df['JENIS AL QUR\'AN'].astype(str).str.upper().str.strip()
-                            katalog_dama_df['WARNA_NORM'] = katalog_dama_df['WARNA'].astype(str).str.upper().str.strip()
-                            katalog_dama_df['UKURAN_NORM'] = katalog_dama_df['UKURAN'].astype(str).str.upper().str.strip()
-                            katalog_dama_df['PAKET_NORM'] = katalog_dama_df['PAKET'].astype(str).str.upper().str.strip()
-                            
-                            # Pastikan HARGA adalah numerik
-                            katalog_dama_df['HARGA'] = pd.to_numeric(katalog_dama_df['HARGA'], errors='coerce').fillna(0)
-
-                        except FileNotFoundError:
-                            st.error("Error: File 'KATALOG_DAMA.xlsx' tidak ditemukan. Harga Beli akan 0.")
-                            katalog_dama_df = pd.DataFrame(columns=[
-                                'NAMA PRODUK_NORM', 'JENIS AL QUR\'AN_NORM', 'WARNA_NORM', 
-                                'UKURAN_NORM', 'PAKET_NORM', 'HARGA'
-                            ]) # Buat df kosong
-                        except Exception as e:
-                            st.error(f"Error membaca 'KATALOG_DAMA.xlsx': {e}")
-                            katalog_dama_df = pd.DataFrame(columns=[
-                                'NAMA PRODUK_NORM', 'JENIS AL QUR\'AN_NORM', 'WARNA_NORM', 
-                                'UKURAN_NORM', 'PAKET_NORM', 'HARGA'
-                            ]) # Buat df kosong
-                            
+                    seller_conversion_df = pd.read_csv(uploaded_seller)  
                     progress_bar.progress(20, text="File dimuat. Membersihkan format angka...")
 
                     # ... (Kode pembersihan data keuangan Anda tetap di sini) ...
@@ -1781,7 +1752,7 @@ if marketplace_choice:
     
                     status_text.text("Menyusun sheet 'SUMMARY' (Shopee)...")
                     if store_choice == "DamaStore":
-                        summary_processed = process_summary_dama(rekap_processed, iklan_processed, harga_custom_tlj_df, katalog_dama_df)
+                        summary_processed = process_summary_dama(rekap_processed, iklan_processed, katalog_dama_df, harga_custom_tlj_df)
                     else: # HumanStore atau PacificBookStore
                         summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df, harga_custom_tlj_df, store_type=store_choice)
                     progress_bar.progress(80, text="Sheet 'SUMMARY' selesai.")
