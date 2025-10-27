@@ -889,16 +889,19 @@ def format_variation_dama(variation, product_name):
 
     return ' '.join(unique_parts_ordered)
 
-def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold=85): # Naikkan threshold sedikit
+def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold=75): # Turunkan threshold sedikit
     """
-    Mencari harga beli dari KATALOG_DAMA dengan pencocokan fuzzy pada nama dasar
-    dan filter atribut dari variasi.
+    Mencari harga beli dari KATALOG_DAMA dengan logika baru:
+    1. Fuzzy match nama dasar.
+    2. Hitung skor 'kecocokan atribut' (jenis, ukuran, paket).
+    3. Pilih kandidat dengan skor nama tinggi DAN skor atribut terbaik.
+    4. Fallback ke skor nama saja jika tidak ada atribut yang cocok.
     """
     try:
         if pd.isna(summary_product_name) or not summary_product_name.strip():
             return 0
 
-        # 1. Parse Nama Produk Summary: Ekstrak Base Name dan Variasi Part
+        # 1. Parse Nama Produk Summary
         base_name = summary_product_name.strip()
         variasi_part = ''
         match = re.match(r'^(.*?)\s*\((.*?)\)$', summary_product_name.strip())
@@ -906,13 +909,13 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold=8
             base_name = match.group(1).strip()
             variasi_part = match.group(2).strip().upper()
 
-        base_name_upper_clean = re.sub(r'\s+', ' ', base_name.upper()).strip() # Nama dasar bersih
+        base_name_upper_clean = re.sub(r'\s+', ' ', base_name.upper()).strip()
 
-        # 2. Ekstrak Atribut Relevan dari Variasi Part
+        # 2. Ekstrak Atribut dari Variasi Part (Sama seperti sebelumnya)
         ukuran_in_var = ''
         jenis_in_var = ''
         paket_in_var = ''
-        warna_in_var = ''
+        # (Anda bisa tambahkan 'warna_in_var' jika diperlukan lagi)
 
         size_match = re.search(r'\b((A|B)\d{1,2})\b', variasi_part)
         if size_match: ukuran_in_var = size_match.group(1)
@@ -927,67 +930,71 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold=8
         package_match = re.search(r'\b(PAKET\s*\d+)\b', variasi_part)
         if package_match: paket_in_var = package_match.group(1)
 
-        color_keywords_set = {'MERAH', 'BIRU', 'HIJAU', 'KUNING', 'HITAM', 'PUTIH', 'UNGU', 'COKLAT', 'COKELAT',
-                              'ABU', 'PINK', 'GOLD', 'SILVER', 'CREAM', 'NAVY', 'MAROON', 'RANDOM',
-                              'ARMY', 'OLIVE', 'MOCCA', 'DUSTY', 'SAGE'}
-        found_colors = variasi_words.intersection(color_keywords_set)
-        if found_colors:
-            warna_in_var = list(found_colors)[0]
-
-        # 3. Tentukan apakah Warna perlu dicocokkan (berdasarkan nama dasar)
-        hijab_keywords = {'HIJAB', 'PASHMINA', 'PASMINA'}
-        match_warna_required = any(keyword in base_name_upper_clean for keyword in hijab_keywords)
-
-        # 4. Filter Katalog Dama dengan Fuzzy Matching pada Nama Dasar
-        best_score = 0
-        best_match_row = None
+        # 3. Iterasi Katalog Dama dan Hitung Skor
+        best_overall_score = -1 # Skor gabungan nama + atribut
+        best_name_only_score = -1 # Skor nama saja (fallback)
+        best_price = 0
+        best_price_name_only = 0
 
         for index, row in katalog_dama_df.iterrows():
-            katalog_name = row['NAMA PRODUK'] # Nama produk di katalog (sudah UPPER & cleaned)
-            # Hitung skor kemiripan nama dasar
-            score = fuzz.token_set_ratio(base_name_upper_clean, katalog_name)
+            katalog_name = row['NAMA PRODUK'] # Nama produk di katalog
+            katalog_jenis = row['JENIS AL QUR\'AN']
+            katalog_ukuran = row['UKURAN']
+            katalog_paket = row['PAKET']
+            # katalog_warna = row['WARNA'] # Jika perlu
 
-            if score >= score_threshold:
-                # --- Lolos skor nama dasar, sekarang cek atribut variasi ---
-                match_ok = True # Asumsikan cocok
+            # Hitung Skor Nama (Fuzzy Match)
+            name_score = fuzz.token_set_ratio(base_name_upper_clean, katalog_name)
 
-                # Cek Jenis Kertas (jika ada di variasi)
-                if jenis_in_var and row['JENIS AL QUR\'AN'] != jenis_in_var:
-                    match_ok = False
-                # Cek Ukuran (jika ada di variasi)
-                if match_ok and ukuran_in_var and row['UKURAN'] != ukuran_in_var:
-                    match_ok = False
-                # --- PERBAIKAN LOGIKA PAKET ---
-                # Cek Paket (jika ada di variasi)
-                if match_ok and paket_in_var:
-                    # Pastikan kata "PAKET X" dari variasi SAMA PERSIS dengan di katalog
-                    if row['PAKET'] != paket_in_var:
-                        match_ok = False
-                # Jika di variasi TIDAK ADA info paket, pastikan di katalog juga KOSONG
-                elif match_ok and not paket_in_var: 
-                    if row['PAKET'] != '':
-                        match_ok = False
-                # Cek Warna (jika diperlukan DAN ada di variasi)
-                if match_ok and match_warna_required and warna_in_var and row['WARNA'] != warna_in_var:
-                    match_ok = False
-                # Cek Warna (jika TIDAK diperlukan, pastikan warna di katalog KOSONG)
-                # Dihapus sementara, karena bisa jadi katalog punya warna default meski tidak relevan
-                # if match_ok and not match_warna_required and row['WARNA'] != '':
-                #     match_ok = False
+            # Jika skor nama kurang dari threshold, lewati baris ini
+            if name_score < score_threshold:
+                continue
+
+            # Hitung Skor Atribut (Manual)
+            attribute_score = 0
+            # Beri poin jika atribut cocok atau jika atribut di variasi kosong (tidak perlu dicocokkan)
+            if jenis_in_var == katalog_jenis or not jenis_in_var:
+                attribute_score += 1
+            if ukuran_in_var == katalog_ukuran or not ukuran_in_var:
+                attribute_score += 1
+            if paket_in_var == katalog_paket or not paket_in_var:
+                 # Jika ada paket di variasi, harus sama persis
+                 if paket_in_var and paket_in_var == katalog_paket:
+                      attribute_score += 1
+                 # Jika tidak ada paket di variasi, pastikan di katalog juga kosong
+                 elif not paket_in_var and katalog_paket == '':
+                      attribute_score += 1
+                 # Kasus lain (paket beda/salah satu kosong) tidak menambah skor
+
+            # (Tambahkan pengecekan warna jika perlu)
+
+            # Hitung Skor Gabungan (prioritaskan atribut)
+            # Bobot skor atribut lebih tinggi
+            # Contoh: 3 poin per atribut cocok, 1 poin per 10% skor nama
+            overall_score = (attribute_score * 30) + (name_score / 10) # Sesuaikan bobot jika perlu
+
+            # Update harga terbaik jika skor gabungan lebih baik
+            if overall_score > best_overall_score:
+                best_overall_score = overall_score
+                best_price = row['HARGA']
+
+            # Simpan juga skor nama terbaik sebagai fallback
+            if name_score > best_name_only_score:
+                best_name_only_score = name_score
+                best_price_name_only = row['HARGA']
 
 
-                # Jika semua atribut cocok DAN skornya lebih baik dari sebelumnya
-                if match_ok and score > best_score:
-                    best_score = score
-                    best_match_row = row
-
-        # 5. Kembalikan Harga jika ada kecocokan terbaik
-        if best_match_row is not None:
-            return best_match_row['HARGA']
+        # 4. Kembalikan Harga
+        # Jika ada kecocokan atribut yang ditemukan (skor > 0 berarti minimal nama mirip)
+        if best_overall_score > (score_threshold / 10): # Pastikan minimal nama mirip
+             # Cek apakah ada kecocokan atribut sama sekali
+             if best_overall_score > (name_score / 10): # Jika skor > skor nama dasar
+                 return best_price
+             else: # Jika tidak ada atribut cocok, gunakan fallback skor nama
+                 return best_price_name_only
         else:
-            # Jika tidak ada yang cocok sama sekali
-            # st.warning(f"Harga Beli Dama tidak ditemukan untuk: '{summary_product_name}'") # Uncomment for debugging
-            return 0
+             # Jika skor nama pun tidak mencapai threshold, kembalikan 0
+             return 0
 
     except Exception as e:
         # st.error(f"Error di get_harga_beli_dama for '{summary_product_name}': {e}") # Uncomment for debugging
