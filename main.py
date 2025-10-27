@@ -927,7 +927,8 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
         package_match = re.search(r'\b(PAKET\s*\d+)\b', variasi_part)
         if package_match: 
             # Bersihkan spasi agar "PAKET 10" menjadi "PAKET10" untuk pencocokan
-            paket_in_var = package_match.group(1).replace(' ', '') 
+            # Normalisasi spasi, misal "PAKET  10" atau "PAKET 10" menjadi "PAKET 10"
+            paket_in_var = re.sub(r'\s+', ' ', package_match.group(1)).strip() 
         
         # --- ▼▼▼ TAMBAHKAN BLOK INI ▼▼▼ ---
         warna_in_var = ''
@@ -957,7 +958,7 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
             katalog_jenis = row['JENIS AL QUR\'AN']
             katalog_ukuran = row['UKURAN']
             # Bersihkan spasi di data katalog juga untuk pencocokan yang adil
-            katalog_paket = row['PAKET'].replace(' ', '') 
+            katalog_paket = row['PAKET']
             katalog_warna = row['WARNA']
             
             # Hitung Skor Nama (Fuzzy Match)
@@ -974,22 +975,8 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
                     match_ok = False
                 
                 # Logika Paket: Harus sama persis, atau keduanya kosong
-                if paket_in_var and katalog_paket != paket_in_var:
-                    # Variasi minta paket, tapi paket di katalog BEDA
+                if paket_in_var != katalog_paket:
                     match_ok = False
-                    
-                elif not paket_in_var and katalog_paket != '':
-                    # Variasi TIDAK minta paket, tapi katalog PUNYA paket
-                    match_ok = False
-
-                if match_ok and paket_in_var:
-                    # Pastikan kata "PAKET X" dari variasi SAMA PERSIS dengan di katalog
-                    if row['PAKET'] != paket_in_var:
-                        match_ok = False
-                # Jika di variasi TIDAK ADA info paket, pastikan di katalog juga KOSONG
-                elif match_ok and not paket_in_var: 
-                    if row['PAKET'] != '':
-                        match_ok = False
 
                 if match_warna_required:
                     # Ini adalah produk HIJAB/PASHMINA.
