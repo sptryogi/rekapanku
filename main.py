@@ -885,9 +885,9 @@ def format_variation_dama(variation, product_name):
 
     # Hilangkan duplikat sambil mempertahankan urutan (jika perlu, tapi set lebih mudah)
     # Urutkan untuk konsistensi
-    unique_parts = sorted(list(set(final_parts)), key=lambda x: str(x))
+    unique_parts_ordered = list(dict.fromkeys(final_parts))
 
-    return ' '.join(unique_parts)
+    return ' '.join(unique_parts_ordered)
 
 def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold=85): # Naikkan threshold sedikit
     """
@@ -957,9 +957,16 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold=8
                 # Cek Ukuran (jika ada di variasi)
                 if match_ok and ukuran_in_var and row['UKURAN'] != ukuran_in_var:
                     match_ok = False
+                # --- PERBAIKAN LOGIKA PAKET ---
                 # Cek Paket (jika ada di variasi)
-                if match_ok and paket_in_var and paket_in_var not in row['PAKET']: # Gunakan 'in' jika paket bisa multi
-                    match_ok = False
+                if match_ok and paket_in_var:
+                    # Pastikan kata "PAKET X" dari variasi SAMA PERSIS dengan di katalog
+                    if row['PAKET'] != paket_in_var:
+                        match_ok = False
+                # Jika di variasi TIDAK ADA info paket, pastikan di katalog juga KOSONG
+                elif match_ok and not paket_in_var: 
+                    if row['PAKET'] != '':
+                        match_ok = False
                 # Cek Warna (jika diperlukan DAN ada di variasi)
                 if match_ok and match_warna_required and warna_in_var and row['WARNA'] != warna_in_var:
                     match_ok = False
