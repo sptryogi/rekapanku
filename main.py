@@ -829,36 +829,70 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
 def format_variation_dama(variation, product_name):
     """
     Format variasi untuk DamaStore SUMMARY.
-    Menghapus warna kecuali produk adalah Hijab/Pashmina.
+    Hanya mempertahankan warna JIKA produk adalah Hijab/Pashmina.
+    Mengabaikan variasi '0'.
+    Mempertahankan jenis kertas, ukuran, paket.
     """
     if pd.isna(variation):
         return ''
 
     var_str = str(variation).strip()
+    # Abaikan jika variasi hanya '0'
+    if var_str == '0':
+        return ''
+
     product_name_upper = str(product_name).upper()
 
-    # Keywords warna (lowercase untuk perbandingan case-insensitive)
-    color_keywords = {'merah', 'biru', 'hijau', 'kuning', 'hitam', 'putih', 'ungu', 'coklat',
+    # Keywords warna (lowercase)
+    color_keywords = {'merah', 'biru', 'hijau', 'kuning', 'hitam', 'putih', 'ungu', 'coklat', 'cokelat', # Tambah 'cokelat'
                       'abu', 'pink', 'gold', 'silver', 'cream', 'navy', 'maroon', 'random',
                       'army', 'olive', 'mocca', 'dusty', 'sage'}
     # Keywords produk yang warnanya dipertahankan
     hijab_keywords = {'HIJAB', 'PASHMINA', 'PASMINA'}
+    # Keywords/patterns lain yang selalu dipertahankan
+    keep_keywords = {'HVS', 'QPP', 'KORAN', 'KK', 'KWARTO', 'BIGBOS', 'ART PAPER'}
+    keep_patterns = [r'\b(PAKET\s*\d+)\b', r'\b((A|B)\d{1,2})\b']
 
     # Cek apakah warna perlu dipertahankan
     keep_color = any(keyword in product_name_upper for keyword in hijab_keywords)
 
-    if keep_color:
-        # Jika warna dipertahankan, kembalikan variasi asli (dibersihkan)
-        return var_str
-    else:
-        # Jika warna perlu dihapus
-        parts = re.split(r'[\s,]+', var_str) # Pisahkan berdasarkan spasi atau koma
-        filtered_parts = [part for part in parts if part.lower() not in color_keywords and part] # Hapus bagian warna & kosong
-        return ' '.join(filtered_parts) # Gabungkan kembali bagian non-warna
+    parts = re.split(r'[\s,]+', var_str) # Pisahkan berdasarkan spasi atau koma
+    final_parts = []
 
-def get_harga_beli_dama(summary_product_name, katalog_dama_df):
+    for part in parts:
+        part_upper = part.upper()
+        part_lower = part.lower()
+
+        # Lewati jika kosong atau hanya '0'
+        if not part or part == '0':
+            continue
+
+        # Cek apakah bagian ini adalah warna
+        is_color = part_lower in color_keywords
+
+        # Logika: Pertahankan bagian jika...
+        # 1. BUKAN warna, ATAU
+        # 2. ADALAH warna DAN keep_color=True
+        if not is_color or (is_color and keep_color):
+            # Cek juga apakah cocok dengan pola/keyword yang selalu disimpan
+            is_kept_keyword = part_upper in keep_keywords
+            is_kept_pattern = any(re.fullmatch(pattern, part_upper) for pattern in keep_patterns)
+
+            # Jika bukan warna, atau warna yang dipertahankan, atau keyword/pola lain
+            if not is_color or keep_color or is_kept_keyword or is_kept_pattern:
+                 # Map KK ke KORAN
+                 final_parts.append('KORAN' if part_upper == 'KK' else part)
+
+    # Hilangkan duplikat sambil mempertahankan urutan (jika perlu, tapi set lebih mudah)
+    # Urutkan untuk konsistensi
+    unique_parts = sorted(list(set(final_parts)), key=lambda x: str(x))
+
+    return ' '.join(unique_parts)
+
+def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold=85): # Naikkan threshold sedikit
     """
-    Mencari harga beli dari KATALOG_DAMA berdasarkan Nama Produk (Variasi).
+    Mencari harga beli dari KATALOG_DAMA dengan pencocokan fuzzy pada nama dasar
+    dan filter atribut dari variasi.
     """
     try:
         if pd.isna(summary_product_name) or not summary_product_name.strip():
@@ -870,78 +904,82 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df):
         match = re.match(r'^(.*?)\s*\((.*?)\)$', summary_product_name.strip())
         if match:
             base_name = match.group(1).strip()
-            variasi_part = match.group(2).strip().upper() # Variasi sudah uppercase
+            variasi_part = match.group(2).strip().upper()
 
-        base_name_upper = base_name.upper()
+        base_name_upper_clean = re.sub(r'\s+', ' ', base_name.upper()).strip() # Nama dasar bersih
 
-        # 2. Ekstrak Keywords dari Variasi Part (Ukuran, Jenis, Paket, Warna)
+        # 2. Ekstrak Atribut Relevan dari Variasi Part
         ukuran_in_var = ''
         jenis_in_var = ''
         paket_in_var = ''
-        warna_in_var = '' # Warna dari variasi
+        warna_in_var = ''
 
         size_match = re.search(r'\b((A|B)\d{1,2})\b', variasi_part)
         if size_match: ukuran_in_var = size_match.group(1)
 
         paper_keywords = {'HVS', 'QPP', 'KORAN', 'KK', 'KWARTO', 'BIGBOS', 'ART PAPER'}
+        variasi_words = set(re.split(r'\s+', variasi_part))
         for paper in paper_keywords:
-            if re.search(r'\b' + re.escape(paper) + r'\b', variasi_part):
+            if paper in variasi_words:
                 jenis_in_var = 'KORAN' if paper == 'KK' else paper
-                break # Ambil yang pertama
+                break
 
         package_match = re.search(r'\b(PAKET\s*\d+)\b', variasi_part)
         if package_match: paket_in_var = package_match.group(1)
 
-        # Cari warna dari variasi
-        color_keywords_set = {'MERAH', 'BIRU', 'HIJAU', 'KUNING', 'HITAM', 'PUTIH', 'UNGU', 'COKLAT',
+        color_keywords_set = {'MERAH', 'BIRU', 'HIJAU', 'KUNING', 'HITAM', 'PUTIH', 'UNGU', 'COKLAT', 'COKELAT',
                               'ABU', 'PINK', 'GOLD', 'SILVER', 'CREAM', 'NAVY', 'MAROON', 'RANDOM',
                               'ARMY', 'OLIVE', 'MOCCA', 'DUSTY', 'SAGE'}
-        variasi_words = set(re.split(r'\s+', variasi_part))
         found_colors = variasi_words.intersection(color_keywords_set)
         if found_colors:
-            warna_in_var = list(found_colors)[0] # Ambil warna pertama jika ada
+            warna_in_var = list(found_colors)[0]
 
-        # 3. Tentukan apakah Warna perlu dicocokkan
+        # 3. Tentukan apakah Warna perlu dicocokkan (berdasarkan nama dasar)
         hijab_keywords = {'HIJAB', 'PASHMINA', 'PASMINA'}
-        match_warna = any(keyword in base_name_upper for keyword in hijab_keywords)
+        match_warna_required = any(keyword in base_name_upper_clean for keyword in hijab_keywords)
 
-        # 4. Filter Katalog Dama
-        filtered_kat = katalog_dama_df.copy()
+        # 4. Filter Katalog Dama dengan Fuzzy Matching pada Nama Dasar
+        best_score = 0
+        best_match_row = None
 
-        # Filter Nama Produk (Gunakan startswith untuk fleksibilitas)
-        filtered_kat = filtered_kat[filtered_kat['NAMA PRODUK'].str.startswith(base_name_upper, na=False)]
-        if filtered_kat.empty: return 0 # Jika nama dasar tidak cocok, stop
+        for index, row in katalog_dama_df.iterrows():
+            katalog_name = row['NAMA PRODUK'] # Nama produk di katalog (sudah UPPER & cleaned)
+            # Hitung skor kemiripan nama dasar
+            score = fuzz.token_set_ratio(base_name_upper_clean, katalog_name)
 
-        # Filter berdasarkan keyword dari Variasi (utamakan ini)
-        if jenis_in_var:
-            filtered_kat = filtered_kat[filtered_kat['JENIS AL QUR\'AN'] == jenis_in_var]
-        if ukuran_in_var:
-            filtered_kat = filtered_kat[filtered_kat['UKURAN'] == ukuran_in_var]
-        if paket_in_var:
-             # Gunakan contains jika format paket bisa bervariasi
-            filtered_kat = filtered_kat[filtered_kat['PAKET'].str.contains(paket_in_var, na=False)]
-            
-        # Filter Warna secara Kondisional
-        if match_warna and warna_in_var:
-            filtered_kat = filtered_kat[filtered_kat['WARNA'] == warna_in_var]
-        elif match_warna and not warna_in_var:
-             # Jika perlu warna tapi tidak ada di variasi, mungkin filter agar WARNA kosong?
-             # Atau jangan filter warna sama sekali? (Pilih: jangan filter)
-             pass
-        elif not match_warna:
-             # Jika tidak perlu warna, pastikan kolom WARNA di katalog kosong ATAU abaikan saja
-             # Opsi 1: Abaikan kolom WARNA -> tidak perlu filter tambahan
-             # Opsi 2: Pastikan WARNA kosong -> filtered_kat = filtered_kat[filtered_kat['WARNA'] == '']
-             pass # Pilih Opsi 1: Abaikan
+            if score >= score_threshold:
+                # --- Lolos skor nama dasar, sekarang cek atribut variasi ---
+                match_ok = True # Asumsikan cocok
 
-        # 5. Kembalikan Harga
-        if len(filtered_kat) == 1:
-            return filtered_kat['HARGA'].iloc[0]
+                # Cek Jenis Kertas (jika ada di variasi)
+                if jenis_in_var and row['JENIS AL QUR\'AN'] != jenis_in_var:
+                    match_ok = False
+                # Cek Ukuran (jika ada di variasi)
+                if match_ok and ukuran_in_var and row['UKURAN'] != ukuran_in_var:
+                    match_ok = False
+                # Cek Paket (jika ada di variasi)
+                if match_ok and paket_in_var and paket_in_var not in row['PAKET']: # Gunakan 'in' jika paket bisa multi
+                    match_ok = False
+                # Cek Warna (jika diperlukan DAN ada di variasi)
+                if match_ok and match_warna_required and warna_in_var and row['WARNA'] != warna_in_var:
+                    match_ok = False
+                # Cek Warna (jika TIDAK diperlukan, pastikan warna di katalog KOSONG)
+                # Dihapus sementara, karena bisa jadi katalog punya warna default meski tidak relevan
+                # if match_ok and not match_warna_required and row['WARNA'] != '':
+                #     match_ok = False
+
+
+                # Jika semua atribut cocok DAN skornya lebih baik dari sebelumnya
+                if match_ok and score > best_score:
+                    best_score = score
+                    best_match_row = row
+
+        # 5. Kembalikan Harga jika ada kecocokan terbaik
+        if best_match_row is not None:
+            return best_match_row['HARGA']
         else:
-            # Jika 0 atau > 1 hasil, kembalikan 0 (atau handle ambiguity)
-            # Anda bisa tambahkan st.warning jika len > 1 untuk debugging
-            # if len(filtered_kat) > 1:
-            #     st.warning(f"Ditemukan {len(filtered_kat)} kandidat harga untuk '{summary_product_name}', harga tidak dapat ditentukan.")
+            # Jika tidak ada yang cocok sama sekali
+            # st.warning(f"Harga Beli Dama tidak ditemukan untuk: '{summary_product_name}'") # Uncomment for debugging
             return 0
 
     except Exception as e:
