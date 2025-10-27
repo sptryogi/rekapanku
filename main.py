@@ -158,6 +158,17 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
                     part_to_append = var_str
                 # --- AKHIR LOGIKA KHUSUS ---
+                elif "AL QUR'AN NON TERJEMAH AL AQEEL A5 KERTAS KORAN WAKAF" in nama_produk_clean:
+                    var_upper = var_str.upper()
+                    # Cari "PAKET ISI X" atau "SATUAN"
+                    paket_match = re.search(r'(PAKET\s*ISI\s*\d+)', var_upper)
+                    satuan_match = 'SATUAN' in var_upper
+                    
+                    if paket_match:
+                        part_to_append = paket_match.group(1) # Hasilnya 'PAKET ISI 7'
+                    elif satuan_match:
+                        part_to_append = 'SATUAN'
+                    # Jika tidak ada, part_to_append akan tetap '' (kosong)
     
                 # --- Logika Lama untuk Produk Khusus Lainnya ---
                 elif ',' in var_str: # Hanya proses jika ada koma untuk produk lain
@@ -316,6 +327,17 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
                     part_to_append = var_str
                 # --- AKHIR LOGIKA KHUSUS ---
+                elif "AL QUR'AN NON TERJEMAH AL AQEEL A5 KERTAS KORAN WAKAF" in nama_produk_clean:
+                    var_upper = var_str.upper()
+                    # Cari "PAKET ISI X" atau "SATUAN"
+                    paket_match = re.search(r'(PAKET\s*ISI\s*\d+)', var_upper)
+                    satuan_match = 'SATUAN' in var_upper
+                    
+                    if paket_match:
+                        part_to_append = paket_match.group(1) # Hasilnya 'PAKET ISI 7'
+                    elif satuan_match:
+                        part_to_append = 'SATUAN'
+                    # Jika tidak ada, part_to_append akan tetap '' (kosong)
     
                 # --- Logika Lama untuk Produk Khusus Lainnya ---
                 elif ',' in var_str: # Hanya proses jika ada koma untuk produk lain
@@ -644,13 +666,22 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     rekap_copy['No. Pesanan'] = rekap_copy['No. Pesanan'].replace('', np.nan).ffill()
 
     # Agregasi data utama dari REKAP
-    summary_df = rekap_copy.groupby('Nama Produk').agg({
-        'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
+    # summary_df = rekap_copy.groupby('Nama Produk').agg({
+    #     'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
+    #     'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
+    #     'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
+    #     'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
+    #     'Total Penghasilan': 'sum'
+    # }).reset_index()
+    summary_df = rekap_copy.groupby(['Nama Produk', 'Harga Satuan'], as_index=False).agg({
+        'Jumlah Terjual': 'sum', 
+        # 'Harga Satuan': 'first', <-- Dihapus karena sudah jadi bagian key
+        'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
         'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
         'Total Penghasilan': 'sum'
-    }).reset_index()
+    })
 
     # --- LOGIKA BARU: Tambahkan Produk dari IKLAN yang tidak ada di REKAP ---
     # Siapkan kolom 'Iklan Klik' dengan nilai default 0
@@ -1041,21 +1072,43 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
          rekap_copy['Nama Produk Display'] = rekap_copy['Nama Produk Original']
          rekap_copy['Formatted Variation'] = ''
 
-    grouping_key = 'Nama Produk Display'
-    # --- AKHIR LOGIKA BARU ---
+    # grouping_key = 'Nama Produk Display'
+    # # --- AKHIR LOGIKA BARU ---
+
+    # # Agregasi data utama dari REKAP
+    # agg_dict = {
+    #     'Nama Produk Original': 'first',
+    #     'Nama Produk Display': 'first',
+    #     'Cleaned Variation': 'first', # <-- Tambahkan ini jika perlu
+    #     'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
+    #     'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
+    #     'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
+    #     'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
+    #     'Total Penghasilan': 'sum'
+    # }
+    # summary_df = rekap_copy.groupby(grouping_key, as_index=False).agg(agg_dict)
+    # summary_df.rename(columns={'Nama Produk Display': 'Nama Produk'}, inplace=True)
+    
+    grouping_key_list = ['Nama Produk Display', 'Harga Satuan']
+    # --- ▲▲▲ AKHIR MODIFIKASI ▲▲▲ ---
+    # --- AKHIR LOGIKA KHUSUS DAMASTORE ---
 
     # Agregasi data utama dari REKAP
     agg_dict = {
         'Nama Produk Original': 'first',
         'Nama Produk Display': 'first',
-        'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
+        'Cleaned Variation': 'first', 
+        'Jumlah Terjual': 'sum', 
+        # 'Harga Satuan': 'first', <-- Dihapus dari dict
+        'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
         'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
         'Total Penghasilan': 'sum'
-        # Hapus agregasi 'Formatted Variation' jika tidak diperlukan di output
     }
-    summary_df = rekap_copy.groupby(grouping_key, as_index=False).agg(agg_dict)
+    # --- ▼▼▼ MODIFIKASI: Gunakan grouping_key_list ▼▼▼ ---
+    summary_df = rekap_copy.groupby(grouping_key_list, as_index=False).agg(agg_dict)
+    # --- ▲▲▲ AKHIR MODIFIKASI ▲▲▲ ---
     summary_df.rename(columns={'Nama Produk Display': 'Nama Produk'}, inplace=True)
 
 
