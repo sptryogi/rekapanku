@@ -974,13 +974,22 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
                     match_ok = False
                 
                 # Logika Paket: Harus sama persis, atau keduanya kosong
-                if paket_in_var and katalog_paket != paket_in_var:
-                    # Variasi minta paket, tapi paket di katalog BEDA
-                    match_ok = False
+                # if paket_in_var and katalog_paket != paket_in_var:
+                #     # Variasi minta paket, tapi paket di katalog BEDA
+                #     match_ok = False
                     
                 # elif not paket_in_var and katalog_paket != '':
                 #     # Variasi TIDAK minta paket, tapi katalog PUNYA paket
                 #     match_ok = False
+
+                if match_ok and paket_in_var:
+                    # Pastikan kata "PAKET X" dari variasi SAMA PERSIS dengan di katalog
+                    if row['PAKET'] != paket_in_var:
+                        match_ok = False
+                # Jika di variasi TIDAK ADA info paket, pastikan di katalog juga KOSONG
+                elif match_ok and not paket_in_var: 
+                    if row['PAKET'] != '':
+                        match_ok = False
 
                 if match_warna_required:
                     # Ini adalah produk HIJAB/PASHMINA.
