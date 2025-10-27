@@ -892,7 +892,7 @@ def format_variation_dama(variation, product_name):
 def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_primary=80, score_threshold_fallback=75):
     """
     Mencari harga beli dari KATALOG_DAMA dengan logika 2-pass (ketat lalu longgar).
-    Pass 1: Fuzzy match nama (>=80) DAN atribut (jenis, ukuran, paket, WARNA) harus cocok.
+    Pass 1: Fuzzy match nama (>=80) DAN atribut (jenis, ukuran, paket) harus cocok.
     Pass 2 (Fallback): Jika Pass 1 gagal, cari fuzzy match nama (>=75) saja.
     """
     try:
@@ -913,14 +913,12 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
         ukuran_in_var = ''
         jenis_in_var = ''
         paket_in_var = ''
-        warna_in_var = '' # <-- TAMBAHKAN INI
-
-        variasi_words = set(re.split(r'\s+', variasi_part))
 
         size_match = re.search(r'\b((A|B)\d{1,2})\b', variasi_part)
         if size_match: ukuran_in_var = size_match.group(1)
 
         paper_keywords = {'HVS', 'QPP', 'KORAN', 'KK', 'KWARTO', 'BIGBOS', 'ART PAPER'}
+        variasi_words = set(re.split(r'\s+', variasi_part))
         for paper in paper_keywords:
             if paper in variasi_words:
                 jenis_in_var = 'KORAN' if paper == 'KK' else paper
@@ -928,21 +926,24 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
 
         package_match = re.search(r'\b(PAKET\s*\d+)\b', variasi_part)
         if package_match: 
-            paket_in_var = package_match.group(1).replace(' ', '')
+            # Bersihkan spasi agar "PAKET 10" menjadi "PAKET10" untuk pencocokan
+            paket_in_var = package_match.group(1).replace(' ', '') 
         
-        # --- TAMBAHKAN LOGIKA EKSTRAKSI WARNA ---
+        # --- ▼▼▼ TAMBAHKAN BLOK INI ▼▼▼ ---
+        warna_in_var = ''
         color_keywords_set = {'MERAH', 'BIRU', 'HIJAU', 'KUNING', 'HITAM', 'PUTIH', 'UNGU', 'COKLAT', 'COKELAT',
                               'ABU', 'PINK', 'GOLD', 'SILVER', 'CREAM', 'NAVY', 'MAROON', 'RANDOM',
                               'ARMY', 'OLIVE', 'MOCCA', 'DUSTY', 'SAGE'}
+        # variasi_words sudah didefinisikan di atas (saat cek paper_keywords)
         found_colors = variasi_words.intersection(color_keywords_set)
         if found_colors:
             warna_in_var = list(found_colors)[0] # Ambil warna pertama yang ditemukan
-        # --- AKHIR BLOK BARU ---
-
+        
         # Tentukan apakah pencocokan warna diperlukan
-        hijab_keywords = {'HIJAB', 'PASHMINA', 'PASMINA'}
+        hijab_keywords = {'PASHMINA', 'HIJAB', 'PASMINA'}
         match_warna_required = any(keyword in base_name_upper_clean for keyword in hijab_keywords)
 
+        
         # --- Inisialisasi untuk 2-Pass ---
         best_strict_score = -1
         best_strict_price = 0
@@ -955,8 +956,9 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
             katalog_name = row['NAMA PRODUK']
             katalog_jenis = row['JENIS AL QUR\'AN']
             katalog_ukuran = row['UKURAN']
+            # Bersihkan spasi di data katalog juga untuk pencocokan yang adil
             katalog_paket = row['PAKET'].replace(' ', '') 
-            katalog_warna = row['WARNA'] # <-- Baca WARNA dari katalog
+            katalog_warna = row['WARNA']
             
             # Hitung Skor Nama (Fuzzy Match)
             name_score = fuzz.token_set_ratio(base_name_upper_clean, katalog_name)
@@ -973,21 +975,23 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
                 
                 # Logika Paket: Harus sama persis, atau keduanya kosong
                 if paket_in_var and katalog_paket != paket_in_var:
+                    # Variasi minta paket, tapi paket di katalog BEDA
                     match_ok = False
-                elif not paket_in_var and katalog_paket != '':
-                    match_ok = False
+                    
+                # elif not paket_in_var and katalog_paket != '':
+                #     # Variasi TIDAK minta paket, tapi katalog PUNYA paket
+                #     match_ok = False
 
-                # --- TAMBAHKAN LOGIKA PENGECEKAN WARNA ---
                 if match_warna_required:
-                    # Ini produk Hijab/Pashmina, WARNA PENTING
-                    # Cocokkan warna dari variasi (misal 'CREAM') dengan warna di katalog
+                    # Ini adalah produk HIJAB/PASHMINA.
+                    # Pengecekan ketat: Warna di variasi HARUS SAMA dengan warna di katalog.
                     if katalog_warna != warna_in_var:
                         match_ok = False
                 else:
-                    # Ini BUKAN produk Hijab, jadi WARNA di katalog HARUS KOSONG
+                    # Ini BUKAN produk HIJAB (misal: Al Quran).
+                    # Pengecekan ketat: Kolom WARNA di katalog HARUS KOSONG.
                     if katalog_warna != '':
                         match_ok = False
-                # --- AKHIR BLOK BARU ---
 
                 # Jika semua cek atribut lolos
                 if match_ok:
