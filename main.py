@@ -928,7 +928,7 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
         if package_match: 
             # Bersihkan spasi agar "PAKET 10" menjadi "PAKET10" untuk pencocokan
             # Normalisasi spasi, misal "PAKET  10" atau "PAKET 10" menjadi "PAKET 10"
-            paket_in_var = re.sub(r'\s+', ' ', package_match.group(1)).strip() 
+            paket_in_var = re.sub(r'\s+', ' ', package_match.group(1)).strip()
         
         # --- ▼▼▼ TAMBAHKAN BLOK INI ▼▼▼ ---
         warna_in_var = ''
@@ -980,13 +980,9 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
 
                 if match_warna_required:
                     # Ini adalah produk HIJAB/PASHMINA.
-                    # Pengecekan ketat: Warna di variasi HARUS SAMA dengan warna di katalog.
+                    # Pengecekan ketat: Warna di variasi (warna_in_var) HARUS SAMA
+                    # dengan warna di katalog (katalog_warna).
                     if katalog_warna != warna_in_var:
-                        match_ok = False
-                else:
-                    # Ini BUKAN produk HIJAB (misal: Al Quran).
-                    # Pengecekan ketat: Kolom WARNA di katalog HARUS KOSONG.
-                    if katalog_warna != '':
                         match_ok = False
 
                 # Jika semua cek atribut lolos
