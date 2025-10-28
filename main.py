@@ -1097,7 +1097,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     agg_dict = {
         'Nama Produk Original': 'first',
         'Nama Produk Display': 'first',
-        'Cleaned Variation': 'first', 
+        # 'Cleaned Variation': 'first', 
         'Jumlah Terjual': 'sum', 
         # 'Harga Satuan': 'first', <-- Dihapus dari dict
         'Total Harga Produk': 'sum',
