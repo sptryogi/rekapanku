@@ -1308,6 +1308,15 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     semua_pesanan_df.columns = [col.upper().strip() for col in semua_pesanan_df.columns]
     creator_order_all_df.columns = [col.upper().strip() for col in creator_order_all_df.columns]
 
+    if all(col in semua_pesanan_df.columns for col in ['ORDER ID', 'PRODUCT NAME', 'VARIATION']):
+        rows_before_dedup = len(semua_pesanan_df)
+        semua_pesanan_df.drop_duplicates(subset=['ORDER ID', 'PRODUCT NAME', 'VARIATION'], keep='first', inplace=True)
+        rows_after_dedup = len(semua_pesanan_df)
+        if rows_before_dedup > rows_after_dedup:
+            st.info(f"Menghapus {rows_before_dedup - rows_after_dedup} baris produk duplikat identik dari 'semua pesanan'.")
+    else:
+        st.warning("Tidak dapat melakukan de-duplikasi awal: Kolom 'ORDER ID', 'PRODUCT NAME', atau 'VARIATION' tidak ditemukan di 'semua pesanan'.")
+
     # 2. MERGE AWAL (Kode Anda yang sudah ada)
     rekap_df = pd.merge(
         order_details_df,
