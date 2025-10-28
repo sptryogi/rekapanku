@@ -1391,7 +1391,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     # 2. LOGIKA AGREGASI PRODUK (Sekarang akan bekerja dengan benar)
     agg_rules = {
-        'QUANTITY': 'sum', # <-- Penjumlahan Kuantitas terjadi di sini
+        'QUANTITY': 'first', # <-- Penjumlahan Kuantitas terjadi di sini
         'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
         'SKU SELLER DISCOUNT': 'sum',
         'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga satuan pertama
