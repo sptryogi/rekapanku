@@ -178,7 +178,7 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
                             if relevant_parts:
                                 part_to_append = relevant_parts[0]
                         else:
-                            part_to_append = var_str'
+                            part_to_append = var_str
                     else:
                         # --- TAMBAHAN ---
                         # Biarkan part_to_append kosong agar dicek logika di bawah
@@ -1134,7 +1134,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
 
     # --- LOGIKA IKLAN (Tetap sama) ---
     summary_df['Iklan Klik'] = 0.0
-    produk_khusus_raw = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "AL QUR'AN GOLD TERMURAH", "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN"]
+    produk_khusus_raw = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "Paket Hemat Paket Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida"]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
     for produk_base in produk_khusus:
