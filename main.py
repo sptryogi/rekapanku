@@ -1349,19 +1349,42 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
                              .str.replace(r'[^\d\.\-]', '', regex=True)) # Izinkan titik dan minus
             rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0).abs() # .abs() sebaiknya di akhir
 
+    if 'ORDER CREATED TIME(UTC)' in rekap_df.columns:
+        created_time_col = 'ORDER CREATED TIME(UTC)'
+    elif 'ORDER CREATED TIME' in rekap_df.columns:
+        created_time_col = 'ORDER CREATED TIME'
+    else:
+        # Pengaman jika kolom tidak ada
+        st.warning("Kolom 'ORDER CREATED TIME(UTC)' atau 'ORDER CREATED TIME' tidak ditemukan. 'Waktu Pesanan Dibuat' akan kosong.")
+        rekap_df['ORDER CREATED TIME_MISSING'] = pd.NaT # Buat kolom dummy
+        created_time_col = 'ORDER CREATED TIME_MISSING' # Gunakan kolom dummy
+        
+    if 'ORDER SETTLED TIME(UTC)' in rekap_df.columns:
+        settled_time_col = 'ORDER SETTLED TIME(UTC)'
+    elif 'ORDER SETTLED TIME' in rekap_df.columns:
+        settled_time_col = 'ORDER SETTLED TIME'
+    else:
+        # Pengaman jika kolom tidak ada
+        st.warning("Kolom 'ORDER SETTLED TIME(UTC)' atau 'ORDER SETTLED TIME' tidak ditemukan. 'Waktu Dana Dilepas' akan kosong.")
+        rekap_df['ORDER SETTLED TIME_MISSING'] = pd.NaT # Buat kolom dummy
+        settled_time_col = 'ORDER SETTLED TIME_MISSING' # Gunakan kolom dummy
+
 
     # 2. LOGIKA AGREGASI PRODUK (Sekarang akan bekerja dengan benar)
     agg_rules = {
         'QUANTITY': 'sum', # <-- Penjumlahan Kuantitas terjadi di sini
         'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
         'SKU SELLER DISCOUNT': 'sum',
-        'ORDER CREATED TIME(UTC)': 'first',
-        'ORDER SETTLED TIME(UTC)': 'first',
         'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga satuan pertama
         'BONUS CASHBACK SERVICE FEE': 'sum', # Jumlahkan biaya ini
         'VOUCHER XTRA SERVICE FEE': 'sum',   # Jumlahkan biaya ini
         'TOTAL SETTLEMENT AMOUNT': 'first' # Ambil settlement amount pertama (biasanya sama per pesanan)
     }
+
+    # Tambahkan kolom waktu secara dinamis menggunakan variabel yang kita buat
+    agg_rules[created_time_col] = 'first'
+    agg_rules[settled_time_col] = 'first'
+    
     # Grouping berdasarkan ID Pesanan, Nama Produk, dan Variasi
     rekap_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False).agg(agg_rules)
     rekap_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True) # Ganti nama setelah agregasi
@@ -1409,8 +1432,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     rekap_final = pd.DataFrame({
         'No.': np.arange(1, len(rekap_df) + 1),
         'No. Pesanan': rekap_df['ORDER ID'],
-        'Waktu Pesanan Dibuat': rekap_df['ORDER CREATED TIME(UTC)'],
-        'Waktu Dana Dilepas': rekap_df['ORDER SETTLED TIME(UTC)'],
+        'Waktu Pesanan Dibuat': rekap_df[created_time_col],
+        'Waktu Dana Dilepas': rekap_df[settled_time_col],
         'Nama Produk': rekap_df['PRODUCT NAME'],
         'Variasi': rekap_df['Variasi'],
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
