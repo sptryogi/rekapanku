@@ -818,7 +818,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # ... (sisa fungsi `process_summary` Anda tetap sama persis dari sini sampai akhir) ...
     summary_df['Persentase'] = (summary_df.apply(lambda row: row['M1'] / row['Total Harga Produk'] if row['Total Harga Produk'] != 0 else 0, axis=1))
     summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
-    summary_df['Penjualan Per Hari'] = round(summary_df['Penjualan Netto'] / 7, 1)
+    summary_df['Penjualan Per Hari'] = round(summary_df['Total Harga Produk'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = round(summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1), 1)
     
     summary_final_data = {
@@ -856,7 +856,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     total_row['Persentase'] = (total_m1 / total_harga_produk) if total_harga_produk != 0 else 0
     total_jumlah_pesanan = (total_biaya_proses_pesanan / 1250) if 1250 != 0 else 0
     total_row['Jumlah Pesanan'] = total_jumlah_pesanan
-    total_row['Penjualan Per Hari'] = round(total_penjualan_netto / 7, 1)
+    total_row['Penjualan Per Hari'] = round(total_harga_produk / 7, 1)
     total_row['Jumlah buku per pesanan'] = round(total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
     for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ']:
         if col in total_row.columns: total_row[col] = None
@@ -1192,7 +1192,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     # Hapus kolom 'Nama Produk Original' sebelum membuat baris total
     summary_df['Persentase'] = (summary_df.apply(lambda row: row['M1'] / row['Total Harga Produk'] if row['Total Harga Produk'] != 0 else 0, axis=1))
     summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
-    summary_df['Penjualan Per Hari'] = round(summary_df['Penjualan Netto'] / 7, 1)
+    summary_df['Penjualan Per Hari'] = round(summary_df['Total Harga Produk'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = round(summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1), 1)
 
     summary_final_data = {
@@ -1229,7 +1229,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     total_row['Persentase'] = (total_m1 / total_harga_produk) if total_harga_produk != 0 else 0
     total_jumlah_pesanan = (total_biaya_proses_pesanan / 1250) if 1250 != 0 else 0
     total_row['Jumlah Pesanan'] = total_jumlah_pesanan
-    total_row['Penjualan Per Hari'] = round(total_penjualan_netto / 7, 1)
+    total_row['Penjualan Per Hari'] = round(total_harga_produk / 7, 1)
     total_row['Jumlah buku per pesanan'] = round(total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
     for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ']:
         if col in total_row.columns: total_row[col] = None
@@ -1618,7 +1618,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     # ... (Sisa fungsi Anda dari sini sampai akhir tetap sama persis) ...
     summary_df['Persentase'] = summary_df.apply(lambda row: row['M1'] / row['Total Harga Setelah Diskon'] if row['Total Harga Setelah Diskon'] != 0 else 0, axis=1)
     summary_df['Jumlah Pesanan'] = summary_df['Biaya Proses Pesanan'] / 1250
-    summary_df['Penjualan Per Hari'] = round(summary_df['Penjualan Netto'] / 7, 1)
+    summary_df['Penjualan Per Hari'] = round(summary_df['Total Harga Setelah Diskon'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1)
 
     summary_final = pd.DataFrame({
@@ -1643,7 +1643,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     total_row['M1'] = total_m1
     total_harga_diskon = total_row['Total Harga Sesudah Diskon'].iloc[0]
     total_row['Persentase'] = (total_m1 / total_harga_diskon) if total_harga_diskon != 0 else 0
-    total_row['Penjualan Per Hari'] = round(total_row['Penjualan Netto'].iloc[0] / 7, 1)
+    total_row['Penjualan Per Hari'] = round(total_harga_diskon / 7, 1)
     total_jumlah_pesanan = total_row['Jumlah Pesanan'].iloc[0]
     total_jumlah_terjual = total_row['Jumlah Terjual'].iloc[0]
     total_row['Jumlah buku per pesanan'] = round(total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
