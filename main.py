@@ -1471,8 +1471,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     # 1. Tentukan kolom mana yang akan dijumlahkan dan mana yang akan diambil nilai pertamanya
     cols_to_sum = [
-        'Jumlah Terjual',
-        'Total Harga Sebelum Diskon',
+        # 'Jumlah Terjual',
+        # 'Total Harga Sebelum Diskon',
         'Diskon Penjual',
         'Komisi Affiliate'        
     ]
@@ -1481,6 +1481,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     cols_to_first = [
         'Waktu Pesanan Dibuat',
         'Waktu Dana Dilepas',
+        'Jumlah Terjual',
+        'Total Harga Sebelum Diskon',
         'Harga Satuan',
         'Biaya Layanan Cashback Bonus 1,5%',
         'Biaya Layanan Voucher Xtra',
