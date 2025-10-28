@@ -168,6 +168,10 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
                         part_to_append = paket_match.group(1) # Hasilnya 'PAKET ISI 7'
                     elif satuan_match:
                         part_to_append = 'SATUAN'
+                    else:
+                        # --- TAMBAHAN PENTING ---
+                        # Jika bukan "PAKET" atau "SATUAN", ambil saja seluruh string variasinya
+                        part_to_append = var_str
                     # Jika tidak ada, part_to_append akan tetap '' (kosong)
     
                 # --- Logika Lama untuk Produk Khusus Lainnya ---
@@ -337,6 +341,10 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                         part_to_append = paket_match.group(1) # Hasilnya 'PAKET ISI 7'
                     elif satuan_match:
                         part_to_append = 'SATUAN'
+                    else:
+                        # --- TAMBAHAN PENTING ---
+                        # Jika bukan "PAKET" atau "SATUAN", ambil saja seluruh string variasinya
+                        part_to_append = var_str
                     # Jika tidak ada, part_to_append akan tetap '' (kosong)
     
                 # --- Logika Lama untuk Produk Khusus Lainnya ---
