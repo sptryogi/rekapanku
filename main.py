@@ -169,19 +169,19 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
                     elif satuan_match:
                         part_to_append = 'SATUAN'
                     else:
-                        # --- TAMBAHAN PENTING ---
-                        # Jika bukan "PAKET" atau "SATUAN", ambil saja seluruh string variasinya
-                        part_to_append = var_str
-                    # Jika tidak ada, part_to_append akan tetap '' (kosong)
+                        # --- TAMBAHAN ---
+                        # Biarkan part_to_append kosong agar dicek logika di bawah
+                        pass 
     
                 # --- Logika Lama untuk Produk Khusus Lainnya ---
-                elif ',' in var_str: # Hanya proses jika ada koma untuk produk lain
+                # --- PERUBAHAN: Ubah 'elif' menjadi 'if not part_to_append' ---
+                if not part_to_append and ',' in var_str: # JIKA BELUM ADA & ADA KOMA
                     parts = [p.strip().upper() for p in var_str.split(',')]
                     size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7', 'HVS', 'KORAN'}
                     relevant_parts = [p for p in parts if p in size_keywords]
                     if relevant_parts:
                         part_to_append = relevant_parts[0]
-                else: # Tidak ada koma, ambil seluruh variasi
+                elif not part_to_append: # JIKA BELUM ADA & TIDAK ADA KOMA
                     part_to_append = var_str
                 # --- Akhir Logika Lama ---
     
@@ -342,19 +342,19 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                     elif satuan_match:
                         part_to_append = 'SATUAN'
                     else:
-                        # --- TAMBAHAN PENTING ---
-                        # Jika bukan "PAKET" atau "SATUAN", ambil saja seluruh string variasinya
-                        part_to_append = var_str
-                    # Jika tidak ada, part_to_append akan tetap '' (kosong)
+                        # --- TAMBAHAN ---
+                        # Biarkan part_to_append kosong agar dicek logika di bawah
+                        pass 
     
                 # --- Logika Lama untuk Produk Khusus Lainnya ---
-                elif ',' in var_str: # Hanya proses jika ada koma untuk produk lain
+                # --- PERUBAHAN: Ubah 'elif' menjadi 'if not part_to_append' ---
+                if not part_to_append and ',' in var_str: # JIKA BELUM ADA & ADA KOMA
                     parts = [p.strip().upper() for p in var_str.split(',')]
                     size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7', 'HVS', 'KORAN'}
                     relevant_parts = [p for p in parts if p in size_keywords]
                     if relevant_parts:
                         part_to_append = relevant_parts[0]
-                else: # Tidak ada koma, ambil seluruh variasi
+                elif not part_to_append: # JIKA BELUM ADA & TIDAK ADA KOMA
                     part_to_append = var_str
                 # --- Akhir Logika Lama ---
     
