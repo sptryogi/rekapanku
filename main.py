@@ -155,7 +155,13 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
                 part_to_append = ''
     
                 # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
-                if "CUSTOM AL QURAN MENGENANG" in nama_produk_clean:
+                produk_yang_ambil_full_variasi = [
+                    "CUSTOM AL QURAN MENGENANG", 
+                    "AL QUR'AN GOLD TERMURAH", 
+                    "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN", 
+                    "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan" # (Sesuaikan string ini)
+                ]
+                if any(produk in nama_produk_clean for produk in produk_yang_ambil_full_variasi):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
                     part_to_append = var_str
                 # --- AKHIR LOGIKA KHUSUS ---
