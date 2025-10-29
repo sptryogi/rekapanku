@@ -1398,11 +1398,11 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     # 2. LOGIKA AGREGASI PRODUK (Sekarang akan bekerja dengan benar)
     agg_rules = {
         'QUANTITY': 'sum', # <-- Penjumlahan Kuantitas terjadi di sini
-        'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
+        'SKU SUBTOTAL BEFORE DISCOUNT': 'first',
         'SKU SELLER DISCOUNT': 'first',
         'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga satuan pertama
-        'BONUS CASHBACK SERVICE FEE': 'first', # Jumlahkan biaya ini
-        'VOUCHER XTRA SERVICE FEE': 'first',   # Jumlahkan biaya ini
+        'BONUS CASHBACK SERVICE FEE': 'sum', # Jumlahkan biaya ini
+        'VOUCHER XTRA SERVICE FEE': 'sum',   # Jumlahkan biaya ini
         'TOTAL SETTLEMENT AMOUNT': 'first' # Ambil settlement amount pertama (biasanya sama per pesanan)
     }
 
@@ -1475,63 +1475,63 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Total Penghasilan': rekap_df['Total Penghasilan']
     })
 
-    # 1. Tentukan kolom mana yang akan dijumlahkan dan mana yang akan diambil nilai pertamanya
-    cols_to_sum = [
-        # 'Jumlah Terjual',
-        'Komisi Affiliate'        
-    ]
+    # # 1. Tentukan kolom mana yang akan dijumlahkan dan mana yang akan diambil nilai pertamanya
+    # cols_to_sum = [
+    #     # 'Jumlah Terjual',
+    #     'Komisi Affiliate'        
+    # ]
     
-    # Kolom yang nilainya sama untuk semua duplikat, jadi kita ambil yang pertama
-    cols_to_first = [
-        'Waktu Pesanan Dibuat',
-        'Waktu Dana Dilepas',
-        'Jumlah Terjual',
-        'Total Harga Sebelum Diskon',
-        'Diskon Penjual',
-        'Biaya Layanan Cashback Bonus 1,5%',
-        'Biaya Layanan Voucher Xtra',
-        'Harga Satuan',
-        'Biaya Proses Pesanan'
-    ]
+    # # Kolom yang nilainya sama untuk semua duplikat, jadi kita ambil yang pertama
+    # cols_to_first = [
+    #     'Waktu Pesanan Dibuat',
+    #     'Waktu Dana Dilepas',
+    #     'Jumlah Terjual',
+    #     'Total Harga Sebelum Diskon',
+    #     'Diskon Penjual',
+    #     'Biaya Layanan Cashback Bonus 1,5%',
+    #     'Biaya Layanan Voucher Xtra',
+    #     'Harga Satuan',
+    #     'Biaya Proses Pesanan'
+    # ]
     
-    # Buat dictionary aturan agregasi
-    agg_rules_final = {col: 'sum' for col in cols_to_sum}
-    agg_rules_final.update({col: 'first' for col in cols_to_first})
+    # # Buat dictionary aturan agregasi
+    # agg_rules_final = {col: 'sum' for col in cols_to_sum}
+    # agg_rules_final.update({col: 'first' for col in cols_to_first})
     
-    # 2. Lakukan grouping berdasarkan No. Pesanan, Nama Produk, dan Variasi
-    #    'as_index=False' penting agar kolom grouping tidak menjadi index
-    rekap_final = rekap_final.groupby(['No. Pesanan', 'Nama Produk', 'Variasi'], as_index=False).agg(agg_rules_final)
+    # # 2. Lakukan grouping berdasarkan No. Pesanan, Nama Produk, dan Variasi
+    # #    'as_index=False' penting agar kolom grouping tidak menjadi index
+    # rekap_final = rekap_final.groupby(['No. Pesanan', 'Nama Produk', 'Variasi'], as_index=False).agg(agg_rules_final)
     
-    # 3. Hitung ulang kolom-kolom yang bergantung pada hasil agregasi
+    # # 3. Hitung ulang kolom-kolom yang bergantung pada hasil agregasi
     
-    # Hitung ulang Total Harga Setelah Diskon dari komponen yang sudah dijumlahkan
-    rekap_final['Total Harga Setelah Diskon'] = rekap_final['Total Harga Sebelum Diskon'] - rekap_final['Diskon Penjual']
+    # # Hitung ulang Total Harga Setelah Diskon dari komponen yang sudah dijumlahkan
+    # rekap_final['Total Harga Setelah Diskon'] = rekap_final['Total Harga Sebelum Diskon'] - rekap_final['Diskon Penjual']
     
-    # Hitung ulang biaya berbasis persentase
-    rekap_final['Biaya Komisi Platform 8%'] = rekap_final['Total Harga Setelah Diskon'] * 0.08
-    rekap_final['Komisi Dinamis 5%'] = rekap_final['Total Harga Setelah Diskon'] * 0.05
+    # # Hitung ulang biaya berbasis persentase
+    # rekap_final['Biaya Komisi Platform 8%'] = rekap_final['Total Harga Setelah Diskon'] * 0.08
+    # rekap_final['Komisi Dinamis 5%'] = rekap_final['Total Harga Setelah Diskon'] * 0.05
     
-    # Hitung ulang Total Penghasilan
-    rekap_final['Total Penghasilan'] = (
-        rekap_final['Total Harga Setelah Diskon'] -
-        rekap_final['Komisi Affiliate'] -
-        rekap_final['Biaya Komisi Platform 8%'] -
-        rekap_final['Komisi Dinamis 5%'] -
-        rekap_final['Biaya Layanan Cashback Bonus 1,5%'] -
-        rekap_final['Biaya Layanan Voucher Xtra'] -
-        rekap_final['Biaya Proses Pesanan']
-    )
+    # # Hitung ulang Total Penghasilan
+    # rekap_final['Total Penghasilan'] = (
+    #     rekap_final['Total Harga Setelah Diskon'] -
+    #     rekap_final['Komisi Affiliate'] -
+    #     rekap_final['Biaya Komisi Platform 8%'] -
+    #     rekap_final['Komisi Dinamis 5%'] -
+    #     rekap_final['Biaya Layanan Cashback Bonus 1,5%'] -
+    #     rekap_final['Biaya Layanan Voucher Xtra'] -
+    #     rekap_final['Biaya Proses Pesanan']
+    # )
     
-    # 4. Susun ulang kolom dan perbarui nomor baris 'No.'
-    final_columns_order = [
-        'No.', 'No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Nama Produk',
-        'Variasi', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Sebelum Diskon',
-        'Diskon Penjual', 'Total Harga Setelah Diskon', 'Komisi Affiliate',
-        'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Biaya Layanan Cashback Bonus 1,5%',
-        'Biaya Layanan Voucher Xtra', 'Biaya Proses Pesanan', 'Total Penghasilan'
-    ]
-    rekap_final = rekap_final.reindex(columns=final_columns_order)
-    rekap_final['No.'] = np.arange(1, len(rekap_final) + 1)
+    # # 4. Susun ulang kolom dan perbarui nomor baris 'No.'
+    # final_columns_order = [
+    #     'No.', 'No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Nama Produk',
+    #     'Variasi', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Sebelum Diskon',
+    #     'Diskon Penjual', 'Total Harga Setelah Diskon', 'Komisi Affiliate',
+    #     'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Biaya Layanan Cashback Bonus 1,5%',
+    #     'Biaya Layanan Voucher Xtra', 'Biaya Proses Pesanan', 'Total Penghasilan'
+    # ]
+    # rekap_final = rekap_final.reindex(columns=final_columns_order)
+    # rekap_final['No.'] = np.arange(1, len(rekap_final) + 1)
 
     cols_to_blank = ['No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas']
     rekap_final.loc[rekap_final['No. Pesanan'].duplicated(), cols_to_blank] = ''
