@@ -1480,6 +1480,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         # 'Jumlah Terjual',
         'Total Harga Sebelum Diskon',
         'Diskon Penjual',
+        'Biaya Layanan Cashback Bonus 1,5%',
+        'Biaya Layanan Voucher Xtra',
         'Komisi Affiliate'        
     ]
     
@@ -1491,8 +1493,6 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         # 'Total Harga Sebelum Diskon',
         # 'Diskon Penjual',
         'Harga Satuan',
-        'Biaya Layanan Cashback Bonus 1,5%',
-        'Biaya Layanan Voucher Xtra',
         'Biaya Proses Pesanan'
     ]
     
