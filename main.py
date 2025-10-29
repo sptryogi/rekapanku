@@ -1398,8 +1398,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     # 2. LOGIKA AGREGASI PRODUK (Sekarang akan bekerja dengan benar)
     agg_rules = {
         'QUANTITY': 'sum', # <-- Penjumlahan Kuantitas terjadi di sini
-        'SKU SUBTOTAL BEFORE DISCOUNT': 'first',
-        'SKU SELLER DISCOUNT': 'first',
+        'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
+        'SKU SELLER DISCOUNT': 'sum',
         'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga satuan pertama
         'BONUS CASHBACK SERVICE FEE': 'first', # Jumlahkan biaya ini
         'VOUCHER XTRA SERVICE FEE': 'first',   # Jumlahkan biaya ini
@@ -1479,9 +1479,6 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     cols_to_sum = [
         # 'Jumlah Terjual',
         'Total Harga Sebelum Diskon',
-        'Diskon Penjual',
-        'Biaya Layanan Cashback Bonus 1,5%',
-        'Biaya Layanan Voucher Xtra',
         'Komisi Affiliate'        
     ]
     
@@ -1492,6 +1489,9 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Jumlah Terjual',
         # 'Total Harga Sebelum Diskon',
         # 'Diskon Penjual',
+        'Diskon Penjual',
+        'Biaya Layanan Cashback Bonus 1,5%',
+        'Biaya Layanan Voucher Xtra',
         'Harga Satuan',
         'Biaya Proses Pesanan'
     ]
