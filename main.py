@@ -1396,22 +1396,23 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
 
     # 2. LOGIKA AGREGASI PRODUK (Sekarang akan bekerja dengan benar)
-    agg_rules = {
-        'QUANTITY': 'first', # <-- Penjumlahan Kuantitas terjadi di sini
-        'SKU SUBTOTAL BEFORE DISCOUNT': 'first',
-        'SKU SELLER DISCOUNT': 'first',
-        'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga satuan pertama
-        'BONUS CASHBACK SERVICE FEE': 'first', # Jumlahkan biaya ini
-        'VOUCHER XTRA SERVICE FEE': 'first',   # Jumlahkan biaya ini
-        'TOTAL SETTLEMENT AMOUNT': 'first' # Ambil settlement amount pertama (biasanya sama per pesanan)
-    }
+    # agg_rules = {
+    #     'QUANTITY': 'first', # <-- Penjumlahan Kuantitas terjadi di sini
+    #     'SKU SUBTOTAL BEFORE DISCOUNT': 'first',
+    #     'SKU SELLER DISCOUNT': 'first',
+    #     'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga satuan pertama
+    #     'BONUS CASHBACK SERVICE FEE': 'first', # Jumlahkan biaya ini
+    #     'VOUCHER XTRA SERVICE FEE': 'first',   # Jumlahkan biaya ini
+    #     'TOTAL SETTLEMENT AMOUNT': 'first' # Ambil settlement amount pertama (biasanya sama per pesanan)
+    # }
 
-    # Tambahkan kolom waktu secara dinamis menggunakan variabel yang kita buat
-    agg_rules[created_time_col] = 'first'
-    agg_rules[settled_time_col] = 'first'
+    # # Tambahkan kolom waktu secara dinamis menggunakan variabel yang kita buat
+    # agg_rules[created_time_col] = 'first'
+    # agg_rules[settled_time_col] = 'first'
     
     # Grouping berdasarkan ID Pesanan, Nama Produk, dan Variasi
-    rekap_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False).agg(agg_rules)
+    # rekap_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False).agg(agg_rules)
+    rekap_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False)
     rekap_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True) # Ganti nama setelah agregasi
     
     # 3. MENGHITUNG BIAYA-BIAYA BARU (setelah agregasi)
