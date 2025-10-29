@@ -1413,7 +1413,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     # Grouping berdasarkan ID Pesanan, Nama Produk, dan Variasi
     # rekap_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False).agg(agg_rules)
     rekap_df = rekap_df.groupby(['ORDER ID', 'PRODUCT NAME', 'Variasi'], as_index=False)
-    rekap_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True) # Ganti nama setelah agregasi
+    # rekap_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True) # Ganti nama setelah agregasi
     
     # 3. MENGHITUNG BIAYA-BIAYA BARU (setelah agregasi)
     rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'] - rekap_df['SKU SELLER DISCOUNT']
@@ -1462,7 +1462,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Waktu Dana Dilepas': rekap_df[settled_time_col],
         'Nama Produk': rekap_df['PRODUCT NAME'],
         'Variasi': rekap_df['Variasi'],
-        'Jumlah Terjual': rekap_df['Jumlah Terjual'],
+        'Jumlah Terjual': rekap_df['QUANTITY'],
         'Harga Satuan': rekap_df['SKU UNIT ORIGINAL PRICE'],
         'Total Harga Sebelum Diskon': rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'],
         'Diskon Penjual': rekap_df['SKU SELLER DISCOUNT'],
