@@ -1401,8 +1401,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'SKU SUBTOTAL BEFORE DISCOUNT': 'first',
         'SKU SELLER DISCOUNT': 'first',
         'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga satuan pertama
-        'BONUS CASHBACK SERVICE FEE': 'sum', # Jumlahkan biaya ini
-        'VOUCHER XTRA SERVICE FEE': 'sum',   # Jumlahkan biaya ini
+        'BONUS CASHBACK SERVICE FEE': 'first', # Jumlahkan biaya ini
+        'VOUCHER XTRA SERVICE FEE': 'first',   # Jumlahkan biaya ini
         'TOTAL SETTLEMENT AMOUNT': 'first' # Ambil settlement amount pertama (biasanya sama per pesanan)
     }
 
