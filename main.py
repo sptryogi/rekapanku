@@ -307,7 +307,8 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         "AL QUR'AN GOLD TERMURAH",
         "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
         "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF",
-        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan"
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan",
+        "Al Qur'an Saku Pastel Al Aqeel A6 Kertas HVS | Wakaf, Hadiah Islami, Cover Cantik"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
@@ -335,7 +336,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
                     part_to_append = var_str
                 # --- AKHIR LOGIKA KHUSUS ---
-                elif "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF" in nama_produk_clean:
+                elif "Al Qur'an Saku Pastel Al Aqeel A6 Kertas HVS | Wakaf, Hadiah Islami, Cover Cantik" in nama_produk_clean:
                     var_upper = var_str.upper()
                     # Cari "PAKET ISI X" atau "SATUAN"
                     paket_match = re.search(r'(PAKET\s*ISI\s*\d+)', var_upper)
@@ -706,7 +707,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "AL QUR'AN GOLD TERMURAH",
         "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
         "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF",
-        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan"
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan",
+        "Al Qur'an Saku Pastel Al Aqeel A6 Kertas HVS | Wakaf, Hadiah Islami, Cover Cantik"        
     ]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus]
     
