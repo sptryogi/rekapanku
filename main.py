@@ -109,11 +109,11 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     """
     # --- PERUBAIKAN 1: Mengubah agregasi untuk memisahkan produk per pesanan ---
     # Agregasi data dari order-all berdasarkan No. Pesanan DAN Nama Produk
-    order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk']).agg({
+    order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk','Nama Variasi']).agg({
         'Jumlah': 'sum',
         'Harga Setelah Diskon': 'first',
-        'Total Harga Produk': 'sum',
-        'Nama Variasi': 'first'
+        'Total Harga Produk': 'sum'
+        #'Nama Variasi': 'first'
     }).reset_index()
     order_agg.rename(columns={'Jumlah': 'Jumlah Terjual'}, inplace=True)
 
@@ -288,11 +288,11 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     Perbedaan utama: Biaya Layanan dihitung dari Total Harga Produk.
     """
     # Bagian ini sama persis dengan fungsi rekap sebelumnya
-    order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk']).agg({
+    order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk' ,'Nama Variasi']).agg({
         'Jumlah': 'sum',
         'Harga Setelah Diskon': 'first',
-        'Total Harga Produk': 'sum',
-        'Nama Variasi': 'first'
+        'Total Harga Produk': 'sum'
+        #'Nama Variasi': 'first'
     }).reset_index()
     order_agg.rename(columns={'Jumlah': 'Jumlah Terjual'}, inplace=True)
 
@@ -486,11 +486,11 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     Biaya Adm, Layanan, dan Proses dihitung berdasarkan Total Harga Produk.
     """
     # Bagian ini sama persis dengan fungsi rekap pacific/human
-    order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk']).agg({
+    order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk', 'Nama Variasi']).agg({
         'Jumlah': 'sum',
         'Harga Setelah Diskon': 'first',
-        'Total Harga Produk': 'sum',
-        'Nama Variasi': 'first'
+        'Total Harga Produk': 'sum'
+        #'Nama Variasi': 'first'
     }).reset_index()
     order_agg.rename(columns={'Jumlah': 'Jumlah Terjual'}, inplace=True)
 
