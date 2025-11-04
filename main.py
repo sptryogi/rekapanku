@@ -124,6 +124,13 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     
     # Gabungkan income_df dengan order_agg. Ini akan membuat duplikasi baris income untuk setiap produk.
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
+
+    # 1. Identifikasi No. Pesanan yang diretur dari file order_df ASLI
+    returned_orders = order_df[order_df['Status Pembatalan/ Pengembalian'] == 'Permintaan Disetujui']['No. Pesanan'].unique()
+    
+    # 2. Tandai baris mana saja di rekap_df yang merupakan retur
+    kondisi_retur = rekap_df['No. Pesanan'].isin(returned_orders)
+    
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
     produk_khusus_raw = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
@@ -207,19 +214,35 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0)
     
     # 2. Hitung biaya baru berdasarkan Total Harga Produk (ini berlaku per-baris/per-produk)
-    rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
-    rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
+    # rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
+    # rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
+    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
+    basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
+    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     
     # 3. Hitung Biaya Proses Pesanan yang dibagi rata
     #    Hitung dulu ada berapa produk dalam satu pesanan
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
+
+    # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
+    rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher dari Penjual'])
+    rekap_df['Promo Gratis Ongkir dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Promo Gratis Ongkir dari Penjual'])
+    # Pastikan kolom ongkir retur dibersihkan TANPA abs()
+    rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'] = clean_and_convert_to_numeric(rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'])
+
+    # Buat kolom 'Dibagi' untuk alokasi per produk
+    rekap_df['Voucher dari Penjual Dibagi'] = (rekap_df['Voucher dari Penjual'] / product_count_per_order).fillna(0)
+    rekap_df['Gratis Ongkir dari Penjual Dibagi'] = (rekap_df['Promo Gratis Ongkir dari Penjual'] / product_count_per_order).fillna(0)
+    rekap_df['Ongkir Retur Dibagi'] = (rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'] / product_count_per_order).fillna(0)
+    
     #    Bagi 1250 dengan jumlah produk tersebut
     rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
-        'Voucher dari Penjual', 
+        # 'Voucher dari Penjual', 
         'Pengeluaran(Rp)',
         'Total Penghasilan' 
         # 'Biaya Administrasi', 'Biaya Layanan', dan 'Biaya Proses Pesanan' DIHAPUS dari sini
@@ -244,17 +267,33 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     # Kalkulasi Penjualan Netto per baris produk
     rekap_df['Penjualan Netto'] = (
         rekap_df.get('Total Harga Produk', 0) -
-        rekap_df.get('Voucher dari Penjual', 0) -
+        rekap_df.get('Voucher dari Penjual Dibagi', 0) -     # <-- DIUBAH
         rekap_df.get('Pengeluaran(Rp)', 0) -
         rekap_df.get('Biaya Adm 8%', 0) -
         rekap_df.get('Biaya Layanan 2%', 0) -
         rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
-        rekap_df.get('Biaya Proses Pesanan Dibagi', 0)
+        rekap_df.get('Biaya Proses Pesanan Dibagi', 0) -
+        rekap_df.get('Gratis Ongkir dari Penjual Dibagi', 0) # <-- DITAMBAH
     )
 
     # Urutkan berdasarkan No. Pesanan untuk memastikan produk dalam pesanan yang sama berkelompok
     rekap_df.sort_values(by='No. Pesanan', inplace=True)
     rekap_df.reset_index(drop=True, inplace=True)
+
+    # Terapkan logika retur: nol-kan semua kolom pendapatan/biaya dan isi Total Penghasilan (Netto)
+    # dengan ongkir retur yang sudah dibagi.
+    if not rekap_df[kondisi_retur].empty:
+        cols_to_zero_out = [
+            'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
+            'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+            'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
+            'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
+        ]
+        # Pastikan kolom ada sebelum mencoba meng-nol-kan
+        valid_cols_to_zero = [col for col in cols_to_zero_out if col in rekap_df.columns]
+        
+        rekap_df.loc[kondisi_retur, valid_cols_to_zero] = 0
+        rekap_df.loc[kondisi_retur, 'Penjualan Netto'] = rekap_df.loc[kondisi_retur, 'Ongkir Retur Dibagi']
     
     # Buat DataFrame Final
     rekap_final = pd.DataFrame({
@@ -266,12 +305,13 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
         'Harga Satuan': rekap_df['Harga Setelah Diskon'],
         'Total Harga Produk': rekap_df['Total Harga Produk'],
-        'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual', 0),
+        'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
         'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
         'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
         'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan Dibagi', 0),
+        'Gratis Ongkir dari Penjual': rekap_df.get('Gratis Ongkir dari Penjual Dibagi', 0), # <-- DITAMBAH
         'Total Penghasilan': rekap_df['Penjualan Netto'],
         'Metode Pembayaran': rekap_df.get('Metode pembayaran pembeli', '')
     })
@@ -301,6 +341,12 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     seller_conv_df['Kode Pesanan'] = seller_conv_df['Kode Pesanan'].astype(str)
     
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
+
+    # 1. Identifikasi No. Pesanan yang diretur dari file order_df ASLI
+    returned_orders = order_df[order_df['Status Pembatalan/ Pengembalian'] == 'Permintaan Disetujui']['No. Pesanan'].unique()
+    
+    # 2. Tandai baris mana saja di rekap_df yang merupakan retur
+    kondisi_retur = rekap_df['No. Pesanan'].isin(returned_orders)
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
     produk_khusus_raw = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
@@ -403,23 +449,40 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0)
     
     # 2. Hitung biaya baru berdasarkan Total Harga Produk (ini berlaku per-baris/per-produk)
-    rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
+    # rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
     # rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
     # rekap_df['Biaya Adm 8%'] = 0
+    # Hitung biaya berdasarkan (Total Harga Produk - Voucher Dibagi)
+    basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
+    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
+    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     rekap_df['Biaya Layanan 2%'] = 0
     rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = 0
     
     # 3. Hitung Biaya Proses Pesanan yang dibagi rata
     #    Hitung dulu ada berapa produk dalam satu pesanan
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
+
+    # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
+    rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher dari Penjual'])
+    rekap_df['Promo Gratis Ongkir dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Promo Gratis Ongkir dari Penjual'])
+    # Pastikan kolom ongkir retur dibersihkan TANPA abs()
+    rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'] = clean_and_convert_to_numeric(rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'])
+
+    # Buat kolom 'Dibagi' untuk alokasi per produk
+    rekap_df['Voucher dari Penjual Dibagi'] = (rekap_df['Voucher dari Penjual'] / product_count_per_order).fillna(0)
+    rekap_df['Gratis Ongkir dari Penjual Dibagi'] = (rekap_df['Promo Gratis Ongkir dari Penjual'] / product_count_per_order).fillna(0)
+    rekap_df['Ongkir Retur Dibagi'] = (rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'] / product_count_per_order).fillna(0)
+    
     #    Bagi 1250 dengan jumlah produk tersebut
     rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     # rekap_df['Biaya Proses Pesanan Dibagi'] = 0
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
-        'Voucher dari Penjual', 
+        # 'Voucher dari Penjual', 
         'Pengeluaran(Rp)',
         'Total Penghasilan'
         # 'Biaya Administrasi' dan 'Biaya Proses Pesanan' DIHAPUS dari sini
@@ -444,17 +507,33 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     # Kalkulasi Penjualan Netto (sama seperti sebelumnya)
     rekap_df['Penjualan Netto'] = (
         rekap_df.get('Total Harga Produk', 0) -
-        rekap_df.get('Voucher dari Penjual', 0) -
+        rekap_df.get('Voucher dari Penjual Dibagi', 0) -     # <-- DIUBAH
         rekap_df.get('Pengeluaran(Rp)', 0) -
         rekap_df.get('Biaya Adm 8%', 0) -
         rekap_df.get('Biaya Layanan 2%', 0) -
         rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
-        rekap_df.get('Biaya Proses Pesanan Dibagi', 0)
+        rekap_df.get('Biaya Proses Pesanan Dibagi', 0) -
+        rekap_df.get('Gratis Ongkir dari Penjual Dibagi', 0) # <-- DITAMBAH
     )
 
     # Sisa kodenya sama persis dengan fungsi rekap sebelumnya
     rekap_df.sort_values(by='No. Pesanan', inplace=True)
     rekap_df.reset_index(drop=True, inplace=True)
+
+    # Terapkan logika retur: nol-kan semua kolom pendapatan/biaya dan isi Total Penghasilan (Netto)
+    # dengan ongkir retur yang sudah dibagi.
+    if not rekap_df[kondisi_retur].empty:
+        cols_to_zero_out = [
+            'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
+            'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+            'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
+            'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
+        ]
+        # Pastikan kolom ada sebelum mencoba meng-nol-kan
+        valid_cols_to_zero = [col for col in cols_to_zero_out if col in rekap_df.columns]
+        
+        rekap_df.loc[kondisi_retur, valid_cols_to_zero] = 0
+        rekap_df.loc[kondisi_retur, 'Penjualan Netto'] = rekap_df.loc[kondisi_retur, 'Ongkir Retur Dibagi']
     
     rekap_final = pd.DataFrame({
         'No.': np.arange(1, len(rekap_df) + 1),
@@ -465,12 +544,13 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
         'Harga Satuan': rekap_df['Harga Setelah Diskon'],
         'Total Harga Produk': rekap_df['Total Harga Produk'],
-        'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual', 0),
+        'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
         'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
         'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
         'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan Dibagi', 0), # <-- Gunakan kolom yang sudah dibagi
+        'Gratis Ongkir dari Penjual': rekap_df.get('Gratis Ongkir dari Penjual Dibagi', 0), # <-- DITAMBAH
         'Total Penghasilan': rekap_df['Penjualan Netto'],
         'Metode Pembayaran': rekap_df.get('Metode pembayaran pembeli', '')
     })
@@ -499,6 +579,13 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     seller_conv_df['Kode Pesanan'] = seller_conv_df['Kode Pesanan'].astype(str)
     
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
+
+    # 1. Identifikasi No. Pesanan yang diretur dari file order_df ASLI
+    returned_orders = order_df[order_df['Status Pembatalan/ Pengembalian'] == 'Permintaan Disetujui']['No. Pesanan'].unique()
+    
+    # 2. Tandai baris mana saja di rekap_df yang merupakan retur
+    kondisi_retur = rekap_df['No. Pesanan'].isin(returned_orders)
+    
     produk_khusus = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "AL QUR'AN GOLD TERMURAH"]
     kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
     if 'Nama Variasi' in rekap_df.columns:
@@ -512,19 +599,37 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0)
     
     # Hitung biaya berdasarkan Total Harga Produk
-    rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
+    # rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
     # rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
     rekap_df['Biaya Layanan 2%'] = 0
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
+    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
+
+    # Hitung biaya berdasarkan (Total Harga Produk - Voucher Dibagi)
+    basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
+    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     
     # Hitung Biaya Proses Pesanan yang dibagi rata
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
+
+    # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
+    rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher dari Penjual'])
+    rekap_df['Promo Gratis Ongkir dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Promo Gratis Ongkir dari Penjual'])
+    # Pastikan kolom ongkir retur dibersihkan TANPA abs()
+    rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'] = clean_and_convert_to_numeric(rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'])
+
+    # Buat kolom 'Dibagi' untuk alokasi per produk
+    rekap_df['Voucher dari Penjual Dibagi'] = (rekap_df['Voucher dari Penjual'] / product_count_per_order).fillna(0)
+    rekap_df['Gratis Ongkir dari Penjual Dibagi'] = (rekap_df['Promo Gratis Ongkir dari Penjual'] / product_count_per_order).fillna(0)
+    rekap_df['Ongkir Retur Dibagi'] = (rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'] / product_count_per_order).fillna(0)
+    
     rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     # --- AKHIR LOGIKA DAMASTORE ---
     
     # Terapkan logika "hanya di baris pertama" untuk biaya per-pesanan
     order_level_costs = [
-        'Voucher dari Penjual', 
+        # 'Voucher dari Penjual', 
         'Pengeluaran(Rp)',
         'Total Penghasilan' 
         # Biaya Adm, Layanan, dan Proses Pesanan Dihapus karena dihitung per produk/dibagi
@@ -551,17 +656,33 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     # Kalkulasi Penjualan Netto
     rekap_df['Penjualan Netto'] = (
         rekap_df.get('Total Harga Produk', 0) -
-        rekap_df.get('Voucher dari Penjual', 0) -
+        rekap_df.get('Voucher dari Penjual Dibagi', 0) -     # <-- DIUBAH
         rekap_df.get('Pengeluaran(Rp)', 0) -
         rekap_df.get('Biaya Adm 8%', 0) -
         rekap_df.get('Biaya Layanan 2%', 0) -
         rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
-        rekap_df.get('Biaya Proses Pesanan Dibagi', 0) # Gunakan yang sudah dibagi
+        rekap_df.get('Biaya Proses Pesanan Dibagi', 0) -
+        rekap_df.get('Gratis Ongkir dari Penjual Dibagi', 0) # <-- DITAMBAH
     )
 
     # Sisa kodenya sama persis dengan fungsi rekap pacific
     rekap_df.sort_values(by='No. Pesanan', inplace=True)
     rekap_df.reset_index(drop=True, inplace=True)
+
+    # Terapkan logika retur: nol-kan semua kolom pendapatan/biaya dan isi Total Penghasilan (Netto)
+    # dengan ongkir retur yang sudah dibagi.
+    if not rekap_df[kondisi_retur].empty:
+        cols_to_zero_out = [
+            'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
+            'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+            'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
+            'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
+        ]
+        # Pastikan kolom ada sebelum mencoba meng-nol-kan
+        valid_cols_to_zero = [col for col in cols_to_zero_out if col in rekap_df.columns]
+        
+        rekap_df.loc[kondisi_retur, valid_cols_to_zero] = 0
+        rekap_df.loc[kondisi_retur, 'Penjualan Netto'] = rekap_df.loc[kondisi_retur, 'Ongkir Retur Dibagi']
     
     rekap_final = pd.DataFrame({
         'No.': np.arange(1, len(rekap_df) + 1),
@@ -573,12 +694,13 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
         'Harga Satuan': rekap_df['Harga Setelah Diskon'],
         'Total Harga Produk': rekap_df['Total Harga Produk'],
-        'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual', 0),
+        'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
         'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
         'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
         'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan Dibagi', 0),
+        'Gratis Ongkir dari Penjual': rekap_df.get('Gratis Ongkir dari Penjual Dibagi', 0), # <-- DITAMBAH
         'Total Penghasilan': rekap_df['Penjualan Netto'],
         'Metode Pembayaran': rekap_df.get('Metode pembayaran pembeli', '')
     })
