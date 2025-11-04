@@ -217,10 +217,6 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     # rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
     # rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
-    basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
-    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
-    rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     
     # 3. Hitung Biaya Proses Pesanan yang dibagi rata
     #    Hitung dulu ada berapa produk dalam satu pesanan
@@ -239,6 +235,11 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     
     #    Bagi 1250 dengan jumlah produk tersebut
     rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
+
+    basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
+    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
@@ -453,13 +454,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     # rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
     # rekap_df['Biaya Adm 8%'] = 0
-    # Hitung biaya berdasarkan (Total Harga Produk - Voucher Dibagi)
-    basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
-    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
-    # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
-    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
-    rekap_df['Biaya Layanan 2%'] = 0
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = 0
+    # Hitung biaya berdasarkan (Total Harga Produk - Voucher Dibagi) 
     
     # 3. Hitung Biaya Proses Pesanan yang dibagi rata
     #    Hitung dulu ada berapa produk dalam satu pesanan
@@ -479,6 +474,13 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     #    Bagi 1250 dengan jumlah produk tersebut
     rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     # rekap_df['Biaya Proses Pesanan Dibagi'] = 0
+
+    basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
+    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
+    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
+    rekap_df['Biaya Layanan 2%'] = 0
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = 0
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
@@ -596,19 +598,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
 
     # --- LOGIKA PERHITUNGAN BIAYA UNTUK DAMASTORE ---
-    rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0)
-    
-    # Hitung biaya berdasarkan Total Harga Produk
-    # rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
-    # rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
-    rekap_df['Biaya Layanan 2%'] = 0
-    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
-
-    # Hitung biaya berdasarkan (Total Harga Produk - Voucher Dibagi)
-    basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
-    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
-    # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
+    rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0) 
     
     # Hitung Biaya Proses Pesanan yang dibagi rata
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
@@ -625,6 +615,18 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     rekap_df['Ongkir Retur Dibagi'] = (rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'] / product_count_per_order).fillna(0)
     
     rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
+
+    # Hitung biaya berdasarkan Total Harga Produk
+    # rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
+    # rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
+    rekap_df['Biaya Layanan 2%'] = 0
+    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
+
+    # Hitung biaya berdasarkan (Total Harga Produk - Voucher Dibagi)
+    basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
+    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     # --- AKHIR LOGIKA DAMASTORE ---
     
     # Terapkan logika "hanya di baris pertama" untuk biaya per-pesanan
