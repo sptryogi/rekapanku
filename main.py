@@ -578,7 +578,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
 
     income_df['No. Pesanan'] = income_df['No. Pesanan'].astype(str)
     order_agg['No. Pesanan'] = order_agg['No. Pesanan'].astype(str)
-    seller_conv_df['Kode Pesanan'] = seller_conv_df['Kode Pesanan'].astype(str)
+    # seller_conv_df['Kode Pesanan'] = seller_conv_df['Kode Pesanan'].astype(str)
     
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
 
@@ -588,14 +588,20 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     # 2. Tandai baris mana saja di rekap_df yang merupakan retur
     kondisi_retur = rekap_df['No. Pesanan'].isin(returned_orders)
     
+    if not seller_conv_df.empty:
+        seller_conv_df['Kode Pesanan'] = seller_conv_df['Kode Pesanan'].astype(str)
+        iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
+        rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
+        rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
+    else:
+        # Jika file tidak ada (kosong), buat kolom 'Pengeluaran(Rp)' dan isi dengan 0
+        rekap_df['Pengeluaran(Rp)'] = 0
+    # --- AKHIR BLOK KONDISIONAL ---
+
     produk_khusus = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "AL QUR'AN GOLD TERMURAH"]
     kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
     if 'Nama Variasi' in rekap_df.columns:
         rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + rekap_df['Nama Variasi'].fillna('').str.strip()
-
-    iklan_per_pesanan = seller_conv_df.groupby('Kode Pesanan')['Pengeluaran(Rp)'].sum().reset_index()
-    rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
-    rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
 
     # --- LOGIKA PERHITUNGAN BIAYA UNTUK DAMASTORE ---
     rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0) 
@@ -1725,7 +1731,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     return rekap_final.fillna(0)
 
-def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_df):
+def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_df, store_choice):
     """Fungsi untuk memproses dan membuat sheet 'SUMMARY' untuk TikTok."""
     # Agregasi data dari REKAP berdasarkan Nama Produk dan Variasi (ini sudah mencegah duplikasi)
     summary_df = rekap_df.groupby(['Nama Produk', 'Variasi']).agg({
@@ -1752,19 +1758,36 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         summary_df['Biaya Proses Pesanan']
     )
     
-    # 1. Ambil 'Nama Produk', 'Variasi', dan 'Jumlah' dari sheet EKSPEDISI
-    ekspedisi_cost = ekspedisi_df[['Nama Produk', 'Variasi', 'Jumlah']].rename(columns={'Jumlah': 'Biaya Ekspedisi'})
+    # # 1. Ambil 'Nama Produk', 'Variasi', dan 'Jumlah' dari sheet EKSPEDISI
+    # ekspedisi_cost = ekspedisi_df[['Nama Produk', 'Variasi', 'Jumlah']].rename(columns={'Jumlah': 'Biaya Ekspedisi'})
     
-    # 2. Gabungkan (merge) ke summary_df menggunakan KEDUA kolom sebagai kunci
-    summary_df = pd.merge(
-        summary_df, 
-        ekspedisi_cost, 
-        on=['Nama Produk', 'Variasi'],  # <-- Kunci perubahannya di sini
-        how='left'
-    )
+    # # 2. Gabungkan (merge) ke summary_df menggunakan KEDUA kolom sebagai kunci
+    # summary_df = pd.merge(
+    #     summary_df, 
+    #     ekspedisi_cost, 
+    #     on=['Nama Produk', 'Variasi'],  # <-- Kunci perubahannya di sini
+    #     how='left'
+    # )
     
-    # 3. Isi nilai yang tidak cocok (NaN) dengan 0
-    summary_df['Biaya Ekspedisi'] = summary_df['Biaya Ekspedisi'].fillna(0)
+    # # 3. Isi nilai yang tidak cocok (NaN) dengan 0
+    # summary_df['Biaya Ekspedisi'] = summary_df['Biaya Ekspedisi'].fillna(0)
+    if store_choice == "DamaStore":
+        # 1. Untuk DamaStore, Biaya Ekspedisi selalu 0
+        summary_df['Biaya Ekspedisi'] = 0
+    else:
+        # 1. Ambil 'Nama Produk', 'Variasi', dan 'Jumlah' dari sheet EKSPEDISI
+        ekspedisi_cost = ekspedisi_df[['Nama Produk', 'Variasi', 'Jumlah']].rename(columns={'Jumlah': 'Biaya Ekspedisi'})
+        
+        # 2. Gabungkan (merge) ke summary_df menggunakan KEDUA kolom sebagai kunci
+        summary_df = pd.merge(
+            summary_df, 
+            ekspedisi_cost, 
+            on=['Nama Produk', 'Variasi'],
+            how='left'
+        )
+        
+        # 3. Isi nilai yang tidak cocok (NaN) dengan 0 dan pastikan numerik
+        summary_df['Biaya Ekspedisi'] = pd.to_numeric(summary_df['Biaya Ekspedisi'], errors='coerce').fillna(0)
 
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
@@ -2044,8 +2067,26 @@ if marketplace_choice:
     st.markdown("---")
     
     # Kondisi untuk menampilkan tombol proses
-    show_shopee_button = marketplace_choice == "Shopee" and uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller
-    show_tiktok_button = marketplace_choice == "TikTok" and uploaded_income_tiktok and uploaded_semua_pesanan and uploaded_creator_order and uploaded_pdfs
+    # show_shopee_button = marketplace_choice == "Shopee" and uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller
+    shopee_base_files = marketplace_choice == "Shopee" and uploaded_order and uploaded_income and uploaded_iklan
+    # Tentukan status tombol berdasarkan toko
+    if shopee_base_files and store_choice == "DamaStore":
+        show_shopee_button = True # DamaStore siap, seller conversion opsional
+    elif shopee_base_files: # Toko Shopee lain (Human/Pacific)
+        show_shopee_button = uploaded_seller # Wajib untuk Human/Pacific
+    else:
+        show_shopee_button = False
+        
+    # show_tiktok_button = marketplace_choice == "TikTok" and uploaded_income_tiktok and uploaded_semua_pesanan and uploaded_creator_order and uploaded_pdfs
+    tiktok_base_files = marketplace_choice == "TikTok" and uploaded_income_tiktok and uploaded_semua_pesanan
+    
+    show_tiktok_button = False # Inisialisasi
+    if tiktok_base_files and store_choice == "DamaStore":
+        # DamaStore: creator_order & pdfs opsional
+        show_tiktok_button = True
+    elif tiktok_base_files and store_choice == "HumanStore":
+        # HumanStore: creator_order & pdfs wajib
+        show_tiktok_button = uploaded_creator_order and uploaded_pdfs
 
     if show_shopee_button or show_tiktok_button:
         button_label = f"🚀 Mulai Proses untuk {marketplace_choice} - {store_choice}"
@@ -2063,7 +2104,13 @@ if marketplace_choice:
                     if store_choice == "HumanStore":
                         service_fee_df = pd.read_excel(uploaded_income, sheet_name='Service Fee Details', skiprows=1)
                     iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
-                    seller_conversion_df = pd.read_csv(uploaded_seller)  
+                    # seller_conversion_df = pd.read_csv(uploaded_seller)
+                    if uploaded_seller:
+                        seller_conversion_df = pd.read_csv(uploaded_seller)
+                    else:
+                        # Buat DataFrame kosong jika file tidak ada
+                        # Ini penting agar DamaStore tidak error
+                        seller_conversion_df = pd.DataFrame(columns=['Kode Pesanan', 'Pengeluaran(Rp)'])
                     progress_bar.progress(20, text="File dimuat. Membersihkan format angka...")
 
                     # ... (Kode pembersihan data keuangan Anda tetap di sini) ...
@@ -2156,9 +2203,17 @@ if marketplace_choice:
                     creator_order_all_df.columns = [col.upper() for col in creator_order_all_df.columns]
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
-                    status_text.text(f"Memproses {len(uploaded_pdfs)} file PDF nota resi...")
-                    pdf_data = [parse_pdf_receipt(pdf) for pdf in uploaded_pdfs if pdf is not None]
-                    pdf_data = [data for data in pdf_data if data is not None] # Hapus hasil yang gagal
+                    # status_text.text(f"Memproses {len(uploaded_pdfs)} file PDF nota resi...")
+                    # pdf_data = [parse_pdf_receipt(pdf) for pdf in uploaded_pdfs if pdf is not None]
+                    # pdf_data = [data for data in pdf_data if data is not None] # Hapus hasil yang gagal
+                    pdf_data = [] # Inisialisasi list kosong
+                    if uploaded_pdfs: # Hanya proses jika PDF di-upload
+                        status_text.text(f"Memproses {len(uploaded_pdfs)} file PDF nota resi...")
+                        pdf_data = [parse_pdf_receipt(pdf) for pdf in uploaded_pdfs if pdf is not None]
+                        pdf_data = [data for data in pdf_data if data is not None] # Hapus hasil yang gagal
+                    else:
+                        # Jika tidak ada PDF (kasus DamaStore opsional)
+                        status_text.text("Melewati pemrosesan PDF nota resi...")
                     progress_bar.progress(40, text="File PDF selesai diproses.")
     
                     status_text.text("Menyusun sheet 'REKAP' (TikTok)...")
@@ -2174,7 +2229,8 @@ if marketplace_choice:
                     progress_bar.progress(70, text="Sheet 'EKSPEDISI' selesai.")
     
                     status_text.text("Menyusun sheet 'SUMMARY' (TikTok)...")
-                    summary_processed = process_summary_tiktok(rekap_processed, katalog_df, harga_custom_tlj_df, ekspedisi_processed)
+                    # summary_processed = process_summary_tiktok(rekap_processed, katalog_df, harga_custom_tlj_df, ekspedisi_processed)
+                    summary_processed = process_summary_tiktok(rekap_processed, katalog_df, harga_custom_tlj_df, ekspedisi_processed, store_choice)
                     progress_bar.progress(85, text="Sheet 'SUMMARY' selesai.")
     
                     file_name_output = f"Rekapanku_TikTok_{store_choice}.xlsx"
