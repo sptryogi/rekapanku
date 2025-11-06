@@ -2199,8 +2199,14 @@ if marketplace_choice:
                     semua_pesanan_df.columns = semua_pesanan_df.columns.str.strip()
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
                     semua_pesanan_df.columns = [col.upper() for col in semua_pesanan_df.columns]
-                    creator_order_all_df = clean_columns(pd.read_excel(uploaded_creator_order))
-                    creator_order_all_df.columns = [col.upper() for col in creator_order_all_df.columns]
+                    if uploaded_creator_order:
+                        # Jika file di-upload (HumanStore), baca filenya
+                        creator_order_all_df = clean_columns(pd.read_excel(uploaded_creator_order))
+                        creator_order_all_df.columns = [col.upper() for col in creator_order_all_df.columns]
+                    else:
+                        # Jika DamaStore (file=None), buat DataFrame kosong
+                        # Tambahkan 'SKU' ke daftar kolom agar merge tidak error
+                        creator_order_all_df = pd.DataFrame(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL', 'SKU'])
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
                     # status_text.text(f"Memproses {len(uploaded_pdfs)} file PDF nota resi...")
