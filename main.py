@@ -822,6 +822,31 @@ def get_harga_beli_fuzzy(nama_produk, katalog_df, score_threshold_primary=80, sc
     except Exception:
         return 0
 
+def calculate_eksemplar(nama_produk, jumlah_terjual):
+    """Menghitung jumlah eksemplar berdasarkan 'PAKET ISI X' atau 'SATUAN'."""
+    try:
+        nama_produk_upper = str(nama_produk).upper()
+        
+        # Cari "PAKET ISI [ANGKA]"
+        paket_match = re.search(r'PAKET\s*ISI\s*(\d+)', nama_produk_upper)
+        # Cari "SATUAN"
+        satuan_match = 'SATUAN' in nama_produk_upper
+        
+        faktor = 1 # Default adalah 1
+        
+        if paket_match:
+            # Jika ketemu "PAKET ISI 7", ambil angka 7
+            faktor = int(paket_match.group(1))
+        elif satuan_match:
+            # Jika ketemu "SATUAN", faktornya 1
+            faktor = 1
+        # else:
+            # Jika tidak ada keduanya, faktor tetap 1 (dihitung satuan)
+            
+        return jumlah_terjual * faktor
+    except Exception:
+        return jumlah_terjual # Fallback jika ada error
+    
 def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, store_type):
     """
     Fungsi untuk memproses sheet 'SUMMARY'.
@@ -831,14 +856,6 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     rekap_copy = rekap_df.copy()
     rekap_copy['No. Pesanan'] = rekap_copy['No. Pesanan'].replace('', np.nan).ffill()
 
-    # Agregasi data utama dari REKAP
-    # summary_df = rekap_copy.groupby('Nama Produk').agg({
-    #     'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
-    #     'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
-    #     'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
-    #     'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
-    #     'Total Penghasilan': 'sum'
-    # }).reset_index()
     summary_df = rekap_copy.groupby(['Nama Produk', 'Harga Satuan'], as_index=False).agg({
         'Jumlah Terjual': 'sum', 
         # 'Harga Satuan': 'first', <-- Dihapus karena sudah jadi bagian key
@@ -955,9 +972,14 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         summary_df['Total Harga Produk'] - summary_df['Voucher Ditanggung Penjual'] -
         summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 8%'] -
         summary_df['Biaya Layanan 2%'] - summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] -
-        summary_df['Biaya Proses Pesanan'] - summary_df['Iklan Klik']
+        summary_df['Biaya Proses Pesanan']
     )
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
+
+    summary_df['Jumlah Eksemplar'] = summary_df.apply(
+        lambda row: calculate_eksemplar(row['Nama Produk'], row['Jumlah Terjual']), 
+        axis=1
+    )
 
     if store_type in ['PacificBookStore']:
         summary_df['Biaya Kirim ke Sby'] = summary_df['Jumlah Terjual'] * 733
@@ -1023,12 +1045,12 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     summary_final_data = {
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'],
-        'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Harga Satuan': summary_df['Harga Satuan'],
+        'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Eksemplar': summary_df['Jumlah Eksemplar'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Harga Produk': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
         'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
         'Biaya Layanan 2%': summary_df['Biaya Layanan 2%'], 'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
-        'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'], 'Iklan Klik': summary_df['Iklan Klik'],
-        'Penjualan Netto': summary_df['Penjualan Netto'], 'Biaya Packing': summary_df['Biaya Packing'],
+        'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
+        'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan Klik': summary_df['Iklan Klik'], 'Biaya Packing': summary_df['Biaya Packing'],
     }
     if store_type in ['PacificBookStore']:
         summary_final_data['Biaya Kirim ke Sby'] = biaya_ekspedisi_final
@@ -1318,7 +1340,6 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     # --- ▲▲▲ AKHIR MODIFIKASI ▲▲▲ ---
     summary_df.rename(columns={'Nama Produk Display': 'Nama Produk'}, inplace=True)
 
-
     # --- LOGIKA IKLAN (Tetap sama) ---
     summary_df['Iklan Klik'] = 0.0
     produk_khusus_raw = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "Paket Hemat Paket Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida"]
@@ -1351,9 +1372,21 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         summary_df['Total Harga Produk'] - summary_df['Voucher Ditanggung Penjual'] -
         summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 8%'] -
         summary_df['Biaya Layanan 2%'] - summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] -
-        summary_df['Biaya Proses Pesanan'] - summary_df['Iklan Klik']
+        summary_df['Biaya Proses Pesanan']
     )
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
+
+    summary_df['Jumlah Eksemplar'] = summary_df.apply(
+        lambda row: calculate_eksemplar(row['Nama Produk'], row['Jumlah Terjual']), 
+        axis=1
+    )
+    
+    # Terapkan Pengecualian DamaStore
+    hijab_keywords_dama = {'PASHMINA', 'HIJAB', 'PASMINA'}
+    # Gunakan 'Nama Produk Original' untuk pengecekan yang andal
+    kondisi_hijab = summary_df['Nama Produk Original'].str.upper().str.contains('|'.join(hijab_keywords_dama), na=False)
+    summary_df.loc[kondisi_hijab, 'Jumlah Eksemplar'] = 0
+    
     summary_df['Biaya Ekspedisi'] = 0 # DamaStore pakai Biaya Ekspedisi = 0
     biaya_ekspedisi_final = summary_df['Biaya Ekspedisi']
 
@@ -1398,12 +1431,12 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     summary_final_data = {
         'No': np.arange(1, len(summary_df) + 1),
         'Nama Produk': summary_df['Nama Produk'], # Nama produk display
-        'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Harga Satuan': summary_df['Harga Satuan'],
+        'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Eksemplar': summary_df['Jumlah Eksemplar'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Harga Produk': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
         'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
         'Biaya Layanan 2%': summary_df['Biaya Layanan 2%'], 'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
-        'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'], 'Iklan Klik': summary_df['Iklan Klik'],
-        'Penjualan Netto': summary_df['Penjualan Netto'], 'Biaya Packing': summary_df['Biaya Packing'],
+        'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
+        'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan Klik': summary_df['Iklan Klik'], 'Biaya Packing': summary_df['Biaya Packing'],
         'Biaya Ekspedisi': biaya_ekspedisi_final, # Kolom Biaya Ekspedisi
         'Harga Beli': summary_df['Harga Beli'], 'Harga Custom TLJ': summary_df['Harga Custom TLJ'],
         'Total Pembelian': summary_df['Total Pembelian'], 'M1': summary_df['M1'],
