@@ -126,11 +126,11 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
 
     # 1. Pastikan 'Total Penghasilan' (dari income_df) adalah numerik
-    #    clean_and_convert_to_numeric TIDAK MENGHAPUS minus
     rekap_df['Total Penghasilan'] = clean_and_convert_to_numeric(rekap_df['Total Penghasilan'])
     
-    # 2. Tandai baris retur BARU: jika 'Total Penghasilan' < 0
-    kondisi_retur_baru = rekap_df['Total Penghasilan'] < 0
+    # 2. Tandai baris retur BARU: Dapatkan daftar No. Pesanan yang diretur
+    #    Ini adalah No. Pesanan di mana SETIDAKNYA SATU baris memiliki Total Penghasilan < 0
+    returned_orders_list = rekap_df[rekap_df['Total Penghasilan'] < 0]['No. Pesanan'].unique()
     
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
     produk_khusus_raw = [
@@ -223,16 +223,16 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     #    Hitung dulu ada berapa produk dalam satu pesanan
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
 
+    rekap_df['Total Penghasilan Dibagi'] = (rekap_df['Total Penghasilan'] / product_count_per_order).fillna(0)
+
     # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
     rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher dari Penjual'])
     rekap_df['Promo Gratis Ongkir dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Promo Gratis Ongkir dari Penjual'])
     # Pastikan kolom ongkir retur dibersihkan TANPA abs()
-    rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'] = clean_and_convert_to_numeric(rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'])
 
     # Buat kolom 'Dibagi' untuk alokasi per produk
     rekap_df['Voucher dari Penjual Dibagi'] = (rekap_df['Voucher dari Penjual'] / product_count_per_order).fillna(0).abs()
     rekap_df['Gratis Ongkir dari Penjual Dibagi'] = (rekap_df['Promo Gratis Ongkir dari Penjual'] / product_count_per_order).fillna(0).abs()
-    rekap_df['Ongkir Retur Dibagi'] = (rekap_df['Ongkir yang Diteruskan oleh Shopee ke Jasa Kirim'] / product_count_per_order).fillna(0)
     
     #    Bagi 1250 dengan jumlah produk tersebut
     rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
@@ -283,21 +283,24 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     rekap_df.reset_index(drop=True, inplace=True)
 
     # Terapkan logika retur: nol-kan semua kolom pendapatan/biaya dan isi Total Penghasilan (Netto)
-    # dengan ongkir retur yang sudah dibagi.
-    # Terapkan logika retur BARU: nol-kan semua kolom kalkulasi jika retur
-    if not rekap_df[kondisi_retur_baru].empty:
+    kondisi_retur_final = rekap_df['No. Pesanan'].isin(returned_orders_list)
+    
+    if not rekap_df[kondisi_retur_final].empty:
         cols_to_zero_out = [
             'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
             'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
             'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
-            'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi',
-            'Penjualan Netto' # Termasuk Penjualan Netto
+            'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
+            # 'Penjualan Netto' dihapus dari daftar ini
         ]
         # Pastikan kolom ada sebelum mencoba meng-nol-kan
         valid_cols_to_zero = [col for col in cols_to_zero_out if col in rekap_df.columns]
         
         # Set semua kolom kalkulasi ke 0 untuk baris retur
-        rekap_df.loc[kondisi_retur_baru, valid_cols_to_zero] = 0
+        rekap_df.loc[kondisi_retur_final, valid_cols_to_zero] = 0
+        
+        # Atur 'Penjualan Netto' ke nilai 'Total Penghasilan Dibagi' (yang negatif)
+        rekap_df.loc[kondisi_retur_final, 'Penjualan Netto'] = rekap_df.loc[kondisi_retur_final, 'Total Penghasilan Dibagi']
     
     # Buat DataFrame Final
     rekap_final = pd.DataFrame({
