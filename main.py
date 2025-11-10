@@ -1001,12 +1001,13 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # --- AKHIR LOGIKA BARU ---
 
     # Sisa fungsi sama seperti sebelumnya, dengan penyesuaian pada pemanggilan `get_harga_beli_fuzzy`
-    summary_df['Penjualan Netto'] = (
-        summary_df['Total Harga Produk'] - summary_df['Voucher Ditanggung Penjual'] -
-        summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 8%'] -
-        summary_df['Biaya Layanan 2%'] - summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] -
-        summary_df['Biaya Proses Pesanan']
-    )
+    # summary_df['Penjualan Netto'] = (
+    #     summary_df['Total Harga Produk'] - summary_df['Voucher Ditanggung Penjual'] -
+    #     summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 8%'] -
+    #     summary_df['Biaya Layanan 2%'] - summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] -
+    #     summary_df['Biaya Proses Pesanan']
+    # )
+    summary_df['Penjualan Netto'] = summary_df['Total Penghasilan']
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
     summary_df['Jumlah Eksemplar'] = summary_df.apply(
@@ -1417,12 +1418,13 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     # --- AKHIR LOGIKA IKLAN ---
 
     # Hitungan selanjutnya
-    summary_df['Penjualan Netto'] = (
-        summary_df['Total Harga Produk'] - summary_df['Voucher Ditanggung Penjual'] -
-        summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 8%'] -
-        summary_df['Biaya Layanan 2%'] - summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] -
-        summary_df['Biaya Proses Pesanan']
-    )
+    # summary_df['Penjualan Netto'] = (
+    #     summary_df['Total Harga Produk'] - summary_df['Voucher Ditanggung Penjual'] -
+    #     summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 8%'] -
+    #     summary_df['Biaya Layanan 2%'] - summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] -
+    #     summary_df['Biaya Proses Pesanan']
+    # )
+    summary_df['Penjualan Netto'] = summary_df['Total Penghasilan']
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
     summary_df['Jumlah Eksemplar'] = summary_df.apply(
