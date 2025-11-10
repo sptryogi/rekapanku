@@ -483,6 +483,10 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                 elif "AL QURAN SAKU PASTEL" in nama_produk_clean or \
                      "AL QURAN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean or \
                      "AL QUR'AN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean:
+                elif "AL QURAN SAKU PASTEL" in nama_produk_clean or \
+                     "AL QURAN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS | SURABAYA | ALQURAN HADIAH ISLAMI HAMPERS" in nama_produk_clean or \
+                     "AL QURAN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean or \
+                     "AL QUR'AN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean:
                     
                     if ',' in var_str:
                         # Ambil bagian terakhir setelah koma
