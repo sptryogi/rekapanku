@@ -359,6 +359,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
     produk_khusus_raw = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
+        "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris",
         "TERBARU Al Quran Edisi Tahlilan Pengganti Buku Yasin Al Aqeel A6 Kertas HVS | SURABAYA | Mushaf Untuk Pengajian Kado Islami Hampers",
         "Al Quran Terjemah Al Aleem A5 HVS 15 Baris | SURABAYA | Alquran Untuk Pengajian Majelis Taklim",
         "Al Quran Saku Resleting Al Quddus A7 QPP Cover Kulit | SURABAYA | Untuk Santri Traveler Muslim",
@@ -394,6 +395,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
 
                 produk_yang_ambil_paket = [
                     "CUSTOM AL QURAN MENGENANG", 
+                    "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris",
                     "TERBARU Al Quran Edisi Tahlilan Pengganti Buku Yasin Al Aqeel A6 Kertas HVS | SURABAYA | Mushaf Untuk Pengajian Kado Islami Hampers",
                     "Al Quran Terjemah Al Aleem A5 HVS 15 Baris | SURABAYA | Alquran Untuk Pengajian Majelis Taklim",
                     "Al Quran Saku Resleting Al Quddus A7 QPP Cover Kulit | SURABAYA | Untuk Santri Traveler Muslim",
@@ -918,6 +920,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     produk_khusus = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
         "AL QUR'AN GOLD TERMURAH",
+        "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris",
         "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
         "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF",
         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan",
