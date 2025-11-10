@@ -480,9 +480,9 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                         part_to_append = var_str
                 
                 # Kategori 2: Produk Pastel & Wakaf (Ambil bagian SETELAH koma, misal 'Satuan' atau 'Paket Isi 7')
-                elif "AL QURAN SAKU PASTEL" in nama_produk_clean or \
-                     "AL QURAN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean or \
-                     "AL QUR'AN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean:
+                # elif "AL QURAN SAKU PASTEL" in nama_produk_clean or \
+                #      "AL QURAN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean or \
+                #      "AL QUR'AN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean:
                 elif "AL QURAN SAKU PASTEL" in nama_produk_clean or \
                      "AL QURAN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS | SURABAYA | ALQURAN HADIAH ISLAMI HAMPERS" in nama_produk_clean or \
                      "AL QURAN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean or \
