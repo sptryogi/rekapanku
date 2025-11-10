@@ -452,7 +452,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     #     rekap_df.drop(columns=['Nama Produk Clean Temp'], inplace=True)
     if 'Nama Produk' in rekap_df.columns:
         # Buat kolom bersih sementara untuk pencocokan
-        rekap_df['Nama Produk Clean Temp'] = rekap_df['Nama Produk'].astype(str).str.replace('\xa0', ' ').str.replace(r'\s+', ' ', regex=True).str.strip().str.upper()
+        rekap_df['Nama Produk Clean Temp'] = rekap_df['Nama Produk'].astype(str).str.replace('\xa0', ' ').str.replace("'", "").str.replace(r'\s+', ' ', regex=True).str.strip().str.upper()
         # Kondisi sekarang akan mencocokkan produk baru
         kondisi = rekap_df['Nama Produk Clean Temp'].isin(produk_khusus)
     else:
