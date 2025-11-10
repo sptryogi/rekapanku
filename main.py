@@ -223,6 +223,21 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     #    Hitung dulu ada berapa produk dalam satu pesanan
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
 
+    # 3. Siapkan data 'Biaya Layanan Promo XTRA' dari service_fee_df
+    #    (Fungsi clean_and_convert_to_numeric sudah ada di file Anda)
+    service_fee_subset = service_fee_df[['No. Pesanan', 'Biaya Layanan Promo XTRA']].copy()
+    service_fee_subset['No. Pesanan'] = service_fee_subset['No. Pesanan'].astype(str)
+    
+    # Gunakan fungsi clean yang ada, lalu .abs() untuk menghilangkan minus
+    service_fee_subset['BiayaLayananPromo_Clean'] = clean_and_convert_to_numeric(service_fee_subset['Biaya Layanan Promo XTRA']).abs()
+    
+    # Agregasi (sum) untuk jaga-jaga jika ada duplikat no. pesanan di file service fee
+    service_fee_agg = service_fee_subset.groupby('No. Pesanan')['BiayaLayananPromo_Clean'].sum().reset_index()
+    
+    # 4. Gabungkan (merge) data biaya layanan ini ke rekap_df
+    rekap_df = pd.merge(rekap_df, service_fee_agg, on='No. Pesanan', how='left')
+    rekap_df['BiayaLayananPromo_Clean'] = rekap_df['BiayaLayananPromo_Clean'].fillna(0)
+
     rekap_df['Total Penghasilan Dibagi'] = (rekap_df['Total Penghasilan'] / product_count_per_order).fillna(0)
 
     # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
@@ -241,16 +256,8 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
-    rekap_df['Biaya Layanan 2%'] = clean_order_all_numeric(service_fee_data['Biaya Layanan Promo XTRA'])
-
-    # --- REVISI LOGIKA BIAYA LAYANAN 2% (HumanStore) ---
-    # 3b. Bagi Biaya Layanan 2% (dari Promo XTRA) dengan jumlah produk dan pastikan positif
-    if 'Biaya Layanan 2%' in rekap_df.columns:
-        # Pastikan kolom numerik, isi NaN, ambil nilai absolut, baru bagi
-        # Gunakan .replace(0, np.nan) untuk menghindari pembagian 0/0 jika count 0
-        biaya_layanan_2_numeric = pd.to_numeric(rekap_df['Biaya Layanan 2%'], errors='coerce').fillna(0).abs()
-        rekap_df['Biaya Layanan 2%'] = biaya_layanan_2_numeric / product_count_per_order.replace(0, np.nan)
-    # --- AKHIR REVISI ---
+    rekap_df['Biaya Layanan 2%'] = rekap_df['BiayaLayananPromo_Clean'] / product_count_per_order
+    rekap_df = rekap_df.drop(columns=['BiayaLayananPromo_Clean'], errors='ignore')
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
