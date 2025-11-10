@@ -241,6 +241,7 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
+    rekap_df['Biaya Layanan 2%'] = clean_order_all_numeric(service_fee_data['Biaya Layanan Promo XTRA'])
 
     # --- REVISI LOGIKA BIAYA LAYANAN 2% (HumanStore) ---
     # 3b. Bagi Biaya Layanan 2% (dari Promo XTRA) dengan jumlah produk dan pastikan positif
