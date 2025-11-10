@@ -373,153 +373,68 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
-    produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip().upper() for name in produk_khusus_raw]
+    produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
 
-    # if 'Nama Produk' in rekap_df.columns:
-    #     rekap_df['Nama Produk Clean Temp'] = rekap_df['Nama Produk'].astype(str).str.replace('\xa0', ' ').str.replace(r'\s+', ' ', regex=True).str.strip()
-    #     kondisi = rekap_df['Nama Produk Clean Temp'].isin(produk_khusus)
-    # else:
-    #     kondisi = pd.Series([False] * len(rekap_df), index=rekap_df.index)
-    
-    # if 'Nama Variasi' in rekap_df.columns:
-    #     new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy()
-    
-    #     for idx in new_product_names.index:
-    #         nama_produk_asli = rekap_df.loc[idx, 'Nama Produk'] # Ambil nama produk asli (belum bersih)
-    #         nama_produk_clean = rekap_df.loc[idx, 'Nama Produk Clean Temp'] # Ambil nama produk bersih
-    #         nama_variasi_ori = rekap_df.loc[idx, 'Nama Variasi']
-    
-    #         if pd.notna(nama_variasi_ori):
-    #             var_str = str(nama_variasi_ori).strip()
-    #             part_to_append = ''
-
-    #             produk_yang_ambil_paket = [
-    #                 "CUSTOM AL QURAN MENGENANG", 
-    #                 "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris",
-    #                 "TERBARU Al Quran Edisi Tahlilan Pengganti Buku Yasin Al Aqeel A6 Kertas HVS | SURABAYA | Mushaf Untuk Pengajian Kado Islami Hampers",
-    #                 "Al Quran Terjemah Al Aleem A5 HVS 15 Baris | SURABAYA | Alquran Untuk Pengajian Majelis Taklim",
-    #                 "Al Quran Saku Resleting Al Quddus A7 QPP Cover Kulit | SURABAYA | Untuk Santri Traveler Muslim",
-    #                 "Al Quran Wakaf Ibtida Al Quddus A5 Kertas HVS | Alquran SURABAYA",
-    #                 "Al Fikrah Al Quran Terjemah Fitur Lengkap A5 Kertas HVS | Alquran SURABAYA",
-    #                 "Al Quddus Al Quran Wakaf Ibtida A5 Kertas HVS | Alquran SURABAYA",
-    #                 "Al Quran Terjemah Al Aleem A5 Kertas HVS 15 Baris | SURABAYA | Alquran Untuk Majelis Taklim Kajian",
-    #                 "Al Quran Terjemah Per Kata A5 | Tajwid 2 Warna | Alquran Al Fikrah HVS 15 Baris | SURABAYA",
-    #                 "Al Quran Saku Resleting Al Quddus A7 Cover Kulit Kertas QPP | Alquran SURABAYA",
-    #                 "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers",
-    #                 "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers"
-    #             ]
-    
-    #             # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
-    #             if "CUSTOM AL QURAN MENGENANG" in nama_produk_clean:
-    #                 # REVISI: Ambil seluruh string variasi, jangan di-split
-    #                 part_to_append = var_str
-                
-    #             # --- AKHIR LOGIKA KHUSUS ---
-    #             elif any(produk in nama_produk_clean for produk in produk_yang_ambil_paket):
-    #                 var_upper = var_str.upper()
-    #                 # Cari "PAKET ISI X" atau "SATUAN"
-    #                 paket_match = re.search(r'(PAKET\s*ISI\s*\d+)', var_upper)
-    #                 satuan_match = 'SATUAN' in var_upper
-                    
-    #                 if paket_match:
-    #                     part_to_append = paket_match.group(1) # Hasilnya 'PAKET ISI 7'
-    #                 elif satuan_match:
-    #                     part_to_append = 'SATUAN'
-    #                 else:
-    #                     # --- TAMBAHAN ---
-    #                     # Biarkan part_to_append kosong agar dicek logika di bawah
-    #                     pass 
-    
-    #             # --- Logika Lama untuk Produk Khusus Lainnya ---
-    #             # --- PERUBAHAN: Ubah 'elif' menjadi 'if not part_to_append' ---
-    #             if not part_to_append and ',' in var_str: # JIKA BELUM ADA & ADA KOMA
-    #                 parts = [p.strip().upper() for p in var_str.split(',')]
-    #                 size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7', 'HVS', 'KORAN'}
-    #                 relevant_parts = [p for p in parts if p in size_keywords]
-    #                 if relevant_parts:
-    #                     part_to_append = relevant_parts[0]
-    #             elif not part_to_append: # JIKA BELUM ADA & TIDAK ADA KOMA
-    #                 part_to_append = var_str
-    #             # --- Akhir Logika Lama ---
-    
-    #             # Gabungkan HANYA jika part_to_append tidak kosong
-    #             if part_to_append:
-    #                 new_product_names.loc[idx] = f"{nama_produk_asli} ({part_to_append})"
-    
-    #     rekap_df.loc[kondisi, 'Nama Produk'] = new_product_names
-    
-    # if 'Nama Produk Clean Temp' in rekap_df.columns:
-    #     rekap_df.drop(columns=['Nama Produk Clean Temp'], inplace=True)
     if 'Nama Produk' in rekap_df.columns:
-        # Buat kolom bersih sementara untuk pencocokan
-        rekap_df['Nama Produk Clean Temp'] = rekap_df['Nama Produk'].astype(str).str.replace('\xa0', ' ').str.replace("'", "").str.replace(r'\s+', ' ', regex=True).str.strip().str.upper()
-        # Kondisi sekarang akan mencocokkan produk baru
+        rekap_df['Nama Produk Clean Temp'] = rekap_df['Nama Produk'].astype(str).str.replace('\xa0', ' ').str.replace(r'\s+', ' ', regex=True).str.strip()
         kondisi = rekap_df['Nama Produk Clean Temp'].isin(produk_khusus)
     else:
         kondisi = pd.Series([False] * len(rekap_df), index=rekap_df.index)
-
+    
     if 'Nama Variasi' in rekap_df.columns:
-        new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy() # Salin nama produk asli
-
+        new_product_names = rekap_df.loc[kondisi, 'Nama Produk'].copy()
+    
         for idx in new_product_names.index:
-            nama_produk_asli = rekap_df.loc[idx, 'Nama Produk']
-            nama_produk_clean = rekap_df.loc[idx, 'Nama Produk Clean Temp']
+            nama_produk_asli = rekap_df.loc[idx, 'Nama Produk'] # Ambil nama produk asli (belum bersih)
+            nama_produk_clean = rekap_df.loc[idx, 'Nama Produk Clean Temp'] # Ambil nama produk bersih
             nama_variasi_ori = rekap_df.loc[idx, 'Nama Variasi']
-
+    
             if pd.notna(nama_variasi_ori):
                 var_str = str(nama_variasi_ori).strip()
                 part_to_append = ''
-
-                # --- LOGIKA EKSTRAKSI BARU ---
-                
-                # Kategori 1: Produk Custom (Ambil bagian SEBELUM koma)
-                if "CUSTOM AL QURAN MENGENANG" in nama_produk_clean:
-                    if ',' in var_str:
-                        part_to_append = var_str.split(',', 1)[0].strip()
-                    else:
-                        part_to_append = var_str
-                
-                # Kategori 2: Produk Pastel & Wakaf (Ambil bagian SETELAH koma, misal 'Satuan' atau 'Paket Isi 7')
-                # elif "AL QURAN SAKU PASTEL" in nama_produk_clean or \
-                #      "AL QURAN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean or \
-                #      "AL QUR'AN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean:
-                elif "AL QURAN SAKU PASTEL" in nama_produk_clean or \
-                     "AL QURAN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS | SURABAYA | ALQURAN HADIAH ISLAMI HAMPERS" in nama_produk_clean or \
-                     "AL QURAN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean or \
-                     "AL QUR'AN UNTUK WAKAF AL AQEEL A5 KERTAS KORAN 18 BARIS" in nama_produk_clean:
+    
+                # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
+                produk_yang_ambil_full_variasi = [
+                    "CUSTOM AL QURAN MENGENANG", 
+                    "AL QUR'AN GOLD TERMURAH", 
+                    "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN", 
+                    "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan" # (Sesuaikan string ini)
+                ]
+                if any(produk in nama_produk_clean for produk in produk_yang_ambil_full_variasi):
+                    # REVISI: Ambil seluruh string variasi, jangan di-split
+                    part_to_append = var_str
+                # --- AKHIR LOGIKA KHUSUS ---
+                elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" or "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" 
+                    or "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris" in nama_produk_clean:
+                    var_upper = var_str.upper()
+                    # Cari "PAKET ISI X" atau "SATUAN"
+                    paket_match = re.search(r'(PAKET\s*ISI\s*\d+)', var_upper)
+                    satuan_match = 'SATUAN' in var_upper
                     
-                    if ',' in var_str:
-                        # Ambil bagian terakhir setelah koma
-                        part_to_append = var_str.split(',')[-1].strip()
+                    if paket_match:
+                        part_to_append = paket_match.group(1) # Hasilnya 'PAKET ISI 7'
+                    elif satuan_match:
+                        part_to_append = 'SATUAN'
                     else:
-                        # Jika tidak ada koma, cek apakah variasi BUKAN warna (untuk produk Wakaf)
-                        # Daftar warna sederhana, tambahkan jika perlu
-                        color_keywords = {'MERAH', 'BIRU', 'HIJAU', 'COKLAT', 'COKELAT' 'HITAM', 'RANDOM', 'PINK', 'GOLD'}
-                        if var_str.upper() not in color_keywords:
-                             part_to_append = var_str
+                        # --- LOGIKA FALLBACK TAMBAHAN ---
+                        # Jika bukan PAKET/SATUAN, jalankan logika generik
+                        if ',' in var_str:
+                            parts = [p.strip().upper() for p in var_str.split(',')]
+                            size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7', 'HVS', 'KORAN'}
+                            relevant_parts = [p for p in parts if p in size_keywords]
+                            if relevant_parts:
+                                part_to_append = relevant_parts[0]
+                        else:
+                            part_to_append = var_str
 
-                # Kategori 3: Produk Gold & Maheer (Cari keyword QPP, A5, dll.)
-                elif "AL QUR'AN GOLD TERMURAH" in nama_produk_clean or \
-                     "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN" in nama_produk_clean:
-                    
-                    if ',' in var_str:
-                        parts = [p.strip().upper() for p in var_str.split(',')]
-                        size_keywords = {'QPP', 'A5', 'B5', 'A6', 'A7', 'HVS', 'KORAN'}
-                        relevant_parts = [p for p in parts if p in size_keywords]
-                        if relevant_parts:
-                            part_to_append = relevant_parts[0]
-                    else:
-                        part_to_append = var_str # Ambil semua jika tidak ada koma
-                
-                # --- AKHIR LOGIKA EKSTRAKSI BARU ---
-
+                # --- Akhir Logika Lama ---
+    
                 # Gabungkan HANYA jika part_to_append tidak kosong
                 if part_to_append:
                     new_product_names.loc[idx] = f"{nama_produk_asli} ({part_to_append})"
-        
-        # Update DataFrame asli dengan nama produk yang sudah dimodifikasi
+    
         rekap_df.loc[kondisi, 'Nama Produk'] = new_product_names
-
+    
     if 'Nama Produk Clean Temp' in rekap_df.columns:
         rekap_df.drop(columns=['Nama Produk Clean Temp'], inplace=True)
 
