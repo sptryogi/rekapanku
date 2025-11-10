@@ -239,8 +239,17 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
 
     basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
     rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
-    rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
+    # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
+
+    # --- REVISI LOGIKA BIAYA LAYANAN 2% (HumanStore) ---
+    # 3b. Bagi Biaya Layanan 2% (dari Promo XTRA) dengan jumlah produk dan pastikan positif
+    if 'Biaya Layanan 2%' in rekap_df.columns:
+        # Pastikan kolom numerik, isi NaN, ambil nilai absolut, baru bagi
+        # Gunakan .replace(0, np.nan) untuk menghindari pembagian 0/0 jika count 0
+        biaya_layanan_2_numeric = pd.to_numeric(rekap_df['Biaya Layanan 2%'], errors='coerce').fillna(0).abs()
+        rekap_df['Biaya Layanan 2%'] = biaya_layanan_2_numeric / product_count_per_order.replace(0, np.nan)
+    # --- AKHIR REVISI ---
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
