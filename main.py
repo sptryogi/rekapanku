@@ -2188,7 +2188,7 @@ if marketplace_choice:
         show_tiktok_button = True
     elif tiktok_base_files and store_choice == "HumanStore":
         # HumanStore: creator_order & pdfs wajib
-        show_tiktok_button = uploaded_creator_order and uploaded_pdfs
+        show_tiktok_button = uploaded_creator_order
 
     if show_shopee_button or show_tiktok_button:
         button_label = f"🚀 Mulai Proses untuk {marketplace_choice} - {store_choice}"
