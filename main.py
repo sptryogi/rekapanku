@@ -231,17 +231,18 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
                     part_to_append = var_str
                 # --- AKHIR LOGIKA KHUSUS ---
-                elif "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil" in nama_produk_clean:
+                # 3. TAHLILAN (Ambil setelah koma)
+                elif "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan" in nama_produk_clean:
                     if ',' in var_str:
                         part_to_append = var_str.split(',', 1)[-1].strip() # Ambil setelah koma
                     else:
-                        part_to_append = var_str # Fallback jika tidak ada koma
+                        part_to_append = var_str # Fallback jika tidak ada koma (misal "Tidak custom")
 
+                # 4. AL ALEEM (QPP Only)
                 elif "AL-QUR'AN TERJEMAH HC AL ALEEM A5" in nama_produk_clean:
                     if 'QPP' in var_str.upper():
                         part_to_append = 'QPP'
-                    else:
-                        part_to_append = ''
+                    # else: part_to_append tetap ''
                         
                 elif "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF" in nama_produk_clean:
                     var_upper = var_str.upper()
