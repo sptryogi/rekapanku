@@ -396,7 +396,7 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     #     rekap_df.loc[kondisi_retur_final, 'Penjualan Netto'] = rekap_df.loc[kondisi_retur_final, 'Total Penghasilan Dibagi']
 
     cols_to_zero_out = [
-        'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
+        # 'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
         'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
         'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
@@ -418,7 +418,8 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
         if 'Jumlah Pengembalian Dana ke Pembeli' not in rekap_df.columns:
             rekap_df['Jumlah Pengembalian Dana ke Pembeli'] = 0
         
-        rekap_df['Jumlah Pengembalian Dana ke Pembeli'] = clean_and_convert_to_numeric(rekap_df['Jumlah Pengembalian Dana ke Pembeli'])
+        # rekap_df['Jumlah Pengembalian Dana ke Pembeli'] = clean_and_convert_to_numeric(rekap_df['Jumlah Pengembalian Dana ke Pembeli'])
+        rekap_df['Jumlah Pengembalian Dana ke Pembeli'] = 0
         
         # Buat kolom baru untuk jumlah retur per pesanan
         # Map-kan 'count' dari dict yang kita buat
@@ -499,12 +500,67 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
 
-    # 1. Pastikan 'Total Penghasilan' (dari income_df) adalah numerik
-    rekap_df['Total Penghasilan'] = clean_and_convert_to_numeric(rekap_df['Total Penghasilan'])
+    # # 1. Pastikan 'Total Penghasilan' (dari income_df) adalah numerik
+    # rekap_df['Total Penghasilan'] = clean_and_convert_to_numeric(rekap_df['Total Penghasilan'])
     
-    # 2. Tandai baris retur BARU: Dapatkan daftar No. Pesanan yang diretur
-    #    Ini adalah No. Pesanan di mana SETIDAKNYA SATU baris memiliki Total Penghasilan < 0
-    returned_orders_list = rekap_df[rekap_df['Total Penghasilan'] < 0]['No. Pesanan'].unique()
+    # # 2. Tandai baris retur BARU: Dapatkan daftar No. Pesanan yang diretur
+    # #    Ini adalah No. Pesanan di mana SETIDAKNYA SATU baris memiliki Total Penghasilan < 0
+    # returned_orders_list = rekap_df[rekap_df['Total Penghasilan'] < 0]['No. Pesanan'].unique()
+    # 1. Pastikan 'No. Pengajuan' ada dan bersih (di rekap_df, dari income_dilepas)
+    if 'No. Pengajuan' not in rekap_df.columns:
+        rekap_df['No. Pengajuan'] = np.nan # Buat kolomnya jika tidak ada
+    rekap_df['No. Pengajuan'] = rekap_df['No. Pengajuan'].astype(str).str.strip()
+    
+    # 2. Dapatkan daftar No. Pesanan yang punya 'No. Pengajuan'
+    potential_return_orders = rekap_df[
+        rekap_df['No. Pengajuan'].notna() & 
+        (rekap_df['No. Pengajuan'] != 'nan') & 
+        (rekap_df['No. Pengajuan'] != '')
+    ]['No. Pesanan'].unique()
+    
+    # 3. Siapkan list untuk menampung No. Pesanan Full vs Partial
+    full_return_orders = set()
+    partial_return_orders = set()
+    
+    # 4. Siapkan dict untuk menyimpan item-item yang diretur sebagian
+    #    Format: { 'No. Pesanan': { 'keys': set(...), 'count': X } }
+    partial_return_items_map = {}
+    
+    # 5. Iterasi HANYA pada No. Pesanan yang berpotensi retur
+    for order_id in potential_return_orders:
+        # 6. Cek di order_all_df (order_df ASLI)
+        order_details = order_df[order_df['No. Pesanan'] == order_id]
+        
+        if order_details.empty:
+            continue 
+            
+        total_items_in_order = len(order_details)
+        
+        # 7. Cek 'Status Pembatalan/ Pengembalian'
+        returned_items = order_details[order_details['Status Pembatalan/ Pengembalian'] == 'Permintaan Disetujui']
+        returned_items_count = len(returned_items)
+        
+        if returned_items_count == 0:
+            # Punya No. Pengajuan tapi tidak ada 'Permintaan Disetujui'
+            continue 
+            
+        # 8. Tentukan Tipe Retur
+        if returned_items_count > 0 and returned_items_count == total_items_in_order:
+            # FULL RETURN
+            full_return_orders.add(order_id)
+        elif returned_items_count > 0 and returned_items_count < total_items_in_order:
+            # PARTIAL RETURN
+            partial_return_orders.add(order_id)
+            
+            # 9. Simpan (Nama Produk, Nama Variasi) dari item yang diretur
+            returned_item_keys = [
+                (row['Nama Produk'], row['Nama Variasi']) 
+                for _, row in returned_items.iterrows()
+            ]
+            partial_return_items_map[order_id] = {
+                'keys': set(returned_item_keys),
+                'count': returned_items_count # Simpan jumlah item retur
+            }
     
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
     produk_khusus_raw = [
@@ -666,25 +722,82 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     rekap_df.sort_values(by='No. Pesanan', inplace=True)
     rekap_df.reset_index(drop=True, inplace=True)
 
-    # Terapkan logika retur: nol-kan semua kolom pendapatan/biaya dan isi Total Penghasilan (Netto)
-    kondisi_retur_final = rekap_df['No. Pesanan'].isin(returned_orders_list)
+    # # Terapkan logika retur: nol-kan semua kolom pendapatan/biaya dan isi Total Penghasilan (Netto)
+    # kondisi_retur_final = rekap_df['No. Pesanan'].isin(returned_orders_list)
     
-    if not rekap_df[kondisi_retur_final].empty:
-        cols_to_zero_out = [
-            'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
-            'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
-            'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
-            'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
-            # 'Penjualan Netto' dihapus dari daftar ini
-        ]
-        # Pastikan kolom ada sebelum mencoba meng-nol-kan
-        valid_cols_to_zero = [col for col in cols_to_zero_out if col in rekap_df.columns]
+    # if not rekap_df[kondisi_retur_final].empty:
+    #     cols_to_zero_out = [
+    #         'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
+    #         'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+    #         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
+    #         'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
+    #         # 'Penjualan Netto' dihapus dari daftar ini
+    #     ]
+    #     # Pastikan kolom ada sebelum mencoba meng-nol-kan
+    #     valid_cols_to_zero = [col for col in cols_to_zero_out if col in rekap_df.columns]
         
-        # Set semua kolom kalkulasi ke 0 untuk baris retur
-        rekap_df.loc[kondisi_retur_final, valid_cols_to_zero] = 0
+    #     # Set semua kolom kalkulasi ke 0 untuk baris retur
+    #     rekap_df.loc[kondisi_retur_final, valid_cols_to_zero] = 0
         
-        # Atur 'Penjualan Netto' ke nilai 'Total Penghasilan Dibagi' (yang negatif)
-        rekap_df.loc[kondisi_retur_final, 'Penjualan Netto'] = rekap_df.loc[kondisi_retur_final, 'Total Penghasilan Dibagi']
+    #     # Atur 'Penjualan Netto' ke nilai 'Total Penghasilan Dibagi' (yang negatif)
+    #     rekap_df.loc[kondisi_retur_final, 'Penjualan Netto'] = rekap_df.loc[kondisi_retur_final, 'Total Penghasilan Dibagi']
+    cols_to_zero_out = [
+        # 'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
+        'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+        'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
+        'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
+    ]
+    valid_cols_to_zero = [col for col in cols_to_zero_out if col in rekap_df.columns]
+    
+    # B. Proses FULL RETURN
+    if full_return_orders:
+        kondisi_full_retur = rekap_df['No. Pesanan'].isin(full_return_orders)
+        if kondisi_full_retur.any():
+            # 1. Nol-kan kolom kalkulasi
+            rekap_df.loc[kondisi_full_retur, valid_cols_to_zero] = 0
+            # 2. Set 'Penjualan Netto' ke 'Total Penghasilan Dibagi' (yang sudah negatif)
+            rekap_df.loc[kondisi_full_retur, 'Penjualan Netto'] = rekap_df.loc[kondisi_full_retur, 'Total Penghasilan Dibagi']
+
+    # C. Proses PARTIAL RETURN
+    if partial_return_orders:
+        # 1. Bersihkan 'Jumlah Pengembalian Dana ke Pembeli' dan siapkan pembaginya
+        if 'Jumlah Pengembalian Dana ke Pembeli' not in rekap_df.columns:
+            rekap_df['Jumlah Pengembalian Dana ke Pembeli'] = 0
+        
+        # rekap_df['Jumlah Pengembalian Dana ke Pembeli'] = clean_and_convert_to_numeric(rekap_df['Jumlah Pengembalian Dana ke Pembeli'])
+        rekap_df['Jumlah Pengembalian Dana ke Pembeli'] = 0
+        
+        # Buat kolom baru untuk jumlah retur per pesanan
+        # Map-kan 'count' dari dict yang kita buat
+        rekap_df['__return_count__'] = rekap_df['No. Pesanan'].map(
+            lambda x: partial_return_items_map.get(x, {}).get('count', 1) # default 1 utk hindari /0
+        )
+        
+        # Hitung nilai pengembalian per item retur
+        rekap_df['Pengembalian Dana Per Item'] = (
+            rekap_df['Jumlah Pengembalian Dana ke Pembeli'] / rekap_df['__return_count__']
+        ).fillna(0)
+        
+        # 2. Identifikasi baris-baris yang merupakan item retur parsial
+        def is_partial_return_item(row):
+            order_id = row['No. Pesanan']
+            if order_id not in partial_return_items_map:
+                return False
+            
+            item_key = (row['Nama Produk'], row['Nama Variasi'])
+            return item_key in partial_return_items_map[order_id]['keys']
+
+        kondisi_partial_item = rekap_df.apply(is_partial_return_item, axis=1)
+        
+        # 3. Terapkan logika untuk item-item tersebut
+        if kondisi_partial_item.any():
+            # 3a. Nol-kan kolom kalkulasi
+            rekap_df.loc[kondisi_partial_item, valid_cols_to_zero] = 0
+            # 3b. Set 'Penjualan Netto' ke 'Pengembalian Dana Per Item'
+            rekap_df.loc[kondisi_partial_item, 'Penjualan Netto'] = rekap_df.loc[kondisi_partial_item, 'Pengembalian Dana Per Item']
+            
+        # Hapus kolom bantu
+        rekap_df = rekap_df.drop(columns=['__return_count__', 'Pengembalian Dana Per Item'], errors='ignore')
     
     rekap_final = pd.DataFrame({
         'No.': np.arange(1, len(rekap_df) + 1),
@@ -731,12 +844,67 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
 
-    # 1. Pastikan 'Total Penghasilan' (dari income_df) adalah numerik
-    rekap_df['Total Penghasilan'] = clean_and_convert_to_numeric(rekap_df['Total Penghasilan'])
+    # # 1. Pastikan 'Total Penghasilan' (dari income_df) adalah numerik
+    # rekap_df['Total Penghasilan'] = clean_and_convert_to_numeric(rekap_df['Total Penghasilan'])
     
-    # 2. Tandai baris retur BARU: Dapatkan daftar No. Pesanan yang diretur
-    #    Ini adalah No. Pesanan di mana SETIDAKNYA SATU baris memiliki Total Penghasilan < 0
-    returned_orders_list = rekap_df[rekap_df['Total Penghasilan'] < 0]['No. Pesanan'].unique()
+    # # 2. Tandai baris retur BARU: Dapatkan daftar No. Pesanan yang diretur
+    # #    Ini adalah No. Pesanan di mana SETIDAKNYA SATU baris memiliki Total Penghasilan < 0
+    # returned_orders_list = rekap_df[rekap_df['Total Penghasilan'] < 0]['No. Pesanan'].unique()
+    # 1. Pastikan 'No. Pengajuan' ada dan bersih (di rekap_df, dari income_dilepas)
+    if 'No. Pengajuan' not in rekap_df.columns:
+        rekap_df['No. Pengajuan'] = np.nan # Buat kolomnya jika tidak ada
+    rekap_df['No. Pengajuan'] = rekap_df['No. Pengajuan'].astype(str).str.strip()
+    
+    # 2. Dapatkan daftar No. Pesanan yang punya 'No. Pengajuan'
+    potential_return_orders = rekap_df[
+        rekap_df['No. Pengajuan'].notna() & 
+        (rekap_df['No. Pengajuan'] != 'nan') & 
+        (rekap_df['No. Pengajuan'] != '')
+    ]['No. Pesanan'].unique()
+    
+    # 3. Siapkan list untuk menampung No. Pesanan Full vs Partial
+    full_return_orders = set()
+    partial_return_orders = set()
+    
+    # 4. Siapkan dict untuk menyimpan item-item yang diretur sebagian
+    #    Format: { 'No. Pesanan': { 'keys': set(...), 'count': X } }
+    partial_return_items_map = {}
+    
+    # 5. Iterasi HANYA pada No. Pesanan yang berpotensi retur
+    for order_id in potential_return_orders:
+        # 6. Cek di order_all_df (order_df ASLI)
+        order_details = order_df[order_df['No. Pesanan'] == order_id]
+        
+        if order_details.empty:
+            continue 
+            
+        total_items_in_order = len(order_details)
+        
+        # 7. Cek 'Status Pembatalan/ Pengembalian'
+        returned_items = order_details[order_details['Status Pembatalan/ Pengembalian'] == 'Permintaan Disetujui']
+        returned_items_count = len(returned_items)
+        
+        if returned_items_count == 0:
+            # Punya No. Pengajuan tapi tidak ada 'Permintaan Disetujui'
+            continue 
+            
+        # 8. Tentukan Tipe Retur
+        if returned_items_count > 0 and returned_items_count == total_items_in_order:
+            # FULL RETURN
+            full_return_orders.add(order_id)
+        elif returned_items_count > 0 and returned_items_count < total_items_in_order:
+            # PARTIAL RETURN
+            partial_return_orders.add(order_id)
+            
+            # 9. Simpan (Nama Produk, Nama Variasi) dari item yang diretur
+            returned_item_keys = [
+                (row['Nama Produk'], row['Nama Variasi']) 
+                for _, row in returned_items.iterrows()
+            ]
+            partial_return_items_map[order_id] = {
+                'keys': set(returned_item_keys),
+                'count': returned_items_count # Simpan jumlah item retur
+            }
     
     if not seller_conv_df.empty:
         seller_conv_df['Kode Pesanan'] = seller_conv_df['Kode Pesanan'].astype(str)
@@ -825,25 +993,82 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     rekap_df.sort_values(by='No. Pesanan', inplace=True)
     rekap_df.reset_index(drop=True, inplace=True)
 
-    # Terapkan logika retur: nol-kan semua kolom pendapatan/biaya dan isi Total Penghasilan (Netto)
-    kondisi_retur_final = rekap_df['No. Pesanan'].isin(returned_orders_list)
+    # # Terapkan logika retur: nol-kan semua kolom pendapatan/biaya dan isi Total Penghasilan (Netto)
+    # kondisi_retur_final = rekap_df['No. Pesanan'].isin(returned_orders_list)
     
-    if not rekap_df[kondisi_retur_final].empty:
-        cols_to_zero_out = [
-            'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
-            'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
-            'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
-            'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
-            # 'Penjualan Netto' dihapus dari daftar ini
-        ]
-        # Pastikan kolom ada sebelum mencoba meng-nol-kan
-        valid_cols_to_zero = [col for col in cols_to_zero_out if col in rekap_df.columns]
+    # if not rekap_df[kondisi_retur_final].empty:
+    #     cols_to_zero_out = [
+    #         'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
+    #         'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+    #         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
+    #         'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
+    #         # 'Penjualan Netto' dihapus dari daftar ini
+    #     ]
+    #     # Pastikan kolom ada sebelum mencoba meng-nol-kan
+    #     valid_cols_to_zero = [col for col in cols_to_zero_out if col in rekap_df.columns]
         
-        # Set semua kolom kalkulasi ke 0 untuk baris retur
-        rekap_df.loc[kondisi_retur_final, valid_cols_to_zero] = 0
+    #     # Set semua kolom kalkulasi ke 0 untuk baris retur
+    #     rekap_df.loc[kondisi_retur_final, valid_cols_to_zero] = 0
         
-        # Atur 'Penjualan Netto' ke nilai 'Total Penghasilan Dibagi' (yang negatif)
-        rekap_df.loc[kondisi_retur_final, 'Penjualan Netto'] = rekap_df.loc[kondisi_retur_final, 'Total Penghasilan Dibagi']
+    #     # Atur 'Penjualan Netto' ke nilai 'Total Penghasilan Dibagi' (yang negatif)
+    #     rekap_df.loc[kondisi_retur_final, 'Penjualan Netto'] = rekap_df.loc[kondisi_retur_final, 'Total Penghasilan Dibagi']
+    cols_to_zero_out = [
+        # 'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
+        'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+        'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
+        'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
+    ]
+    valid_cols_to_zero = [col for col in cols_to_zero_out if col in rekap_df.columns]
+    
+    # B. Proses FULL RETURN
+    if full_return_orders:
+        kondisi_full_retur = rekap_df['No. Pesanan'].isin(full_return_orders)
+        if kondisi_full_retur.any():
+            # 1. Nol-kan kolom kalkulasi
+            rekap_df.loc[kondisi_full_retur, valid_cols_to_zero] = 0
+            # 2. Set 'Penjualan Netto' ke 'Total Penghasilan Dibagi' (yang sudah negatif)
+            rekap_df.loc[kondisi_full_retur, 'Penjualan Netto'] = rekap_df.loc[kondisi_full_retur, 'Total Penghasilan Dibagi']
+
+    # C. Proses PARTIAL RETURN
+    if partial_return_orders:
+        # 1. Bersihkan 'Jumlah Pengembalian Dana ke Pembeli' dan siapkan pembaginya
+        if 'Jumlah Pengembalian Dana ke Pembeli' not in rekap_df.columns:
+            rekap_df['Jumlah Pengembalian Dana ke Pembeli'] = 0
+        
+        # rekap_df['Jumlah Pengembalian Dana ke Pembeli'] = clean_and_convert_to_numeric(rekap_df['Jumlah Pengembalian Dana ke Pembeli'])
+        rekap_df['Jumlah Pengembalian Dana ke Pembeli'] = 0
+        
+        # Buat kolom baru untuk jumlah retur per pesanan
+        # Map-kan 'count' dari dict yang kita buat
+        rekap_df['__return_count__'] = rekap_df['No. Pesanan'].map(
+            lambda x: partial_return_items_map.get(x, {}).get('count', 1) # default 1 utk hindari /0
+        )
+        
+        # Hitung nilai pengembalian per item retur
+        rekap_df['Pengembalian Dana Per Item'] = (
+            rekap_df['Jumlah Pengembalian Dana ke Pembeli'] / rekap_df['__return_count__']
+        ).fillna(0)
+        
+        # 2. Identifikasi baris-baris yang merupakan item retur parsial
+        def is_partial_return_item(row):
+            order_id = row['No. Pesanan']
+            if order_id not in partial_return_items_map:
+                return False
+            
+            item_key = (row['Nama Produk'], row['Nama Variasi'])
+            return item_key in partial_return_items_map[order_id]['keys']
+
+        kondisi_partial_item = rekap_df.apply(is_partial_return_item, axis=1)
+        
+        # 3. Terapkan logika untuk item-item tersebut
+        if kondisi_partial_item.any():
+            # 3a. Nol-kan kolom kalkulasi
+            rekap_df.loc[kondisi_partial_item, valid_cols_to_zero] = 0
+            # 3b. Set 'Penjualan Netto' ke 'Pengembalian Dana Per Item'
+            rekap_df.loc[kondisi_partial_item, 'Penjualan Netto'] = rekap_df.loc[kondisi_partial_item, 'Pengembalian Dana Per Item']
+            
+        # Hapus kolom bantu
+        rekap_df = rekap_df.drop(columns=['__return_count__', 'Pengembalian Dana Per Item'], errors='ignore')
     
     rekap_final = pd.DataFrame({
         'No.': np.arange(1, len(rekap_df) + 1),
@@ -1047,6 +1272,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
         'Total Penghasilan': 'sum' # Ini akan menjumlahkan (Penjualan Positif + Penjualan Negatif)
     })
+
+    summary_df = summary_df[summary_df['Total Penghasilan'] != 0].copy()
 
     # --- LOGIKA BARU: Tambahkan Produk dari IKLAN yang tidak ada di REKAP ---
     # Siapkan kolom 'Iklan Klik' dengan nilai default 0
@@ -1526,6 +1753,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     grouping_key_list = ['Nama Produk Display', 'Harga Satuan']
     # --- ▲▲▲ AKHIR MODIFIKASI ▲▲▲ ---
     # --- AKHIR LOGIKA KHUSUS DAMASTORE ---
+    summary_df = summary_df[summary_df['Total Penghasilan'] != 0].copy()
 
     # Agregasi data utama dari REKAP
     agg_dict = {
