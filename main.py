@@ -242,6 +242,10 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
                 elif "AL-QUR'AN TERJEMAH HC AL ALEEM A5" in nama_produk_clean:
                     if 'QPP' in var_str.upper():
                         part_to_append = 'QPP'
+                    elif 'HVS' in var_str.upper():
+                        part_to_append = 'HVS'
+                    elif 'KORAN' in var_str.upper():
+                        part_to_append = 'KORAN'
                     # else: part_to_append tetap ''
                         
                 elif "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF" in nama_produk_clean:
