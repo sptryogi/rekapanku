@@ -232,7 +232,7 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
                     part_to_append = var_str
                 # --- AKHIR LOGIKA KHUSUS ---
-                elif "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF" in nama_produk_clean or / "AL-QUR'AN TERJEMAH HC AL ALEEM A5" in nama_produk_clean:
+                elif "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF" in nama_produk_clean or "AL-QUR'AN TERJEMAH HC AL ALEEM A5" in nama_produk_clean:
                     var_upper = var_str.upper()
                     # Cari "PAKET ISI X" atau "SATUAN"
                     paket_match = re.search(r'(PAKET\s*ISI\s*\d+)', var_upper)
