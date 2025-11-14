@@ -195,8 +195,8 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
         "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
         "AL QUR'AN NON TERJEMAH AL AQEEL A5 KERTAS KORAN WAKAF",
         "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF",
-        "AL-QUR'AN TERJEMAH HC AL ALEEM A5",
-        "AL-QURAN AL AQEEL SILVER TERMURAH",
+        "AL-QURAN AL AQEEL SILVER TERMURAH", # <-- TAMBAHKAN INI
+        "AL-QUR'AN TERJEMAH HC AL ALEEM A5",
         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
@@ -225,18 +225,30 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
                     "CUSTOM AL QURAN MENGENANG", 
                     "AL QUR'AN GOLD TERMURAH", 
                     "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
-                    "AL-QURAN AL AQEEL SILVER TERMURAH",
-                    "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan" # (Sesuaikan string ini)
+                    "AL-QURAN AL AQEEL SILVER TERMURAH"
                 ]
                 if any(produk in nama_produk_clean for produk in produk_yang_ambil_full_variasi):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
                     part_to_append = var_str
                 # --- AKHIR LOGIKA KHUSUS ---
-                elif "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF" in nama_produk_clean or "AL-QUR'AN TERJEMAH HC AL ALEEM A5" in nama_produk_clean:
+                elif "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil" in nama_produk_clean:
+                    if ',' in var_str:
+                        part_to_append = var_str.split(',', 1)[-1].strip() # Ambil setelah koma
+                    else:
+                        part_to_append = var_str # Fallback jika tidak ada koma
+
+                elif "AL-QUR'AN TERJEMAH HC AL ALEEM A5" in nama_produk_clean:
+                    if 'QPP' in var_str.upper():
+                        part_to_append = 'QPP'
+                    else:
+                        part_to_append = ''
+                        
+                elif "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF" in nama_produk_clean:
                     var_upper = var_str.upper()
                     # Cari "PAKET ISI X" atau "SATUAN"
                     paket_match = re.search(r'(PAKET\s*ISI\s*\d+)', var_upper)
                     satuan_match = 'SATUAN' in var_upper
+                
                     
                     if paket_match:
                         part_to_append = paket_match.group(1) # Hasilnya 'PAKET ISI 7'
@@ -1243,6 +1255,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     total_harga_produk = total_row['Total Harga Produk'].iloc[0]
     total_biaya_proses_pesanan = total_row['Biaya Proses Pesanan'].iloc[0]
     total_jumlah_terjual = total_row['Jumlah Terjual'].iloc[0]
+    total_jumlah_eksemplar = total_row['Jumlah Eksemplar'].iloc[0] # <-- DITAMBAH
     biaya_ekspedisi_col_name = 'Biaya Kirim ke Sby' if store_type == 'PacificBookStore' else 'Biaya Ekspedisi'
     total_biaya_ekspedisi = total_row[biaya_ekspedisi_col_name].iloc[0]
     total_margin = total_penjualan_netto - total_biaya_packing - total_biaya_ekspedisi - total_pembelian - total_iklan_klik
@@ -1251,7 +1264,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     total_jumlah_pesanan = (total_biaya_proses_pesanan / 1250) if 1250 != 0 else 0
     total_row['Jumlah Pesanan'] = total_jumlah_pesanan
     total_row['Penjualan Per Hari'] = round(total_harga_produk / 7, 1)
-    total_row['Jumlah buku per pesanan'] = round(total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
+    total_row['Jumlah buku per pesanan'] = round(total_jumlah_eksemplar / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1) # <-- DIUBAH
     for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ']:
         if col in total_row.columns: total_row[col] = None
     summary_with_total = pd.concat([summary_final, total_row], ignore_index=True)
@@ -1645,6 +1658,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     total_harga_produk = total_row['Total Harga Produk'].iloc[0]
     total_biaya_proses_pesanan = total_row['Biaya Proses Pesanan'].iloc[0]
     total_jumlah_terjual = total_row['Jumlah Terjual'].iloc[0]
+    total_jumlah_eksemplar = total_row['Jumlah Eksemplar'].iloc[0] # <-- DITAMBAH
     total_biaya_ekspedisi = total_row['Biaya Ekspedisi'].iloc[0]
     total_margin = total_penjualan_netto - total_biaya_packing - total_biaya_ekspedisi - total_pembelian - total_iklan_klik
     total_row['Margin'] = total_margin
@@ -1652,7 +1666,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     total_jumlah_pesanan = (total_biaya_proses_pesanan / 1250) if 1250 != 0 else 0
     total_row['Jumlah Pesanan'] = total_jumlah_pesanan
     total_row['Penjualan Per Hari'] = round(total_harga_produk / 7, 1)
-    total_row['Jumlah buku per pesanan'] = round(total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
+    total_row['Jumlah buku per pesanan'] = round(total_jumlah_eksemplar / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
     for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ']:
         if col in total_row.columns: total_row[col] = None
     summary_with_total = pd.concat([summary_final, total_row], ignore_index=True)
