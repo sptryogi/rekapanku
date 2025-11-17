@@ -1245,30 +1245,25 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # })
     # 1. Identifikasi baris retur (Harga Satuan == 0 DAN Total Penghasilan != 0)
     #    Kita gunakan Harga Satuan 0 sebagai penanda, karena REKAP sudah meng-nol-kannya.
-    kondisi_retur = (rekap_copy['Harga Satuan'] == 0) & (rekap_copy['Total Penghasilan'] != 0)
+    # kondisi_retur = (rekap_copy['Harga Satuan'] == 0) & (rekap_copy['Total Penghasilan'] != 0)
     
-    # 2. Buat Peta (Map) dari Nama Produk ke Harga Satuan Asli (non-nol)
-    #    Kita ambil baris non-retur, drop duplikat nama produk, dan buat dict
-    harga_asli_map = rekap_copy[~kondisi_retur].drop_duplicates(subset=['Nama Produk']) \
-                                              .set_index('Nama Produk')['Harga Satuan']
+    # # 2. Buat Peta (Map) dari Nama Produk ke Harga Satuan Asli (non-nol)
+    # #    Kita ambil baris non-retur, drop duplikat nama produk, dan buat dict
+    # harga_asli_map = rekap_copy[~kondisi_retur].drop_duplicates(subset=['Nama Produk']) \
+    #                                           .set_index('Nama Produk')['Harga Satuan']
     
-    # 3. Terapkan (map) harga asli ini ke kolom 'Harga Satuan' PADA BARIS RETUR
+    # # 3. Terapkan (map) harga asli ini ke kolom 'Harga Satuan' PADA BARIS RETUR
     # #    Ini "memaksa" baris retur agar memiliki Harga Satuan yang sama dengan baris aslinya
     # rekap_copy.loc[kondisi_retur, 'Harga Satuan'] = rekap_copy['Nama Produk'].map(harga_asli_map)
     
     # # 4. Ganti NaN (jika retur tapi tidak ada penjualan normal) kembali ke 0 agar groupby-nya tetap
     # rekap_copy['Harga Satuan'] = rekap_copy['Harga Satuan'].fillna(0)
-    # 3. Terapkan (map) harga asli ini ke kolom 'Harga Satuan' PADA BARIS RETUR
-    #    Ini "memaksa" baris retur agar memiliki Harga Satuan yang sama dengan baris aslinya
-    rekap_copy.loc[kondisi_retur, 'Harga Satuan'] = rekap_copy['Nama Produk'].map(harga_asli_map)
+    kondisi_retur_summary = rekap_copy['Total Penghasilan'] < 0
     
-    # --- ▼▼▼ TAMBAHKAN BARIS INI ▼▼▼ ---
-    # 4. Nol-kan 'Jumlah Terjual' HANYA untuk baris retur di DataFrame sementara ini
-    rekap_copy.loc[kondisi_retur, 'Jumlah Terjual'] = 0
-    # --- ▲▲▲ AKHIR BLOK TAMBAHAN ▲▲▲ ---
-
-    # 5. Ganti NaN (jika retur tapi tidak ada penjualan normal) kembali ke 0 agar groupby-nya tetap
-    rekap_copy['Harga Satuan'] = rekap_copy['Harga Satuan'].fillna(0)
+    # Set 'Jumlah Terjual' ke 0 HANYA untuk baris retur
+    # Ini terjadi di 'rekap_copy', jadi 'REKAP' asli tetap utuh
+    rekap_copy.loc[kondisi_retur_summary, 'Jumlah Terjual'] = 0
+    
     # --- ▲▲▲ AKHIR BLOK PERBAIKAN ▲▲▲ ---
 
     # Agregasi data utama dari REKAP
