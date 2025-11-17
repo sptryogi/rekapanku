@@ -1253,10 +1253,21 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
                                               .set_index('Nama Produk')['Harga Satuan']
     
     # 3. Terapkan (map) harga asli ini ke kolom 'Harga Satuan' PADA BARIS RETUR
+    # #    Ini "memaksa" baris retur agar memiliki Harga Satuan yang sama dengan baris aslinya
+    # rekap_copy.loc[kondisi_retur, 'Harga Satuan'] = rekap_copy['Nama Produk'].map(harga_asli_map)
+    
+    # # 4. Ganti NaN (jika retur tapi tidak ada penjualan normal) kembali ke 0 agar groupby-nya tetap
+    # rekap_copy['Harga Satuan'] = rekap_copy['Harga Satuan'].fillna(0)
+    # 3. Terapkan (map) harga asli ini ke kolom 'Harga Satuan' PADA BARIS RETUR
     #    Ini "memaksa" baris retur agar memiliki Harga Satuan yang sama dengan baris aslinya
     rekap_copy.loc[kondisi_retur, 'Harga Satuan'] = rekap_copy['Nama Produk'].map(harga_asli_map)
     
-    # 4. Ganti NaN (jika retur tapi tidak ada penjualan normal) kembali ke 0 agar groupby-nya tetap
+    # --- ▼▼▼ TAMBAHKAN BARIS INI ▼▼▼ ---
+    # 4. Nol-kan 'Jumlah Terjual' HANYA untuk baris retur di DataFrame sementara ini
+    rekap_copy.loc[kondisi_retur, 'Jumlah Terjual'] = 0
+    # --- ▲▲▲ AKHIR BLOK TAMBAHAN ▲▲▲ ---
+
+    # 5. Ganti NaN (jika retur tapi tidak ada penjualan normal) kembali ke 0 agar groupby-nya tetap
     rekap_copy['Harga Satuan'] = rekap_copy['Harga Satuan'].fillna(0)
     # --- ▲▲▲ AKHIR BLOK PERBAIKAN ▲▲▲ ---
 
