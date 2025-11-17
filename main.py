@@ -1263,6 +1263,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # Set 'Jumlah Terjual' ke 0 HANYA untuk baris retur
     # Ini terjadi di 'rekap_copy', jadi 'REKAP' asli tetap utuh
     rekap_copy.loc[kondisi_retur_summary, 'Jumlah Terjual'] = 0
+    rekap_copy.loc[kondisi_retur_summary, 'Total Harga Produk'] = 0
     
     # --- ▲▲▲ AKHIR BLOK PERBAIKAN ▲▲▲ ---
 
@@ -1724,6 +1725,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     # Set 'Jumlah Terjual' ke 0 HANYA untuk baris retur
     # Ini terjadi di 'rekap_copy', jadi 'REKAP' asli tetap utuh
     rekap_copy.loc[kondisi_retur_summary, 'Jumlah Terjual'] = 0
+    rekap_copy.loc[kondisi_retur_summary, 'Total Harga Produk'] = 0
     # --- ▲▲▲ AKHIR BLOK PERBAIKAN ▲▲▲ ---
 
     # --- LOGIKA BARU PEMBUATAN NAMA PRODUK DISPLAY ---
