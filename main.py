@@ -1709,16 +1709,21 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     # --- ▼▼▼ BLOK PERBAIKAN RETUR SUMMARY (DAMA) ▼▼▼ ---
     # 1. Identifikasi baris retur (Harga Satuan == 0 DAN Total Penghasilan != 0)
     #    Logika retur Dama/Pacific juga meng-nol-kan Harga Satuan, jadi ini aman.
-    kondisi_retur = (rekap_copy['Harga Satuan'] == 0) & (rekap_copy['Total Penghasilan'] != 0)
+    # kondisi_retur = (rekap_copy['Harga Satuan'] == 0) & (rekap_copy['Total Penghasilan'] != 0)
     
-    # 2. Buat Peta (Map) dari Nama Produk ke Harga Satuan Asli (non-nol)
-    #    PENTING: Gunakan 'Nama Produk' (yang masih original) untuk membuat peta
-    harga_asli_map = rekap_copy[~kondisi_retur].drop_duplicates(subset=['Nama Produk']) \
-                                              .set_index('Nama Produk')['Harga Satuan']
+    # # 2. Buat Peta (Map) dari Nama Produk ke Harga Satuan Asli (non-nol)
+    # #    PENTING: Gunakan 'Nama Produk' (yang masih original) untuk membuat peta
+    # harga_asli_map = rekap_copy[~kondisi_retur].drop_duplicates(subset=['Nama Produk']) \
+    #                                           .set_index('Nama Produk')['Harga Satuan']
     
-    # 3. Terapkan (map) harga asli ini ke kolom 'Harga Satuan' PADA BARIS RETUR
-    rekap_copy.loc[kondisi_retur, 'Harga Satuan'] = rekap_copy['Nama Produk'].map(harga_asli_map)
-    rekap_copy['Harga Satuan'] = rekap_copy['Harga Satuan'].fillna(0)
+    # # 3. Terapkan (map) harga asli ini ke kolom 'Harga Satuan' PADA BARIS RETUR
+    # rekap_copy.loc[kondisi_retur, 'Harga Satuan'] = rekap_copy['Nama Produk'].map(harga_asli_map)
+    # rekap_copy['Harga Satuan'] = rekap_copy['Harga Satuan'].fillna(0)
+    kondisi_retur_summary = rekap_copy['Total Penghasilan'] < 0
+    
+    # Set 'Jumlah Terjual' ke 0 HANYA untuk baris retur
+    # Ini terjadi di 'rekap_copy', jadi 'REKAP' asli tetap utuh
+    rekap_copy.loc[kondisi_retur_summary, 'Jumlah Terjual'] = 0
     # --- ▲▲▲ AKHIR BLOK PERBAIKAN ▲▲▲ ---
 
     # --- LOGIKA BARU PEMBUATAN NAMA PRODUK DISPLAY ---
