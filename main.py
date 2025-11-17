@@ -1258,7 +1258,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     # # 4. Ganti NaN (jika retur tapi tidak ada penjualan normal) kembali ke 0 agar groupby-nya tetap
     # rekap_copy['Harga Satuan'] = rekap_copy['Harga Satuan'].fillna(0)
-    kondisi_retur_summary = rekap_copy['Total Penghasilan'] < 0
+    kondisi_retur_summary = rekap_copy['Total Penghasilan'] <= 0
     
     # Set 'Jumlah Terjual' ke 0 HANYA untuk baris retur
     # Ini terjadi di 'rekap_copy', jadi 'REKAP' asli tetap utuh
@@ -1719,7 +1719,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     # # 3. Terapkan (map) harga asli ini ke kolom 'Harga Satuan' PADA BARIS RETUR
     # rekap_copy.loc[kondisi_retur, 'Harga Satuan'] = rekap_copy['Nama Produk'].map(harga_asli_map)
     # rekap_copy['Harga Satuan'] = rekap_copy['Harga Satuan'].fillna(0)
-    kondisi_retur_summary = rekap_copy['Total Penghasilan'] < 0
+    kondisi_retur_summary = rekap_copy['Total Penghasilan'] <= 0
     
     # Set 'Jumlah Terjual' ke 0 HANYA untuk baris retur
     # Ini terjadi di 'rekap_copy', jadi 'REKAP' asli tetap utuh
