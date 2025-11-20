@@ -1766,7 +1766,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     grouping_key_list = ['Nama Produk Display', 'Harga Satuan']
     # --- ▲▲▲ AKHIR MODIFIKASI ▲▲▲ ---
     # --- AKHIR LOGIKA KHUSUS DAMASTORE ---
-    summary_df = summary_df[summary_df['Total Penghasilan'] != 0].copy()
+    # summary_df = summary_df[summary_df['Total Penghasilan'] != 0].copy()
 
     # Agregasi data utama dari REKAP
     agg_dict = {
@@ -1785,6 +1785,8 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     summary_df = rekap_copy.groupby(grouping_key_list, as_index=False).agg(agg_dict)
     # --- ▲▲▲ AKHIR MODIFIKASI ▲▲▲ ---
     summary_df.rename(columns={'Nama Produk Display': 'Nama Produk'}, inplace=True)
+    
+    summary_df = summary_df[summary_df['Total Penghasilan'] != 0].copy()
 
     # --- LOGIKA IKLAN (Tetap sama) ---
     summary_df['Iklan Klik'] = 0.0
