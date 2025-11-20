@@ -916,10 +916,23 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
         rekap_df['Pengeluaran(Rp)'] = 0
     # --- AKHIR BLOK KONDISIONAL ---
 
-    produk_khusus = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "AL QUR'AN GOLD TERMURAH"]
-    kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
+    # produk_khusus = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "AL QUR'AN GOLD TERMURAH"]
+    # kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
+    # if 'Nama Variasi' in rekap_df.columns:
+    #     rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + rekap_df['Nama Variasi'].fillna('').str.strip()
     if 'Nama Variasi' in rekap_df.columns:
-        rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + rekap_df['Nama Variasi'].fillna('').str.strip()
+        # Ambil variasi, ganti NaN dengan string kosong
+        variasi_clean = rekap_df['Nama Variasi'].fillna('').astype(str).str.strip()
+        
+        # Kondisi untuk menggabungkan: Variasi tidak kosong dan tidak '0'
+        # (Dan jika Anda hanya ingin produk tertentu, tambahkan kondisi nama produk di sini)
+        kondisi_gabung = (variasi_clean != '') & (variasi_clean != '0') & (variasi_clean != 'nan')
+        
+        # Gabungkan Nama Produk + Variasi hanya untuk baris yang memenuhi syarat
+        # Gunakan .loc untuk memastikan kita tidak menimpa baris yang tidak punya variasi
+        rekap_df.loc[kondisi_gabung, 'Nama Produk'] = (
+            rekap_df.loc[kondisi_gabung, 'Nama Produk'] + ' (' + variasi_clean.loc[kondisi_gabung] + ')'
+        )
 
     # --- LOGIKA PERHITUNGAN BIAYA UNTUK DAMASTORE ---
     rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0) 
