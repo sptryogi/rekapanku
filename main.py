@@ -576,7 +576,8 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         "Al Quran Saku Resleting Al Quddus A7 Cover Kulit Kertas QPP | Alquran SURABAYA",
         "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers",
         "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers",
-        "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris"
+        "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris",
+        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
@@ -603,13 +604,30 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                 produk_yang_ambil_full_variasi = [
                     "CUSTOM AL QURAN MENGENANG", 
                     "AL QUR'AN GOLD TERMURAH", 
-                    "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN", 
+                    "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
                     "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan" # (Sesuaikan string ini)
                 ]
                 if any(produk in nama_produk_clean for produk in produk_yang_ambil_full_variasi):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
                     part_to_append = var_str
                 # --- AKHIR LOGIKA KHUSUS ---
+                elif "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |" in nama_produk_clean:
+                    # Asumsi format variasi: "WARNA, SPESIFIKASI" (misal: "Merah, sisipan 1 halaman")
+                    if ',' in var_str:
+                        # Ambil bagian SETELAH koma pertama (Spesifikasi)
+                        spesifikasi = var_str.split(',', 1)[-1].strip()
+                        part_to_append = spesifikasi
+                    else:
+                        # Jika tidak ada koma, mungkin formatnya beda atau cuma 1 kata.
+                        # Cek apakah ini WARNA (jika ya, abaikan). Jika bukan warna, anggap spesifikasi.
+                        warna_keywords = ['MERAH', 'COKLAT', 'BIRU', 'UNGU', 'HIJAU', 'RANDOM', 'HITAM']
+                        is_warna = any(w in var_str.upper() for w in warna_keywords)
+                        
+                        if not is_warna:
+                            part_to_append = var_str # Ambil jika bukan warna
+                        else:
+                            part_to_append = '' # Abaikan jika cuma warna
+                            
                 elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean or "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean or "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris" in nama_produk_clean:
                     var_upper = var_str.upper()
                     # Cari "PAKET ISI X" atau "SATUAN"
@@ -1319,7 +1337,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Al Quran Terjemah Per Kata A5 | Tajwid 2 Warna | Alquran Al Fikrah HVS 15 Baris | SURABAYA",
         "Al Quran Saku Resleting Al Quddus A7 Cover Kulit Kertas QPP | Alquran SURABAYA",
         "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers",
-        "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers"        
+        "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers",
+        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |"
     ]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus]
     
@@ -1330,7 +1349,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     nama_iklan_kustom = "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers"
     target_produk_kustom = [
         "Al Qur'an Saku Pastel Al Aqeel A6 Kertas HVS | Hadiah Islami, Cover Cantik",
-        "Al Qur'an Pastel Al Aqeel A6 Kertas HVS | Wakaf, Hadiah Islami, Cover Cantik"
+        "Al Qur'an Pastel Al Aqeel A6 Kertas HVS | Wakaf, Hadiah Islami, Cover Cantik",
+        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |"
         # Tambahkan nama produk target lainnya di sini jika ada
     ]
     
