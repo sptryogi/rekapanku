@@ -43,7 +43,7 @@ def clean_columns(df):
     return df
 
 def extract_relevant_variation_part(var_str):
-    """Mengekstrak bagian variasi yang relevan (A5, QPP, dll.) untuk DamaStore."""
+    """Mengekstrak bagian variasi yang relevan (A5, QPP, dll.) untuk Dama Store."""
     if pd.isna(var_str):
         return None
     
@@ -482,7 +482,7 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
 
 def process_rekap_pacific(order_df, income_df, seller_conv_df):
     """
-    Fungsi untuk memproses sheet 'REKAP' KHUSUS untuk PacificBookStore.
+    Fungsi untuk memproses sheet 'REKAP' KHUSUS untuk Pacific BookStore.
     Perbedaan utama: Biaya Layanan dihitung dari Total Harga Produk.
     """
     # Bagian ini sama persis dengan fungsi rekap sebelumnya
@@ -665,7 +665,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
     rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
 
-    # --- LOGIKA BARU UNTUK PACIFICBOOKSTORE ---
+    # --- LOGIKA BARU UNTUK PACIFIC BOOKSTORE ---
     # 1. Pastikan Total Harga Produk ada dan numerik
     rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0)
     
@@ -697,7 +697,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
-    rekap_df['Biaya Layanan 2%'] = 0
+    rekap_df['Biaya Layanan 4,5%'] = basis_biaya * 0.045
     rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = 0
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
@@ -829,7 +829,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
         'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
-        'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
+        'Biaya Layanan 4,5%': rekap_df.get('Biaya Layanan 4,5%', 0),
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
         'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan Dibagi', 0), # <-- Gunakan kolom yang sudah dibagi
         'Gratis Ongkir dari Penjual': rekap_df.get('Gratis Ongkir dari Penjual Dibagi', 0), # <-- DITAMBAH
@@ -844,7 +844,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
 
 def process_rekap_dama(order_df, income_df, seller_conv_df):
     """
-    Fungsi untuk memproses sheet 'REKAP' KHUSUS untuk DAMASTORE (Shopee).
+    Fungsi untuk memproses sheet 'REKAP' KHUSUS untuk DAMA STORE (Shopee).
     Biaya Adm, Layanan, dan Proses dihitung berdasarkan Total Harga Produk.
     """
     # Bagian ini sama persis dengan fungsi rekap pacific/human
@@ -952,7 +952,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
             rekap_df.loc[kondisi_gabung, 'Nama Produk'] + ' (' + variasi_clean.loc[kondisi_gabung] + ')'
         )
 
-    # --- LOGIKA PERHITUNGAN BIAYA UNTUK DAMASTORE ---
+    # --- LOGIKA PERHITUNGAN BIAYA UNTUK DAMA STORE ---
     rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0) 
     
     # Hitung Biaya Proses Pesanan yang dibagi rata
@@ -980,7 +980,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
-    # --- AKHIR LOGIKA DAMASTORE ---
+    # --- AKHIR LOGIKA DAMA STORE ---
     
     # Terapkan logika "hanya di baris pertama" untuk biaya per-pesanan
     order_level_costs = [
@@ -1301,12 +1301,13 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # Agregasi data utama dari REKAP
     # Sekarang groupby ini akan menggabungkan retur (yang Harga Satuannya sudah "diperbaiki")
     # dengan penjualan normal.
+    biaya_layanan_col = 'Biaya Layanan 4,5%' if store_type == 'Pacific BookStore' else 'Biaya Layanan 2%'
     summary_df = rekap_copy.groupby(['Nama Produk', 'Harga Satuan'], as_index=False).agg({
         'Jumlah Terjual': 'sum', 
         # 'Harga Satuan': 'first', <-- Dihapus karena sudah jadi bagian key
         'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
-        'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
+        'Biaya Adm 8%': 'sum', biaya_layanan_col: 'sum',
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
         'Total Penghasilan': 'sum' # Ini akan menjumlahkan (Penjualan Positif + Penjualan Negatif)
     })
@@ -1354,8 +1355,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         # Tambahkan nama produk target lainnya di sini jika ada
     ]
     
-    # 2. Cek hanya jika ini PacificBookStore
-    if store_type == 'PacificBookStore':
+    # 2. Cek hanya jika ini Pacific BookStore
+    if store_type == 'Pacific BookStore':
         # 3. Cari biaya iklan kustom
         iklan_cost_row_kustom = iklan_data[iklan_data['Nama Iklan'] == nama_iklan_kustom]
         
@@ -1434,7 +1435,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         axis=1
     )
 
-    if store_type in ['PacificBookStore']:
+    if store_type in ['Pacific BookStore']:
         summary_df['Biaya Kirim ke Sby'] = summary_df['Jumlah Terjual'] * 733
         biaya_ekspedisi_final = summary_df['Biaya Kirim ke Sby']
     else:
@@ -1500,21 +1501,22 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     summary_final_data = {
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'],
-        'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Eksemplar': summary_df['Jumlah Eksemplar'], 'Harga Satuan': summary_df['Harga Satuan'],
+        'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Eksemplar': summary_df['Jumlah Eksemplar'], 
+        'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Harga Produk': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
         'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
-        'Biaya Layanan 2%': summary_df['Biaya Layanan 2%'], 'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
+        biaya_layanan_col: summary_df[biaya_layanan_col], 'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
         'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan Klik': summary_df['Iklan Klik'], 'Biaya Packing': summary_df['Biaya Packing'],
     }
-    if store_type in ['PacificBookStore']:
+    if store_type in ['Pacific BookStore']:
         summary_final_data['Biaya Kirim ke Sby'] = biaya_ekspedisi_final
     else:
         summary_final_data['Biaya Ekspedisi'] = biaya_ekspedisi_final
     summary_final_data.update({
         'Harga Beli': summary_df['Harga Beli'], 'Harga Custom TLJ': summary_df['Harga Custom TLJ'],
         'Total Pembelian': summary_df['Total Pembelian'], 'Margin': summary_df['Margin'],
-        'Persentase': summary_df['Persentase'], 'Jumlah Pesanan': summary_df['Jumlah Pesanan'],
+        'Persentase': summary_df['Persentase'],
         'Penjualan Per Hari': summary_df['Penjualan Per Hari'], 'Jumlah buku per pesanan': summary_df['Jumlah buku per pesanan']
     })
     summary_final = pd.DataFrame(summary_final_data)
@@ -1528,7 +1530,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     total_biaya_proses_pesanan = total_row['Biaya Proses Pesanan'].iloc[0]
     total_jumlah_terjual = total_row['Jumlah Terjual'].iloc[0]
     total_jumlah_eksemplar = total_row['Jumlah Eksemplar'].iloc[0] # <-- DITAMBAH
-    biaya_ekspedisi_col_name = 'Biaya Kirim ke Sby' if store_type == 'PacificBookStore' else 'Biaya Ekspedisi'
+    biaya_ekspedisi_col_name = 'Biaya Kirim ke Sby' if store_type == 'Pacific BookStore' else 'Biaya Ekspedisi'
     total_biaya_ekspedisi = total_row[biaya_ekspedisi_col_name].iloc[0]
     total_margin = total_penjualan_netto - total_biaya_packing - total_biaya_ekspedisi - total_pembelian - total_iklan_klik
     total_row['Margin'] = total_margin
@@ -1545,7 +1547,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
 
 def format_variation_dama(variation, product_name):
     """
-    Format variasi untuk DamaStore SUMMARY.
+    Format variasi untuk Dama Store SUMMARY.
     Hanya mempertahankan warna JIKA produk adalah Hijab/Pashmina.
     Mengabaikan variasi '0'.
     Mempertahankan jenis kertas, ukuran, paket.
@@ -1733,7 +1735,7 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
 # --- TAMBAHKAN FUNGSI BARU INI ---
 def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom_tlj_df): # Tambah katalog_dama_df
     """
-    Fungsi untuk memproses sheet 'SUMMARY' KHUSUS untuk DAMASTORE (Shopee).
+    Fungsi untuk memproses sheet 'SUMMARY' KHUSUS untuk DAMA STORE (Shopee).
     Menggabungkan Nama Produk + Variasi Relevan (tanpa warna kecuali Hijab).
     Menggunakan KATALOG_DAMA untuk Harga Beli.
     """
@@ -1798,7 +1800,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     
     grouping_key_list = ['Nama Produk Display', 'Harga Satuan']
     # --- ▲▲▲ AKHIR MODIFIKASI ▲▲▲ ---
-    # --- AKHIR LOGIKA KHUSUS DAMASTORE ---
+    # --- AKHIR LOGIKA KHUSUS DAMA STORE ---
     # summary_df = summary_df[summary_df['Total Penghasilan'] != 0].copy()
 
     # Agregasi data utama dari REKAP
@@ -1863,13 +1865,13 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         axis=1
     )
     
-    # Terapkan Pengecualian DamaStore
+    # Terapkan Pengecualian Dama Store
     hijab_keywords_dama = {'PASHMINA', 'HIJAB', 'PASMINA'}
     # Gunakan 'Nama Produk Original' untuk pengecekan yang andal
     kondisi_hijab = summary_df['Nama Produk Original'].str.upper().str.contains('|'.join(hijab_keywords_dama), na=False)
     summary_df.loc[kondisi_hijab, 'Jumlah Eksemplar'] = 0
     
-    summary_df['Biaya Ekspedisi'] = 0 # DamaStore pakai Biaya Ekspedisi = 0
+    summary_df['Biaya Ekspedisi'] = 0 # Dama Store pakai Biaya Ekspedisi = 0
     biaya_ekspedisi_final = summary_df['Biaya Ekspedisi']
 
     # --- PANGGIL FUNGSI HARGA BELI BARU ---
@@ -2137,8 +2139,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     # 4. MENGAMBIL KOMISI AFFILIATE
     creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
-    # Merge affiliate HANYA jika bukan DamaStore
-    if store_choice != "DamaStore":
+    # Merge affiliate HANYA jika bukan Dama Store
+    if store_choice != "Dama Store":
         rekap_df = pd.merge(
             rekap_df,
             creator_order_all_df[['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL']],
@@ -2150,7 +2152,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         rekap_df['Komisi Affiliate'] = pd.to_numeric(rekap_df['Komisi Affiliate'], errors='coerce').fillna(0).abs() # Pastikan numerik dan positif
         rekap_df.drop(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean'], inplace=True, errors='ignore')
     else:
-        # Jika DamaStore, buat kolom Komisi Affiliate berisi 0
+        # Jika Dama Store, buat kolom Komisi Affiliate berisi 0
         rekap_df['Komisi Affiliate'] = 0
 
     # 5. RUMUS BARU UNTUK TOTAL PENGHASILAN
@@ -2288,8 +2290,8 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     
     # # 3. Isi nilai yang tidak cocok (NaN) dengan 0
     # summary_df['Biaya Ekspedisi'] = summary_df['Biaya Ekspedisi'].fillna(0)
-    if store_choice == "DamaStore":
-        # 1. Untuk DamaStore, Biaya Ekspedisi selalu 0
+    if store_choice == "Dama Store":
+        # 1. Untuk Dama Store, Biaya Ekspedisi selalu 0
         summary_df['Biaya Ekspedisi'] = 0
     else:
         # 1. Ambil 'Nama Produk', 'Variasi', dan 'Jumlah' dari sheet EKSPEDISI
@@ -2452,17 +2454,17 @@ store_choice = ""
 if marketplace_choice == "Shopee":
     store_choice = st.selectbox(
         "Pilih Toko Shopee:",
-        ("HumanStore", "PacificBookStore", "DamaStore"),
+        ("Human Store", "Pacific BookStore", "Dama Store"),
         key='shopee_store'
     )
 elif marketplace_choice == "TikTok":
-    # Untuk sekarang, TikTok hanya untuk HumanStore
+    # Untuk sekarang, TikTok hanya untuk Human Store
     store_choice = st.selectbox(
         "Pilih Toko TikTok:",
-        ("HumanStore", "DamaStore"), # Hanya toko yang relevan untuk TikTok
+        ("Human Store", "Dama Store"), # Hanya toko yang relevan untuk TikTok
         key='tiktok_store'
     )
-    st.info("Marketplace TikTok saat ini hanya tersedia untuk HumanStore dan DamaStore.")
+    st.info("Marketplace TikTok saat ini hanya tersedia untuk Human Store dan Dama Store.")
 
 # Hanya tampilkan uploader jika marketplace sudah dipilih
 if marketplace_choice:
@@ -2560,18 +2562,18 @@ if marketplace_choice:
             uploaded_semua_pesanan = st.file_uploader("2. Import file semua pesanan.xlsx", type="xlsx")
         with col2:
             # --- TAMBAHKAN KONDISI DI SINI ---
-            # Hanya tampilkan uploader creator order jika BUKAN DamaStore
-            if store_choice != "DamaStore":
+            # Hanya tampilkan uploader creator order jika BUKAN Dama Store
+            if store_choice != "Dama Store":
                 uploaded_creator_order = st.file_uploader("3. Import file creator order-all.xlsx", type="xlsx")
             else:
-                # Jika DamaStore, pastikan variabelnya ada tapi None
+                # Jika Dama Store, pastikan variabelnya ada tapi None
                 uploaded_creator_order = None
-                st.info("File 'creator order-all.xlsx' tidak diperlukan untuk DamaStore.") # Opsional: beri info
+                st.info("File 'creator order-all.xlsx' tidak diperlukan untuk Dama Store.") # Opsional: beri info
             # ---------------------------------
 
             uploaded_pdfs = st.file_uploader(
                 # Sesuaikan nomor urut jika creator order disembunyikan
-                f"{'4.' if store_choice != 'DamaStore' else '3.'} Import Nota Resi Ekspedisi (bisa lebih dari satu)",
+                f"{'4.' if store_choice != 'Dama Store' else '3.'} Import Nota Resi Ekspedisi (bisa lebih dari satu)",
                 type="pdf",
                 accept_multiple_files=True
             )
@@ -2587,8 +2589,8 @@ if marketplace_choice:
     # show_shopee_button = marketplace_choice == "Shopee" and uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller
     shopee_base_files = marketplace_choice == "Shopee" and uploaded_order and uploaded_income and uploaded_iklan
     # Tentukan status tombol berdasarkan toko
-    if shopee_base_files and store_choice == "DamaStore":
-        show_shopee_button = True # DamaStore siap, seller conversion opsional
+    if shopee_base_files and store_choice == "Dama Store":
+        show_shopee_button = True # Dama Store siap, seller conversion opsional
     elif shopee_base_files: # Toko Shopee lain (Human/Pacific)
         show_shopee_button = uploaded_seller # Wajib untuk Human/Pacific
     else:
@@ -2598,11 +2600,11 @@ if marketplace_choice:
     tiktok_base_files = marketplace_choice == "TikTok" and uploaded_income_tiktok and uploaded_semua_pesanan
     
     show_tiktok_button = False # Inisialisasi
-    if tiktok_base_files and store_choice == "DamaStore":
-        # DamaStore: creator_order & pdfs opsional
+    if tiktok_base_files and store_choice == "Dama Store":
+        # Dama Store: creator_order & pdfs opsional
         show_tiktok_button = True
-    elif tiktok_base_files and store_choice == "HumanStore":
-        # HumanStore: creator_order & pdfs wajib
+    elif tiktok_base_files and store_choice == "Human Store":
+        # Human Store: creator_order & pdfs wajib
         show_tiktok_button = uploaded_creator_order
 
     if show_shopee_button or show_tiktok_button:
@@ -2618,7 +2620,7 @@ if marketplace_choice:
                     status_text.text("Membaca file Shopee...")
                     order_all_df = pd.read_excel(uploaded_order, dtype={'Harga Setelah Diskon': str, 'Total Harga Produk': str})
                     income_dilepas_df = pd.read_excel(uploaded_income, sheet_name='Income', skiprows=5)
-                    if store_choice == "HumanStore":
+                    if store_choice == "Human Store":
                         service_fee_df = pd.read_excel(uploaded_income, sheet_name='Service Fee Details', skiprows=1)
                     iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
                     # seller_conversion_df = pd.read_csv(uploaded_seller)
@@ -2626,7 +2628,7 @@ if marketplace_choice:
                         seller_conversion_df = pd.read_csv(uploaded_seller)
                     else:
                         # Buat DataFrame kosong jika file tidak ada
-                        # Ini penting agar DamaStore tidak error
+                        # Ini penting agar Dama Store tidak error
                         seller_conversion_df = pd.DataFrame(columns=['Kode Pesanan', 'Pengeluaran(Rp)'])
                     progress_bar.progress(20, text="File dimuat. Membersihkan format angka...")
 
@@ -2653,11 +2655,11 @@ if marketplace_choice:
                 
                     # --- LOGIKA PEMROSESAN BERDASARKAN TOKO ---
                     status_text.text("Menyusun sheet 'REKAP' (Shopee)...")
-                    if store_choice == "HumanStore":
+                    if store_choice == "Human Store":
                         rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, service_fee_df)
-                    elif store_choice == "PacificBookStore": # Hanya Pacific yang pakai logic ini
+                    elif store_choice == "Pacific BookStore": # Hanya Pacific yang pakai logic ini
                         rekap_processed = process_rekap_pacific(order_all_df, income_dilepas_df, seller_conversion_df)
-                    elif store_choice == "DamaStore": # Panggil fungsi baru untuk DAMA
+                    elif store_choice == "Dama Store": # Panggil fungsi baru untuk DAMA
                         rekap_processed = process_rekap_dama(order_all_df, income_dilepas_df, seller_conversion_df)
                     else: # Pengaman jika ada pilihan store lain
                         st.error(f"Pilihan toko '{store_choice}' tidak dikenali.")
@@ -2669,9 +2671,9 @@ if marketplace_choice:
                     progress_bar.progress(60, text="Sheet 'IKLAN' selesai.")
     
                     status_text.text("Menyusun sheet 'SUMMARY' (Shopee)...")
-                    if store_choice == "DamaStore":
+                    if store_choice == "Dama Store":
                         summary_processed = process_summary_dama(rekap_processed, iklan_processed, katalog_dama_df, harga_custom_tlj_df)
-                    else: # HumanStore atau PacificBookStore
+                    else: # Human Store atau Pacific BookStore
                         summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df, harga_custom_tlj_df, store_type=store_choice)
                     progress_bar.progress(80, text="Sheet 'SUMMARY' selesai.")
                     
@@ -2681,7 +2683,7 @@ if marketplace_choice:
                         'sheet order-all': order_all_df, 'sheet income dilepas': income_dilepas_df,
                         'sheet biaya iklan': iklan_produk_df, 'sheet seller conversion': seller_conversion_df
                     }
-                    if store_choice == "HumanStore": sheets['sheet service fee'] = service_fee_df
+                    if store_choice == "Human Store": sheets['sheet service fee'] = service_fee_df
     
                 elif marketplace_choice == "TikTok":
                     # --- ALUR PROSES TIKTOK BARU ---
@@ -2717,11 +2719,11 @@ if marketplace_choice:
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
                     semua_pesanan_df.columns = [col.upper() for col in semua_pesanan_df.columns]
                     if uploaded_creator_order:
-                        # Jika file di-upload (HumanStore), baca filenya
+                        # Jika file di-upload (Human Store), baca filenya
                         creator_order_all_df = clean_columns(pd.read_excel(uploaded_creator_order))
                         creator_order_all_df.columns = [col.upper() for col in creator_order_all_df.columns]
                     else:
-                        # Jika DamaStore (file=None), buat DataFrame kosong
+                        # Jika Dama Store (file=None), buat DataFrame kosong
                         # Tambahkan 'SKU' ke daftar kolom agar merge tidak error
                         creator_order_all_df = pd.DataFrame(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL', 'SKU'])
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
@@ -2735,7 +2737,7 @@ if marketplace_choice:
                         pdf_data = [parse_pdf_receipt(pdf) for pdf in uploaded_pdfs if pdf is not None]
                         pdf_data = [data for data in pdf_data if data is not None] # Hapus hasil yang gagal
                     else:
-                        # Jika tidak ada PDF (kasus DamaStore opsional)
+                        # Jika tidak ada PDF (kasus Dama Store opsional)
                         status_text.text("Melewati pemrosesan PDF nota resi...")
                     progress_bar.progress(40, text="File PDF selesai diproses.")
     
