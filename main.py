@@ -938,19 +938,19 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     # kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
     # if 'Nama Variasi' in rekap_df.columns:
     #     rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + rekap_df['Nama Variasi'].fillna('').str.strip()
-    if 'Nama Variasi' in rekap_df.columns:
-        # Ambil variasi, ganti NaN dengan string kosong
-        variasi_clean = rekap_df['Nama Variasi'].fillna('').astype(str).str.strip()
+    # if 'Nama Variasi' in rekap_df.columns:
+    #     # Ambil variasi, ganti NaN dengan string kosong
+    #     variasi_clean = rekap_df['Nama Variasi'].fillna('').astype(str).str.strip()
         
-        # Kondisi untuk menggabungkan: Variasi tidak kosong dan tidak '0'
-        # (Dan jika Anda hanya ingin produk tertentu, tambahkan kondisi nama produk di sini)
-        kondisi_gabung = (variasi_clean != '') & (variasi_clean != '0') & (variasi_clean != 'nan')
+    #     # Kondisi untuk menggabungkan: Variasi tidak kosong dan tidak '0'
+    #     # (Dan jika Anda hanya ingin produk tertentu, tambahkan kondisi nama produk di sini)
+    #     kondisi_gabung = (variasi_clean != '') & (variasi_clean != '0') & (variasi_clean != 'nan')
         
-        # Gabungkan Nama Produk + Variasi hanya untuk baris yang memenuhi syarat
-        # Gunakan .loc untuk memastikan kita tidak menimpa baris yang tidak punya variasi
-        rekap_df.loc[kondisi_gabung, 'Nama Produk'] = (
-            rekap_df.loc[kondisi_gabung, 'Nama Produk'] + ' (' + variasi_clean.loc[kondisi_gabung] + ')'
-        )
+    #     # Gabungkan Nama Produk + Variasi hanya untuk baris yang memenuhi syarat
+    #     # Gunakan .loc untuk memastikan kita tidak menimpa baris yang tidak punya variasi
+    #     rekap_df.loc[kondisi_gabung, 'Nama Produk'] = (
+    #         rekap_df.loc[kondisi_gabung, 'Nama Produk'] + ' (' + variasi_clean.loc[kondisi_gabung] + ')'
+    #     )
 
     # --- LOGIKA PERHITUNGAN BIAYA UNTUK DAMA STORE ---
     rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0) 
@@ -1731,7 +1731,48 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
     except Exception as e:
         # st.error(f"Error di get_harga_beli_dama for '{summary_product_name}': {e}")
         return 0
+
+def get_eksemplar_multiplier_dama(nama_produk):
+    """
+    Mengekstrak angka paket khusus untuk DamaStore.
+    Mencari pola 'ISI X', 'PAKET X', atau angka di akhir string variasi dalam kurung.
+    """
+    # Ambil bagian dalam kurung (variasi)
+    match_var = re.search(r'\((.*?)\)', str(nama_produk))
+    if not match_var:
+        return 1 # Tidak ada kurung/variasi -> Satuan
         
+    variasi = match_var.group(1).upper()
+    
+    # 1. Cek Pola Eksplisit "ISI X" atau "ISIX" (e.g., ISI 1, ISI3, PAKET ISI 7)
+    #    Menggunakan \b untuk batas kata agar "SISI" tidak kena, tapi "ISI" kena
+    isi_match = re.search(r'ISI\s*(\d+)', variasi)
+    if isi_match:
+        return int(isi_match.group(1))
+
+    # 2. Cek Pola "PAKET X" atau "PAKETX" (e.g., A5 PAKET 5, PAKET3)
+    paket_match = re.search(r'PAKET\s*(\d+)', variasi)
+    if paket_match:
+        return int(paket_match.group(1))
+        
+    # 3. Cek Pola "SATUAN"
+    if 'SATUAN' in variasi:
+        return 1
+        
+    # 4. Fallback: Ambil angka paling belakang di string variasi
+    #    Berguna untuk format aneh asalkan angkanya di akhir (misal "A5 KORAN 10")
+    #    Hati-hati: "A5" akan terdeteksi sebagai 5 jika tidak ada angka lain. 
+    #    Jadi kita batasi hanya jika angka itu > 1 (karena 1 biasanya default)
+    #    ATAU kita asumsikan jika tidak ada kata "PAKET/ISI", maka itu 1.
+    
+    #    Strategi aman: Jika ada angka di AKHIR string (setelah spasi), ambil.
+    #    Contoh: "A5 KORAN" -> Tidak ada angka di akhir. "PAKET LEBARAN 10" -> 10.
+    last_number_match = re.search(r'\s(\d+)$', variasi)
+    if last_number_match:
+        return int(last_number_match.group(1))
+
+    return 1
+    
 # --- TAMBAHKAN FUNGSI BARU INI ---
 def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom_tlj_df): # Tambah katalog_dama_df
     """
@@ -1861,7 +1902,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
     summary_df['Jumlah Eksemplar'] = summary_df.apply(
-        lambda row: calculate_eksemplar(row['Nama Produk'], row['Jumlah Terjual']), 
+        lambda row: row['Jumlah Terjual'] * get_eksemplar_multiplier_dama(row['Nama Produk']),
         axis=1
     )
     
@@ -1915,7 +1956,8 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     summary_final_data = {
         'No': np.arange(1, len(summary_df) + 1),
         'Nama Produk': summary_df['Nama Produk'], # Nama produk display
-        'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Eksemplar': summary_df['Jumlah Eksemplar'], 'Harga Satuan': summary_df['Harga Satuan'],
+        'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Eksemplar': summary_df['Jumlah Eksemplar'], 
+        'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Harga Produk': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
         'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
         'Biaya Layanan 2%': summary_df['Biaya Layanan 2%'], 'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
@@ -1924,7 +1966,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         'Biaya Ekspedisi': biaya_ekspedisi_final, # Kolom Biaya Ekspedisi
         'Harga Beli': summary_df['Harga Beli'], 'Harga Custom TLJ': summary_df['Harga Custom TLJ'],
         'Total Pembelian': summary_df['Total Pembelian'], 'Margin': summary_df['Margin'],
-        'Persentase': summary_df['Persentase'], 'Jumlah Pesanan': summary_df['Jumlah Pesanan'],
+        'Persentase': summary_df['Persentase'],
         'Penjualan Per Hari': summary_df['Penjualan Per Hari'], 'Jumlah buku per pesanan': summary_df['Jumlah buku per pesanan']
     }
     summary_final = pd.DataFrame(summary_final_data)
