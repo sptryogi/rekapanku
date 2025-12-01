@@ -103,7 +103,7 @@ def extract_paper_and_size_variation(var_str):
     
     return ' '.join(unique_parts) # Gabungkan bagian yang relevan
     
-def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
+def process_rekap(order_df, income_df, seller_conv_df):
     """
     Fungsi untuk memproses dan membuat sheet 'REKAP' dengan file 'income' sebagai data utama.
     """
@@ -299,20 +299,20 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     #    Hitung dulu ada berapa produk dalam satu pesanan
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
 
-    # 3. Siapkan data 'Biaya Layanan Promo XTRA' dari service_fee_df
-    #    (Fungsi clean_and_convert_to_numeric sudah ada di file Anda)
-    service_fee_subset = service_fee_df[['No. Pesanan', 'Biaya Layanan Promo XTRA']].copy()
-    service_fee_subset['No. Pesanan'] = service_fee_subset['No. Pesanan'].astype(str)
+    # # 3. Siapkan data 'Biaya Layanan Promo XTRA' dari service_fee_df
+    # #    (Fungsi clean_and_convert_to_numeric sudah ada di file Anda)
+    # service_fee_subset = service_fee_df[['No. Pesanan', 'Biaya Layanan Promo XTRA']].copy()
+    # service_fee_subset['No. Pesanan'] = service_fee_subset['No. Pesanan'].astype(str)
     
-    # Gunakan fungsi clean yang ada, lalu .abs() untuk menghilangkan minus
-    service_fee_subset['BiayaLayananPromo_Clean'] = clean_and_convert_to_numeric(service_fee_subset['Biaya Layanan Promo XTRA']).abs()
+    # # Gunakan fungsi clean yang ada, lalu .abs() untuk menghilangkan minus
+    # service_fee_subset['BiayaLayananPromo_Clean'] = clean_and_convert_to_numeric(service_fee_subset['Biaya Layanan Promo XTRA']).abs()
     
-    # Agregasi (sum) untuk jaga-jaga jika ada duplikat no. pesanan di file service fee
-    service_fee_agg = service_fee_subset.groupby('No. Pesanan')['BiayaLayananPromo_Clean'].sum().reset_index()
+    # # Agregasi (sum) untuk jaga-jaga jika ada duplikat no. pesanan di file service fee
+    # service_fee_agg = service_fee_subset.groupby('No. Pesanan')['BiayaLayananPromo_Clean'].sum().reset_index()
     
-    # 4. Gabungkan (merge) data biaya layanan ini ke rekap_df
-    rekap_df = pd.merge(rekap_df, service_fee_agg, on='No. Pesanan', how='left')
-    rekap_df['BiayaLayananPromo_Clean'] = rekap_df['BiayaLayananPromo_Clean'].fillna(0)
+    # # 4. Gabungkan (merge) data biaya layanan ini ke rekap_df
+    # rekap_df = pd.merge(rekap_df, service_fee_agg, on='No. Pesanan', how='left')
+    # rekap_df['BiayaLayananPromo_Clean'] = rekap_df['BiayaLayananPromo_Clean'].fillna(0)
 
     rekap_df['Total Penghasilan Dibagi'] = (rekap_df['Total Penghasilan'] / product_count_per_order).fillna(0)
 
@@ -332,8 +332,8 @@ def process_rekap(order_df, income_df, seller_conv_df, service_fee_df):
     rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
-    rekap_df['Biaya Layanan 2%'] = rekap_df['BiayaLayananPromo_Clean'] / product_count_per_order
-    rekap_df = rekap_df.drop(columns=['BiayaLayananPromo_Clean'], errors='ignore')
+    rekap_df['Biaya Layanan 2%'] = 0
+    # rekap_df = rekap_df.drop(columns=['BiayaLayananPromo_Clean'], errors='ignore')
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
@@ -2662,8 +2662,8 @@ if marketplace_choice:
                     status_text.text("Membaca file Shopee...")
                     order_all_df = pd.read_excel(uploaded_order, dtype={'Harga Setelah Diskon': str, 'Total Harga Produk': str})
                     income_dilepas_df = pd.read_excel(uploaded_income, sheet_name='Income', skiprows=5)
-                    if store_choice == "Human Store":
-                        service_fee_df = pd.read_excel(uploaded_income, sheet_name='Service Fee Details', skiprows=1)
+                    # if store_choice == "Human Store":
+                    #     service_fee_df = pd.read_excel(uploaded_income, sheet_name='Service Fee Details', skiprows=1)
                     iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
                     # seller_conversion_df = pd.read_csv(uploaded_seller)
                     if uploaded_seller:
@@ -2698,7 +2698,7 @@ if marketplace_choice:
                     # --- LOGIKA PEMROSESAN BERDASARKAN TOKO ---
                     status_text.text("Menyusun sheet 'REKAP' (Shopee)...")
                     if store_choice == "Human Store":
-                        rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, service_fee_df)
+                        rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df)
                     elif store_choice == "Pacific BookStore": # Hanya Pacific yang pakai logic ini
                         rekap_processed = process_rekap_pacific(order_all_df, income_dilepas_df, seller_conversion_df)
                     elif store_choice == "Dama Store": # Panggil fungsi baru untuk DAMA
@@ -2725,7 +2725,7 @@ if marketplace_choice:
                         'sheet order-all': order_all_df, 'sheet income dilepas': income_dilepas_df,
                         'sheet biaya iklan': iklan_produk_df, 'sheet seller conversion': seller_conversion_df
                     }
-                    if store_choice == "Human Store": sheets['sheet service fee'] = service_fee_df
+                    # if store_choice == "Human Store": sheets['sheet service fee'] = service_fee_df
     
                 elif marketplace_choice == "TikTok":
                     # --- ALUR PROSES TIKTOK BARU ---
