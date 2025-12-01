@@ -197,7 +197,8 @@ def process_rekap(order_df, income_df, seller_conv_df):
         "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF",
         "AL-QURAN AL AQEEL SILVER TERMURAH", # <-- TAMBAHKAN INI
         "AL-QUR'AN TERJEMAH HC AL ALEEM A5",
-        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan"
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan",
+        "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
@@ -248,7 +249,7 @@ def process_rekap(order_df, income_df, seller_conv_df):
                         part_to_append = 'KORAN'
                     # else: part_to_append tetap ''
                         
-                elif "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF" in nama_produk_clean:
+                elif "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF" in nama_produk_clean or "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL" in nama_produk_clean:
                     var_upper = var_str.upper()
                     # Cari "PAKET ISI X" atau "SATUAN"
                     paket_match = re.search(r'(PAKET\s*ISI\s*\d+)', var_upper)
