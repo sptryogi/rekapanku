@@ -1325,6 +1325,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     produk_khusus = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
         "AL QUR'AN GOLD TERMURAH",
+        "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
         "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris",
         "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
         "AL-QUR'AN TERJEMAH HC AL ALEEM A5",
