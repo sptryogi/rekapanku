@@ -192,6 +192,7 @@ def process_rekap(order_df, income_df, seller_conv_df):
     produk_khusus_raw = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
         "AL QUR'AN GOLD TERMURAH",
+        "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
         "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
         "AL QUR'AN NON TERJEMAH AL AQEEL A5 KERTAS KORAN WAKAF",
         "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF",
@@ -224,7 +225,8 @@ def process_rekap(order_df, income_df, seller_conv_df):
                 # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
                 produk_yang_ambil_full_variasi = [
                     "CUSTOM AL QURAN MENGENANG", 
-                    "AL QUR'AN GOLD TERMURAH", 
+                    "AL QUR'AN GOLD TERMURAH",
+                    "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
                     "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
                     "AL-QURAN AL AQEEL SILVER TERMURAH"
                 ]
