@@ -856,6 +856,11 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     Fungsi untuk memproses sheet 'REKAP' KHUSUS untuk DAMA STORE (Shopee).
     Biaya Adm, Layanan, dan Proses dihitung berdasarkan Total Harga Produk.
     """
+    if 'Nama Variasi' in order_df.columns:
+        order_df['Nama Variasi'] = order_df['Nama Variasi'].fillna('')
+    else:
+        order_df['Nama Variasi'] = ''
+        
     # Bagian ini sama persis dengan fungsi rekap pacific/human
     order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk', 'Nama Variasi']).agg({
         'Jumlah': 'sum',
@@ -2193,7 +2198,27 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     # 4. MENGAMBIL KOMISI AFFILIATE
     creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
     # Merge affiliate HANYA jika bukan Dama Store
-    if store_choice != "Dama Store":
+    # if store_choice != "Dama Store":
+    #     rekap_df = pd.merge(
+    #         rekap_df,
+    #         creator_order_all_df[['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL']],
+    #         left_on=['ORDER ID', 'PRODUCT NAME', 'Variasi'],
+    #         right_on=['ID PESANAN', 'PRODUK', 'Variasi_Clean'],
+    #         how='left'
+    #     )
+    #     rekap_df.rename(columns={'PEMBAYARAN KOMISI AKTUAL': 'Komisi Affiliate'}, inplace=True)
+    #     rekap_df['Komisi Affiliate'] = pd.to_numeric(rekap_df['Komisi Affiliate'], errors='coerce').fillna(0).abs() # Pastikan numerik dan positif
+    #     rekap_df.drop(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean'], inplace=True, errors='ignore')
+    # else:
+    #     # Jika Dama Store, buat kolom Komisi Affiliate berisi 0
+    #     rekap_df['Komisi Affiliate'] = 0
+    if not creator_order_all_df.empty:
+        # Pastikan kolom SKU ada sebelum extract
+        if 'SKU' in creator_order_all_df.columns:
+            creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+        else:
+            creator_order_all_df['Variasi_Clean'] = ''
+
         rekap_df = pd.merge(
             rekap_df,
             creator_order_all_df[['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL']],
@@ -2202,10 +2227,10 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
             how='left'
         )
         rekap_df.rename(columns={'PEMBAYARAN KOMISI AKTUAL': 'Komisi Affiliate'}, inplace=True)
-        rekap_df['Komisi Affiliate'] = pd.to_numeric(rekap_df['Komisi Affiliate'], errors='coerce').fillna(0).abs() # Pastikan numerik dan positif
+        rekap_df['Komisi Affiliate'] = pd.to_numeric(rekap_df['Komisi Affiliate'], errors='coerce').fillna(0).abs()
         rekap_df.drop(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean'], inplace=True, errors='ignore')
     else:
-        # Jika Dama Store, buat kolom Komisi Affiliate berisi 0
+        # Jika file tidak diupload (DataFrame kosong), isi 0
         rekap_df['Komisi Affiliate'] = 0
 
     # 5. RUMUS BARU UNTUK TOTAL PENGHASILAN
@@ -2616,12 +2641,17 @@ if marketplace_choice:
         with col2:
             # --- TAMBAHKAN KONDISI DI SINI ---
             # Hanya tampilkan uploader creator order jika BUKAN Dama Store
-            if store_choice != "Dama Store":
-                uploaded_creator_order = st.file_uploader("3. Import file creator order-all.xlsx", type="xlsx")
-            else:
-                # Jika Dama Store, pastikan variabelnya ada tapi None
-                uploaded_creator_order = None
-                st.info("File 'creator order-all.xlsx' tidak diperlukan untuk Dama Store.") # Opsional: beri info
+            # if store_choice != "Dama Store":
+            #     uploaded_creator_order = st.file_uploader("3. Import file creator order-all.xlsx", type="xlsx")
+            # else:
+            #     # Jika Dama Store, pastikan variabelnya ada tapi None
+            #     uploaded_creator_order = None
+            #     st.info("File 'creator order-all.xlsx' tidak diperlukan untuk Dama Store.") # Opsional: beri info
+            label_creator = "3. Import file creator order-all.xlsx"
+            if store_choice == "Dama Store":
+                label_creator += " (Opsional)"
+                
+            uploaded_creator_order = st.file_uploader(label_creator, type="xlsx")
             # ---------------------------------
 
             uploaded_pdfs = st.file_uploader(
