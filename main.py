@@ -700,7 +700,13 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
-    rekap_df['Biaya Layanan 4,5%'] = basis_biaya * 0.045
+    # rekap_df['Biaya Layanan 4,5%'] = basis_biaya * 0.045
+    # --- PERUBAHAN: Ambil Biaya Layanan dari Income, dibagi jumlah produk ---
+    # 1. Bersihkan kolom 'Biaya Layanan' dari income_df (pastikan ada)
+    rekap_df['Biaya Layanan_Clean'] = clean_and_convert_to_numeric(rekap_df.get('Biaya Layanan', 0))
+    
+    # 2. Bagi per produk dan hilangkan minus (.abs())
+    rekap_df['Biaya Layanan 4,5%'] = (rekap_df['Biaya Layanan_Clean'] / product_count_per_order).fillna(0).abs()
     rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = 0
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
