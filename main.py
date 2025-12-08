@@ -1911,7 +1911,8 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     )
     
     # Terapkan Pengecualian Dama Store
-    hijab_keywords_dama = {'PASHMINA', 'HIJAB', 'PASMINA'}
+    # hijab_keywords_dama = {'PASHMINA', 'HIJAB', 'PASMINA'}
+    hijab_keywords_dama = {'PIRING', 'BAJU', 'MOBIL'}
     # Gunakan 'Nama Produk Original' untuk pengecekan yang andal
     kondisi_hijab = summary_df['Nama Produk Original'].str.upper().str.contains('|'.join(hijab_keywords_dama), na=False)
     summary_df.loc[kondisi_hijab, 'Jumlah Eksemplar'] = 0
