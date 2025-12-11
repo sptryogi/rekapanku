@@ -1384,12 +1384,22 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             # 5. Hitung jumlah yang cocok
             num_variations_kustom = matching_summary_rows_kustom.sum()
             
-            if num_variations_kustom > 0:
-                # 6. Bagi dan alokasikan biaya
-                distributed_cost_kustom = total_iklan_cost_kustom / num_variations_kustom
-                summary_df.loc[matching_summary_rows_kustom, 'Iklan Klik'] = distributed_cost_kustom
+            # if num_variations_kustom > 0:
+            #     # 6. Bagi dan alokasikan biaya
+            #     distributed_cost_kustom = total_iklan_cost_kustom / num_variations_kustom
+            #     summary_df.loc[matching_summary_rows_kustom, 'Iklan Klik'] = distributed_cost_kustom
                 
-                # 7. Hapus iklan ini dari 'iklan_data' agar tidak diproses lagi oleh loop di bawah
+            #     # 7. Hapus iklan ini dari 'iklan_data' agar tidak diproses lagi oleh loop di bawah
+            #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != nama_iklan_kustom]
+            if num_variations_kustom > 0:
+                # 6. Hitung Iklan Klik dengan Rumus: (Eksemplar * Biaya) / 16
+                #    Kita hitung eksemplar untuk baris yang cocok dulu
+                eksemplar_kustom = summary_df.loc[matching_summary_rows_kustom, 'Nama Produk'].apply(get_eksemplar_multiplier)
+                
+                #    Terapkan rumus
+                summary_df.loc[matching_summary_rows_kustom, 'Iklan Klik'] = (eksemplar_kustom * total_iklan_cost_kustom) / 16
+                
+                # 7. Hapus iklan ini dari 'iklan_data'
                 iklan_data = iklan_data[iklan_data['Nama Iklan'] != nama_iklan_kustom]
     
     # 1. Proses Distribusi Biaya untuk Produk Khusus
@@ -1407,12 +1417,20 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             # Hitung ada berapa banyak variasi yang ditemukan
             num_variations = matching_summary_rows.sum()
     
-            if num_variations > 0:
-                # Bagi biaya iklan secara merata ke semua variasi
-                distributed_cost = total_iklan_cost / num_variations
-                summary_df.loc[matching_summary_rows, 'Iklan Klik'] = distributed_cost
+            # if num_variations > 0:
+            #     # Bagi biaya iklan secara merata ke semua variasi
+            #     distributed_cost = total_iklan_cost / num_variations
+            #     summary_df.loc[matching_summary_rows, 'Iklan Klik'] = distributed_cost
     
-                # Hapus iklan ini dari `iklan_data` agar tidak diproses lagi
+            #     # Hapus iklan ini dari `iklan_data` agar tidak diproses lagi
+            #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
+            if num_variations > 0:
+                # Hitung Iklan Klik dengan Rumus: (Eksemplar * Biaya) / 16
+                eksemplar_series = summary_df.loc[matching_summary_rows, 'Nama Produk'].apply(get_eksemplar_multiplier)
+                
+                summary_df.loc[matching_summary_rows, 'Iklan Klik'] = (eksemplar_series * total_iklan_cost) / 16
+    
+                # Hapus iklan ini dari `iklan_data`
                 iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
     
     # 2. Proses Produk Normal (yang tersisa di iklan_data)
@@ -1421,7 +1439,18 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     # Gabungkan hasil merge dengan kolom 'Iklan Klik' yang sudah ada
     # `summary_df['Biaya']` akan berisi biaya untuk produk normal
-    summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
+    # summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
+    # summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
+    # Terapkan rumus (Eksemplar * Biaya) / 16 juga untuk produk normal
+    biaya_normal = summary_df['Biaya'].fillna(0)
+    
+    # Hanya hitung jika ada biaya (biar hemat proses)
+    mask_biaya = biaya_normal > 0
+    if mask_biaya.any():
+        eksemplar_normal = summary_df.loc[mask_biaya, 'Nama Produk'].apply(get_eksemplar_multiplier)
+        tambahan_iklan = (eksemplar_normal * biaya_normal[mask_biaya]) / 16
+        summary_df.loc[mask_biaya, 'Iklan Klik'] += tambahan_iklan
+
     summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
     
     # 3. Tambahkan Produk yang Hanya Ada di IKLAN (dan bukan produk khusus)
@@ -1890,13 +1919,32 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
             total_iklan_cost = iklan_cost_row['Biaya'].iloc[0]
             matching_summary_rows = summary_df['Nama Produk Original'].str.startswith(produk_base, na=False)
             num_variations = matching_summary_rows.sum()
+            # if num_variations > 0:
+            #     distributed_cost = total_iklan_cost / num_variations
+            #     summary_df.loc[matching_summary_rows, 'Iklan Klik'] = distributed_cost
+            #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
             if num_variations > 0:
-                distributed_cost = total_iklan_cost / num_variations
-                summary_df.loc[matching_summary_rows, 'Iklan Klik'] = distributed_cost
+                # Hitung Iklan Klik dengan Rumus: (Eksemplar * Biaya) / 16
+                # Gunakan get_eksemplar_multiplier_dama
+                eksemplar_series = summary_df.loc[matching_summary_rows, 'Nama Produk'].apply(get_eksemplar_multiplier_dama)
+                
+                summary_df.loc[matching_summary_rows, 'Iklan Klik'] = (eksemplar_series * total_iklan_cost) / 16
+                
                 iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
     summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk Original', right_on='Nama Iklan', how='left')
-    summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
+    # summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
+    # summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
+    # Terapkan rumus (Eksemplar * Biaya) / 16 untuk produk normal
+    biaya_normal = summary_df['Biaya'].fillna(0)
+    
+    mask_biaya = biaya_normal > 0
+    if mask_biaya.any():
+        eksemplar_normal = summary_df.loc[mask_biaya, 'Nama Produk'].apply(get_eksemplar_multiplier_dama)
+        tambahan_iklan = (eksemplar_normal * biaya_normal[mask_biaya]) / 16
+        summary_df.loc[mask_biaya, 'Iklan Klik'] += tambahan_iklan
+
     summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
+
     iklan_only_names = set(iklan_data['Nama Iklan']) - set(summary_df['Nama Produk Original'])
     if iklan_only_names:
         iklan_only_df = iklan_data[iklan_data['Nama Iklan'].isin(iklan_only_names)].copy()
