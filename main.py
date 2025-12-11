@@ -568,6 +568,8 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
     produk_khusus_raw = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
+        "AL QUR'AN GOLD TERMURAH",
+        "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
         "TERBARU Al Quran Edisi Tahlilan Pengganti Buku Yasin Al Aqeel A6 Kertas HVS | SURABAYA | Mushaf Untuk Pengajian Kado Islami Hampers",
         "Al Quran Terjemah Al Aleem A5 HVS 15 Baris | SURABAYA | Alquran Untuk Pengajian Majelis Taklim",
         "Al Quran Saku Resleting Al Quddus A7 QPP Cover Kulit | SURABAYA | Untuk Santri Traveler Muslim",
@@ -606,7 +608,8 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                 # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
                 produk_yang_ambil_full_variasi = [
                     "CUSTOM AL QURAN MENGENANG", 
-                    "AL QUR'AN GOLD TERMURAH", 
+                    "AL QUR'AN GOLD TERMURAH",
+                    "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
                     "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
                     "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan" # (Sesuaikan string ini)
                 ]
