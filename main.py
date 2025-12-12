@@ -1272,6 +1272,47 @@ def calculate_eksemplar(nama_produk, jumlah_terjual):
         return jumlah_terjual * faktor
     except Exception:
         return jumlah_terjual # Fallback jika ada error
+
+def get_eksemplar_multiplier(nama_produk):
+    """
+    Mengekstrak angka paket khusus untuk DamaStore.
+    Mencari pola 'ISI X', 'PAKET X', atau angka di akhir string variasi dalam kurung.
+    """
+    # Ambil bagian dalam kurung (variasi)
+    match_var = re.search(r'\((.*?)\)', str(nama_produk))
+    if not match_var:
+        return 1 # Tidak ada kurung/variasi -> Satuan
+        
+    variasi = match_var.group(1).upper()
+    
+    # 1. Cek Pola Eksplisit "ISI X" atau "ISIX" (e.g., ISI 1, ISI3, PAKET ISI 7)
+    #    Menggunakan \b untuk batas kata agar "SISI" tidak kena, tapi "ISI" kena
+    isi_match = re.search(r'ISI\s*(\d+)', variasi)
+    if isi_match:
+        return int(isi_match.group(1))
+
+    # 2. Cek Pola "PAKET X" atau "PAKETX" (e.g., A5 PAKET 5, PAKET3)
+    paket_match = re.search(r'PAKET\s*(\d+)', variasi)
+    if paket_match:
+        return int(paket_match.group(1))
+        
+    # 3. Cek Pola "SATUAN"
+    if 'SATUAN' in variasi:
+        return 1
+        
+    # 4. Fallback: Ambil angka paling belakang di string variasi
+    #    Berguna untuk format aneh asalkan angkanya di akhir (misal "A5 KORAN 10")
+    #    Hati-hati: "A5" akan terdeteksi sebagai 5 jika tidak ada angka lain. 
+    #    Jadi kita batasi hanya jika angka itu > 1 (karena 1 biasanya default)
+    #    ATAU kita asumsikan jika tidak ada kata "PAKET/ISI", maka itu 1.
+    
+    #    Strategi aman: Jika ada angka di AKHIR string (setelah spasi), ambil.
+    #    Contoh: "A5 KORAN" -> Tidak ada angka di akhir. "PAKET LEBARAN 10" -> 10.
+    last_number_match = re.search(r'\s(\d+)$', variasi)
+    if last_number_match:
+        return int(last_number_match.group(1))
+
+    return 1
     
 def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, store_type):
     """
