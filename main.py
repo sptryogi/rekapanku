@@ -1407,8 +1407,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
 
     # 1. Definisikan Nama Iklan dan target Nama Produk
-    # nama_iklan_kustom = "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers"
-    nama_iklan_kustom = "INDEX"
+    nama_iklan_kustom = "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers"
+    # nama_iklan_kustom = "INDEX"
     target_produk_kustom = [
         "Al Qur'an Saku Pastel Al Aqeel A6 Kertas HVS | Hadiah Islami, Cover Cantik",
         "Al Qur'an Pastel Al Aqeel A6 Kertas HVS | Wakaf, Hadiah Islami, Cover Cantik",
@@ -1430,23 +1430,23 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             # 5. Hitung jumlah yang cocok
             num_variations_kustom = matching_summary_rows_kustom.sum()
             
-            # if num_variations_kustom > 0:
-            #     # 6. Bagi dan alokasikan biaya
-            #     distributed_cost_kustom = total_iklan_cost_kustom / num_variations_kustom
-            #     summary_df.loc[matching_summary_rows_kustom, 'Iklan Klik'] = distributed_cost_kustom
-                
-            #     # 7. Hapus iklan ini dari 'iklan_data' agar tidak diproses lagi oleh loop di bawah
-            #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != nama_iklan_kustom]
             if num_variations_kustom > 0:
-                # 6. Hitung Iklan Klik dengan Rumus: (Eksemplar * Biaya) / 16
-                #    Kita hitung eksemplar untuk baris yang cocok dulu
-                eksemplar_kustom = summary_df.loc[matching_summary_rows_kustom, 'Nama Produk'].apply(get_eksemplar_multiplier)
+                # 6. Bagi dan alokasikan biaya
+                distributed_cost_kustom = total_iklan_cost_kustom / num_variations_kustom
+                summary_df.loc[matching_summary_rows_kustom, 'Iklan Klik'] = distributed_cost_kustom
                 
-                #    Terapkan rumus
-                summary_df.loc[matching_summary_rows_kustom, 'Iklan Klik'] = (eksemplar_kustom * total_iklan_cost_kustom) / 16
-                
-                # 7. Hapus iklan ini dari 'iklan_data'
+                # 7. Hapus iklan ini dari 'iklan_data' agar tidak diproses lagi oleh loop di bawah
                 iklan_data = iklan_data[iklan_data['Nama Iklan'] != nama_iklan_kustom]
+            # if num_variations_kustom > 0:
+            #     # 6. Hitung Iklan Klik dengan Rumus: (Eksemplar * Biaya) / 16
+            #     #    Kita hitung eksemplar untuk baris yang cocok dulu
+            #     eksemplar_kustom = summary_df.loc[matching_summary_rows_kustom, 'Nama Produk'].apply(get_eksemplar_multiplier)
+                
+            #     #    Terapkan rumus
+            #     summary_df.loc[matching_summary_rows_kustom, 'Iklan Klik'] = (eksemplar_kustom * total_iklan_cost_kustom) / 16
+                
+            #     # 7. Hapus iklan ini dari 'iklan_data'
+            #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != nama_iklan_kustom]
     
     # 1. Proses Distribusi Biaya untuk Produk Khusus
     for produk_base in produk_khusus:
@@ -1463,39 +1463,39 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             # Hitung ada berapa banyak variasi yang ditemukan
             num_variations = matching_summary_rows.sum()
     
-            # if num_variations > 0:
-            #     # Bagi biaya iklan secara merata ke semua variasi
-            #     distributed_cost = total_iklan_cost / num_variations
-            #     summary_df.loc[matching_summary_rows, 'Iklan Klik'] = distributed_cost
-    
-            #     # Hapus iklan ini dari `iklan_data` agar tidak diproses lagi
-            #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
             if num_variations > 0:
-                # 1. Hitung Eksemplar
-                eksemplar_series = summary_df.loc[matching_summary_rows, 'Nama Produk'].apply(get_eksemplar_multiplier)
-                
-                # 2. Cek keberadaan keyword "SATUAN" secara eksplisit
-                has_satuan = summary_df.loc[matching_summary_rows, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
-
-                # 3. Tentukan Mask untuk Rumus / 16
-                # KONDISI: Eksemplar > 1 (Paket) ATAU ada kata "SATUAN"
-                mask_rumus_16 = (eksemplar_series > 1) | has_satuan
-                
-                # TERAPKAN RUMUS A: (Eksemplar * Biaya) / 16
-                if mask_rumus_16.any():
-                    # Ambil index yang True
-                    idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
-                    summary_df.loc[idx_rumus_16, 'Iklan Klik'] = (eksemplar_series.loc[idx_rumus_16] * total_iklan_cost) / 16
-                
-                # TERAPKAN RUMUS B: Biaya / Jumlah Produk (Untuk yang tidak punya variasi Paket/Satuan)
-                mask_rumus_bagi = ~mask_rumus_16
-                if mask_rumus_bagi.any():
-                    idx_rumus_bagi = mask_rumus_bagi[mask_rumus_bagi].index
-                    # Dibagi dengan total produk yang cocok dengan nama iklan ini (num_variations)
-                    summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] = total_iklan_cost / num_variations
+                # Bagi biaya iklan secara merata ke semua variasi
+                distributed_cost = total_iklan_cost / num_variations
+                summary_df.loc[matching_summary_rows, 'Iklan Klik'] = distributed_cost
     
-                # Hapus iklan ini dari `iklan_data`
+                # Hapus iklan ini dari `iklan_data` agar tidak diproses lagi
                 iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
+            # if num_variations > 0:
+            #     # 1. Hitung Eksemplar
+            #     eksemplar_series = summary_df.loc[matching_summary_rows, 'Nama Produk'].apply(get_eksemplar_multiplier)
+                
+            #     # 2. Cek keberadaan keyword "SATUAN" secara eksplisit
+            #     has_satuan = summary_df.loc[matching_summary_rows, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
+
+            #     # 3. Tentukan Mask untuk Rumus / 16
+            #     # KONDISI: Eksemplar > 1 (Paket) ATAU ada kata "SATUAN"
+            #     mask_rumus_16 = (eksemplar_series > 1) | has_satuan
+                
+            #     # TERAPKAN RUMUS A: (Eksemplar * Biaya) / 16
+            #     if mask_rumus_16.any():
+            #         # Ambil index yang True
+            #         idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
+            #         summary_df.loc[idx_rumus_16, 'Iklan Klik'] = (eksemplar_series.loc[idx_rumus_16] * total_iklan_cost) / 16
+                
+            #     # TERAPKAN RUMUS B: Biaya / Jumlah Produk (Untuk yang tidak punya variasi Paket/Satuan)
+            #     mask_rumus_bagi = ~mask_rumus_16
+            #     if mask_rumus_bagi.any():
+            #         idx_rumus_bagi = mask_rumus_bagi[mask_rumus_bagi].index
+            #         # Dibagi dengan total produk yang cocok dengan nama iklan ini (num_variations)
+            #         summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] = total_iklan_cost / num_variations
+    
+            #     # Hapus iklan ini dari `iklan_data`
+            #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
     
     # 2. Proses Produk Normal (yang tersisa di iklan_data)
     # Gunakan merge untuk produk yang namanya cocok persis
@@ -1503,37 +1503,37 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     # Gabungkan hasil merge dengan kolom 'Iklan Klik' yang sudah ada
     # `summary_df['Biaya']` akan berisi biaya untuk produk normal
-    # summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
-    # summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
-    # Terapkan rumus (Eksemplar * Biaya) / 16 juga untuk produk normal
-    if 'Nama Iklan' in summary_df.columns:
-        summary_df['ad_group_count'] = summary_df.groupby('Nama Iklan')['Nama Iklan'].transform('count')
-        biaya_normal = summary_df['Biaya'].fillna(0)
+    summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
+    summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
+    # # Terapkan rumus (Eksemplar * Biaya) / 16 juga untuk produk normal
+    # if 'Nama Iklan' in summary_df.columns:
+    #     summary_df['ad_group_count'] = summary_df.groupby('Nama Iklan')['Nama Iklan'].transform('count')
+    #     biaya_normal = summary_df['Biaya'].fillna(0)
         
-        mask_biaya = biaya_normal > 0
-        if mask_biaya.any():
-            # 1. Hitung Eksemplar
-            eksemplar_normal = summary_df.loc[mask_biaya, 'Nama Produk'].apply(get_eksemplar_multiplier)
+    #     mask_biaya = biaya_normal > 0
+    #     if mask_biaya.any():
+    #         # 1. Hitung Eksemplar
+    #         eksemplar_normal = summary_df.loc[mask_biaya, 'Nama Produk'].apply(get_eksemplar_multiplier)
             
-            # 2. Cek keyword "SATUAN"
-            has_satuan_normal = summary_df.loc[mask_biaya, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
+    #         # 2. Cek keyword "SATUAN"
+    #         has_satuan_normal = summary_df.loc[mask_biaya, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
             
-            # 3. Mask Rumus / 16 (Paket > 1 ATAU Satuan)
-            mask_rumus_16 = ((eksemplar_normal > 1) | has_satuan_normal) & mask_biaya
+    #         # 3. Mask Rumus / 16 (Paket > 1 ATAU Satuan)
+    #         mask_rumus_16 = ((eksemplar_normal > 1) | has_satuan_normal) & mask_biaya
             
-            if mask_rumus_16.any():
-                summary_df.loc[mask_rumus_16, 'Iklan Klik'] += (eksemplar_normal[mask_rumus_16] * biaya_normal[mask_rumus_16]) / 16
+    #         if mask_rumus_16.any():
+    #             summary_df.loc[mask_rumus_16, 'Iklan Klik'] += (eksemplar_normal[mask_rumus_16] * biaya_normal[mask_rumus_16]) / 16
             
-            # 4. Mask Rumus Bagi (Sisanya)
-            # Kita gunakan index dari mask_biaya dikurangi index mask_rumus_16
-            idx_biaya_all = mask_biaya[mask_biaya].index
-            idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
-            idx_rumus_bagi = idx_biaya_all.difference(idx_rumus_16)
+    #         # 4. Mask Rumus Bagi (Sisanya)
+    #         # Kita gunakan index dari mask_biaya dikurangi index mask_rumus_16
+    #         idx_biaya_all = mask_biaya[mask_biaya].index
+    #         idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
+    #         idx_rumus_bagi = idx_biaya_all.difference(idx_rumus_16)
             
-            if not idx_rumus_bagi.empty:
-                summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] += (biaya_normal.loc[idx_rumus_bagi] / summary_df.loc[idx_rumus_bagi, 'ad_group_count'])
+    #         if not idx_rumus_bagi.empty:
+    #             summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] += (biaya_normal.loc[idx_rumus_bagi] / summary_df.loc[idx_rumus_bagi, 'ad_group_count'])
 
-    summary_df.drop(columns=['Nama Iklan', 'Biaya', 'ad_group_count'], inplace=True, errors='ignore')
+    # summary_df.drop(columns=['Nama Iklan', 'Biaya', 'ad_group_count'], inplace=True, errors='ignore')
     
     # 3. Tambahkan Produk yang Hanya Ada di IKLAN (dan bukan produk khusus)
     iklan_only_names = set(iklan_data['Nama Iklan']) - set(summary_df['Nama Produk'])
@@ -2001,64 +2001,64 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
             total_iklan_cost = iklan_cost_row['Biaya'].iloc[0]
             matching_summary_rows = summary_df['Nama Produk Original'].str.startswith(produk_base, na=False)
             num_variations = matching_summary_rows.sum()
-            # if num_variations > 0:
-            #     distributed_cost = total_iklan_cost / num_variations
-            #     summary_df.loc[matching_summary_rows, 'Iklan Klik'] = distributed_cost
-            #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
             if num_variations > 0:
-                # 1. Hitung Eksemplar
-                eksemplar_series = summary_df.loc[matching_summary_rows, 'Nama Produk'].apply(get_eksemplar_multiplier_dama)
-                
-                # 2. Cek keyword "SATUAN"
-                has_satuan = summary_df.loc[matching_summary_rows, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
-
-                # 3. Tentukan Mask untuk Rumus / 16
-                mask_rumus_16 = (eksemplar_series > 1) | has_satuan
-                
-                # TERAPKAN RUMUS A: (Eksemplar * Biaya) / 16
-                if mask_rumus_16.any():
-                    idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
-                    summary_df.loc[idx_rumus_16, 'Iklan Klik'] = (eksemplar_series.loc[idx_rumus_16] * total_iklan_cost) / 16
-                
-                # TERAPKAN RUMUS B: Biaya / Jumlah Produk
-                mask_rumus_bagi = ~mask_rumus_16
-                if mask_rumus_bagi.any():
-                    idx_rumus_bagi = mask_rumus_bagi[mask_rumus_bagi].index
-                    summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] = total_iklan_cost / num_variations
-                
+                distributed_cost = total_iklan_cost / num_variations
+                summary_df.loc[matching_summary_rows, 'Iklan Klik'] = distributed_cost
                 iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
+            # if num_variations > 0:
+            #     # 1. Hitung Eksemplar
+            #     eksemplar_series = summary_df.loc[matching_summary_rows, 'Nama Produk'].apply(get_eksemplar_multiplier_dama)
+                
+            #     # 2. Cek keyword "SATUAN"
+            #     has_satuan = summary_df.loc[matching_summary_rows, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
+
+            #     # 3. Tentukan Mask untuk Rumus / 16
+            #     mask_rumus_16 = (eksemplar_series > 1) | has_satuan
+                
+            #     # TERAPKAN RUMUS A: (Eksemplar * Biaya) / 16
+            #     if mask_rumus_16.any():
+            #         idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
+            #         summary_df.loc[idx_rumus_16, 'Iklan Klik'] = (eksemplar_series.loc[idx_rumus_16] * total_iklan_cost) / 16
+                
+            #     # TERAPKAN RUMUS B: Biaya / Jumlah Produk
+            #     mask_rumus_bagi = ~mask_rumus_16
+            #     if mask_rumus_bagi.any():
+            #         idx_rumus_bagi = mask_rumus_bagi[mask_rumus_bagi].index
+            #         summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] = total_iklan_cost / num_variations
+                
+            #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
                 
     summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk Original', right_on='Nama Iklan', how='left')
-    # summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
-    # summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
-    # Terapkan rumus (Eksemplar * Biaya) / 16 untuk produk normal
-    if 'Nama Iklan' in summary_df.columns:
-        summary_df['ad_group_count'] = summary_df.groupby('Nama Iklan')['Nama Iklan'].transform('count')
-        biaya_normal = summary_df['Biaya'].fillna(0)
+    summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
+    summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
+    # # Terapkan rumus (Eksemplar * Biaya) / 16 untuk produk normal
+    # if 'Nama Iklan' in summary_df.columns:
+    #     summary_df['ad_group_count'] = summary_df.groupby('Nama Iklan')['Nama Iklan'].transform('count')
+    #     biaya_normal = summary_df['Biaya'].fillna(0)
         
-        mask_biaya = biaya_normal > 0
-        if mask_biaya.any():
-            # 1. Hitung Eksemplar
-            eksemplar_normal = summary_df.loc[mask_biaya, 'Nama Produk'].apply(get_eksemplar_multiplier_dama)
+    #     mask_biaya = biaya_normal > 0
+    #     if mask_biaya.any():
+    #         # 1. Hitung Eksemplar
+    #         eksemplar_normal = summary_df.loc[mask_biaya, 'Nama Produk'].apply(get_eksemplar_multiplier_dama)
             
-            # 2. Cek keyword "SATUAN"
-            has_satuan_normal = summary_df.loc[mask_biaya, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
+    #         # 2. Cek keyword "SATUAN"
+    #         has_satuan_normal = summary_df.loc[mask_biaya, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
             
-            # 3. Mask Rumus / 16
-            mask_rumus_16 = ((eksemplar_normal > 1) | has_satuan_normal) & mask_biaya
+    #         # 3. Mask Rumus / 16
+    #         mask_rumus_16 = ((eksemplar_normal > 1) | has_satuan_normal) & mask_biaya
             
-            if mask_rumus_16.any():
-                summary_df.loc[mask_rumus_16, 'Iklan Klik'] += (eksemplar_normal[mask_rumus_16] * biaya_normal[mask_rumus_16]) / 16
+    #         if mask_rumus_16.any():
+    #             summary_df.loc[mask_rumus_16, 'Iklan Klik'] += (eksemplar_normal[mask_rumus_16] * biaya_normal[mask_rumus_16]) / 16
             
-            # 4. Mask Rumus Bagi (Sisanya)
-            idx_biaya_all = mask_biaya[mask_biaya].index
-            idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
-            idx_rumus_bagi = idx_biaya_all.difference(idx_rumus_16)
+    #         # 4. Mask Rumus Bagi (Sisanya)
+    #         idx_biaya_all = mask_biaya[mask_biaya].index
+    #         idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
+    #         idx_rumus_bagi = idx_biaya_all.difference(idx_rumus_16)
             
-            if not idx_rumus_bagi.empty:
-                summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] += (biaya_normal.loc[idx_rumus_bagi] / summary_df.loc[idx_rumus_bagi, 'ad_group_count'])
+    #         if not idx_rumus_bagi.empty:
+    #             summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] += (biaya_normal.loc[idx_rumus_bagi] / summary_df.loc[idx_rumus_bagi, 'ad_group_count'])
 
-    summary_df.drop(columns=['Nama Iklan', 'Biaya', 'ad_group_count'], inplace=True, errors='ignore')
+    # summary_df.drop(columns=['Nama Iklan', 'Biaya', 'ad_group_count'], inplace=True, errors='ignore')
 
     iklan_only_names = set(iklan_data['Nama Iklan']) - set(summary_df['Nama Produk Original'])
     if iklan_only_names:
