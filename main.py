@@ -1478,14 +1478,16 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
                 # KONDISI A: PAKET (Eksemplar > 1) -> Rumus: (Eksemplar * Biaya) / 16
                 mask_paket = (eksemplar_series > 1)
                 if mask_paket.any():
-                    # Ambil indeks baris yang paket DAN matching
-                    idx_paket = mask_paket.index[mask_paket & matching_summary_rows]
+                    # PERBAIKAN: Langsung ambil index dari mask_paket yang True
+                    # (mask_paket sudah subset, jadi index-nya sudah benar)
+                    idx_paket = mask_paket[mask_paket].index 
                     summary_df.loc[idx_paket, 'Iklan Klik'] = (eksemplar_series.loc[idx_paket] * total_iklan_cost) / 16
                 
                 # KONDISI B: SATUAN (Eksemplar == 1) -> Rumus: Biaya / Jumlah Baris yang Cocok
                 mask_satuan = (eksemplar_series == 1)
                 if mask_satuan.any():
-                    idx_satuan = mask_satuan.index[mask_satuan & matching_summary_rows]
+                    # PERBAIKAN: Langsung ambil index dari mask_satuan yang True
+                    idx_satuan = mask_satuan[mask_satuan].index
                     # Dibagi dengan num_variations (jumlah semua produk yang cocok dengan nama iklan ini)
                     summary_df.loc[idx_satuan, 'Iklan Klik'] = total_iklan_cost / num_variations
     
@@ -1995,16 +1997,20 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
                 
                 # 2. Terapkan Rumus Beda
                 
-                # KONDISI A: PAKET (Eksemplar > 1)
+                # KONDISI A: PAKET (Eksemplar > 1) -> Rumus: (Eksemplar * Biaya) / 16
                 mask_paket = (eksemplar_series > 1)
                 if mask_paket.any():
-                    idx_paket = mask_paket.index[mask_paket & matching_summary_rows]
+                    # PERBAIKAN: Langsung ambil index dari mask_paket yang True
+                    # (mask_paket sudah subset, jadi index-nya sudah benar)
+                    idx_paket = mask_paket[mask_paket].index 
                     summary_df.loc[idx_paket, 'Iklan Klik'] = (eksemplar_series.loc[idx_paket] * total_iklan_cost) / 16
                 
-                # KONDISI B: SATUAN (Eksemplar == 1)
+                # KONDISI B: SATUAN (Eksemplar == 1) -> Rumus: Biaya / Jumlah Baris yang Cocok
                 mask_satuan = (eksemplar_series == 1)
                 if mask_satuan.any():
-                    idx_satuan = mask_satuan.index[mask_satuan & matching_summary_rows]
+                    # PERBAIKAN: Langsung ambil index dari mask_satuan yang True
+                    idx_satuan = mask_satuan[mask_satuan].index
+                    # Dibagi dengan num_variations (jumlah semua produk yang cocok dengan nama iklan ini)
                     summary_df.loc[idx_satuan, 'Iklan Klik'] = total_iklan_cost / num_variations
                 
                 iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
