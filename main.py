@@ -1274,44 +1274,15 @@ def calculate_eksemplar(nama_produk, jumlah_terjual):
         return jumlah_terjual # Fallback jika ada error
 
 def get_eksemplar_multiplier(nama_produk):
-    """
-    Mengekstrak angka paket khusus untuk DamaStore.
-    Mencari pola 'ISI X', 'PAKET X', atau angka di akhir string variasi dalam kurung.
-    """
-    # Ambil bagian dalam kurung (variasi)
-    match_var = re.search(r'\((.*?)\)', str(nama_produk))
-    if not match_var:
-        return 1 # Tidak ada kurung/variasi -> Satuan
-        
-    variasi = match_var.group(1).upper()
-    
-    # 1. Cek Pola Eksplisit "ISI X" atau "ISIX" (e.g., ISI 1, ISI3, PAKET ISI 7)
-    #    Menggunakan \b untuk batas kata agar "SISI" tidak kena, tapi "ISI" kena
-    isi_match = re.search(r'ISI\s*(\d+)', variasi)
-    if isi_match:
-        return int(isi_match.group(1))
-
-    # 2. Cek Pola "PAKET X" atau "PAKETX" (e.g., A5 PAKET 5, PAKET3)
-    paket_match = re.search(r'PAKET\s*(\d+)', variasi)
-    if paket_match:
-        return int(paket_match.group(1))
-        
-    # 3. Cek Pola "SATUAN"
-    if 'SATUAN' in variasi:
+    if pd.isna(nama_produk): return 1
+    nama_produk = str(nama_produk).upper()
+    # Deteksi PAKET ISI X atau PAKET X atau ISI X
+    match = re.search(r'(?:PAKET\s*ISI|PAKET|ISI)\s*(\d+)', nama_produk)
+    if match:
+        return int(match.group(1))
+    # Jika ada kata SATUAN, anggap 1
+    if 'SATUAN' in nama_produk:
         return 1
-        
-    # 4. Fallback: Ambil angka paling belakang di string variasi
-    #    Berguna untuk format aneh asalkan angkanya di akhir (misal "A5 KORAN 10")
-    #    Hati-hati: "A5" akan terdeteksi sebagai 5 jika tidak ada angka lain. 
-    #    Jadi kita batasi hanya jika angka itu > 1 (karena 1 biasanya default)
-    #    ATAU kita asumsikan jika tidak ada kata "PAKET/ISI", maka itu 1.
-    
-    #    Strategi aman: Jika ada angka di AKHIR string (setelah spasi), ambil.
-    #    Contoh: "A5 KORAN" -> Tidak ada angka di akhir. "PAKET LEBARAN 10" -> 10.
-    last_number_match = re.search(r'\s(\d+)$', variasi)
-    if last_number_match:
-        return int(last_number_match.group(1))
-
     return 1
     
 def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, store_type):
@@ -1448,54 +1419,81 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             #     # 7. Hapus iklan ini dari 'iklan_data'
             #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != nama_iklan_kustom]
     
-    # 1. Proses Distribusi Biaya untuk Produk Khusus
-    for produk_base in produk_khusus:
-        # Cari biaya iklan untuk produk dasar ini
-        iklan_cost_row = iklan_data[iklan_data['Nama Iklan'] == produk_base]
-        
-        if not iklan_cost_row.empty:
-            total_iklan_cost = iklan_cost_row['Biaya'].iloc[0]
-    
-            # Cari semua baris di SUMMARY yang merupakan variasi dari produk dasar ini
-            # Kuncinya adalah menggunakan .str.startswith()
-            matching_summary_rows = summary_df['Nama Produk'].str.startswith(produk_base, na=False)
-            
-            # Hitung ada berapa banyak variasi yang ditemukan
-            num_variations = matching_summary_rows.sum()
-    
-            if num_variations > 0:
-                # Bagi biaya iklan secara merata ke semua variasi
-                distributed_cost = total_iklan_cost / num_variations
-                summary_df.loc[matching_summary_rows, 'Iklan Klik'] = distributed_cost
-    
-                # Hapus iklan ini dari `iklan_data` agar tidak diproses lagi
-                iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
-            # if num_variations > 0:
-            #     # 1. Hitung Eksemplar
-            #     eksemplar_series = summary_df.loc[matching_summary_rows, 'Nama Produk'].apply(get_eksemplar_multiplier)
-                
-            #     # 2. Cek keberadaan keyword "SATUAN" secara eksplisit
-            #     has_satuan = summary_df.loc[matching_summary_rows, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
+    # Konfigurasi Produk Khusus dengan Variasi Wajib & Denominator
+    # format: { 'Nama Iklan': { 'variasi': [list], 'denom': int } }
+    force_config = {}
+    if store_type == "Human Store Shopee":
+        force_config = {
+            "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah": {
+                "variasi": ["A7 SATUAN", "A7 PAKET ISI 3", "A7 PAKET ISI 5", "A7 PAKET ISI 7", "A5 SATUAN", "A5 PAKET ISI 3"],
+                "denom": 20
+            }
+        }
+    elif store_type == "Pacific Bookstore Shopee":
+        force_config = {
+            "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers": {
+                "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
+                "denom": 16
+            },
+            "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers": {
+                "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
+                "denom": 16
+            },
+            "Alquran GOLD Hard Cover Al Aqeel Kertas HVS | SURABAYA | Alquran untuk Pengajian Wakaf Hadiah Islami Hampers": {
+                "variasi": ["A5 Gold Satuan", "A5 Gold Paket isi 3", "A7 Gold Satuan", "A7 Gold Paket isi 3", "A7 Gold Paket isi 5", "A7 Gold Paket isi 7"],
+                "denom": 20
+            }
+        }
 
-            #     # 3. Tentukan Mask untuk Rumus / 16
-            #     # KONDISI: Eksemplar > 1 (Paket) ATAU ada kata "SATUAN"
-            #     mask_rumus_16 = (eksemplar_series > 1) | has_satuan
+    # PROSES GENERASI BARIS & HITUNG IKLAN KHUSUS
+    for produk_base, config in force_config.items():
+        # Cari total biaya di iklan_data
+        matching_ads = iklan_data[iklan_data['Nama Iklan'].str.contains(produk_base, case=False, na=False, regex=False)]
+        if not matching_ads.empty:
+            total_biaya_iklan = matching_ads['Biaya'].sum()
+            denom = config['denom']
+            
+            # Pastikan setiap variasi ada di summary_df
+            for var in config['variasi']:
+                nama_lengkap = f"{produk_base} ({var})"
+                if nama_lengkap not in summary_df['Nama Produk'].values:
+                    # Buat baris kosong baru
+                    new_row = pd.DataFrame([{col: 0 for col in summary_df.columns}])
+                    new_row['Nama Produk'] = nama_lengkap
+                    summary_df = pd.concat([summary_df, new_row], ignore_index=True)
+            
+            # Hitung Iklan Klik per baris
+            mask_summary = summary_df['Nama Produk'].str.contains(produk_base, case=False, na=False, regex=False)
+            indices = summary_df[mask_summary].index
+            
+            for idx in indices:
+                p_name = summary_df.at[idx, 'Nama Produk']
+                # Hitung berapa banyak produk yang namanya sama persis untuk pembagi
+                count_same = (summary_df['Nama Produk'] == p_name).sum()
+                mult = get_eksemplar_multiplier(p_name)
                 
-            #     # TERAPKAN RUMUS A: (Eksemplar * Biaya) / 16
-            #     if mask_rumus_16.any():
-            #         # Ambil index yang True
-            #         idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
-            #         summary_df.loc[idx_rumus_16, 'Iklan Klik'] = (eksemplar_series.loc[idx_rumus_16] * total_iklan_cost) / 16
-                
-            #     # TERAPKAN RUMUS B: Biaya / Jumlah Produk (Untuk yang tidak punya variasi Paket/Satuan)
-            #     mask_rumus_bagi = ~mask_rumus_16
-            #     if mask_rumus_bagi.any():
-            #         idx_rumus_bagi = mask_rumus_bagi[mask_rumus_bagi].index
-            #         # Dibagi dengan total produk yang cocok dengan nama iklan ini (num_variations)
-            #         summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] = total_iklan_cost / num_variations
+                # Rumus: (Mult * Biaya) / Denom / Count
+                summary_df.at[idx, 'Iklan Klik'] = (mult * total_biaya_iklan) / denom / count_same
+            
+            # Hapus dari iklan_data agar tidak diproses ulang oleh logika standar
+            iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(produk_base, case=False, na=False, regex=False)]
+
+    # LOGIKA STANDAR UNTUK PRODUK KHUSUS LAINNYA (TANPA GENERATE VARIASI)
+    produk_khusus_biasa = [
+        "Paket Alquran Khusus Wakaf Al Aqeel A5 Kertas Koran",
+        "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
+        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa"
+    ]
     
-            #     # Hapus iklan ini dari `iklan_data`
-            #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
+    for p_biasa in produk_khusus_biasa:
+        matching_ads = iklan_data[iklan_data['Nama Iklan'].str.contains(p_biasa, case=False, na=False, regex=False)]
+        if not matching_ads.empty:
+            total_biaya = matching_ads['Biaya'].sum()
+            mask_summary = summary_df['Nama Produk'].str.contains(p_biasa, case=False, na=False, regex=False)
+            num_rows = mask_summary.sum()
+            if num_rows > 0:
+                summary_df.loc[mask_summary, 'Iklan Klik'] = total_biaya / num_rows
+            iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(p_biasa, case=False, na=False, regex=False)]
     
     # 2. Proses Produk Normal (yang tersisa di iklan_data)
     # Gunakan merge untuk produk yang namanya cocok persis
@@ -1858,45 +1856,57 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
         # st.error(f"Error di get_harga_beli_dama for '{summary_product_name}': {e}")
         return 0
 
+# def get_eksemplar_multiplier_dama(nama_produk):
+#     """
+#     Mengekstrak angka paket khusus untuk DamaStore.
+#     Mencari pola 'ISI X', 'PAKET X', atau angka di akhir string variasi dalam kurung.
+#     """
+#     # Ambil bagian dalam kurung (variasi)
+#     match_var = re.search(r'\((.*?)\)', str(nama_produk))
+#     if not match_var:
+#         return 1 # Tidak ada kurung/variasi -> Satuan
+        
+#     variasi = match_var.group(1).upper()
+    
+#     # 1. Cek Pola Eksplisit "ISI X" atau "ISIX" (e.g., ISI 1, ISI3, PAKET ISI 7)
+#     #    Menggunakan \b untuk batas kata agar "SISI" tidak kena, tapi "ISI" kena
+#     isi_match = re.search(r'ISI\s*(\d+)', variasi)
+#     if isi_match:
+#         return int(isi_match.group(1))
+
+#     # 2. Cek Pola "PAKET X" atau "PAKETX" (e.g., A5 PAKET 5, PAKET3)
+#     paket_match = re.search(r'PAKET\s*(\d+)', variasi)
+#     if paket_match:
+#         return int(paket_match.group(1))
+        
+#     # 3. Cek Pola "SATUAN"
+#     if 'SATUAN' in variasi:
+#         return 1
+        
+#     # 4. Fallback: Ambil angka paling belakang di string variasi
+#     #    Berguna untuk format aneh asalkan angkanya di akhir (misal "A5 KORAN 10")
+#     #    Hati-hati: "A5" akan terdeteksi sebagai 5 jika tidak ada angka lain. 
+#     #    Jadi kita batasi hanya jika angka itu > 1 (karena 1 biasanya default)
+#     #    ATAU kita asumsikan jika tidak ada kata "PAKET/ISI", maka itu 1.
+    
+#     #    Strategi aman: Jika ada angka di AKHIR string (setelah spasi), ambil.
+#     #    Contoh: "A5 KORAN" -> Tidak ada angka di akhir. "PAKET LEBARAN 10" -> 10.
+#     last_number_match = re.search(r'\s(\d+)$', variasi)
+#     if last_number_match:
+#         return int(last_number_match.group(1))
+
+#     return 1
 def get_eksemplar_multiplier_dama(nama_produk):
-    """
-    Mengekstrak angka paket khusus untuk DamaStore.
-    Mencari pola 'ISI X', 'PAKET X', atau angka di akhir string variasi dalam kurung.
-    """
-    # Ambil bagian dalam kurung (variasi)
-    match_var = re.search(r'\((.*?)\)', str(nama_produk))
-    if not match_var:
-        return 1 # Tidak ada kurung/variasi -> Satuan
-        
-    variasi = match_var.group(1).upper()
-    
-    # 1. Cek Pola Eksplisit "ISI X" atau "ISIX" (e.g., ISI 1, ISI3, PAKET ISI 7)
-    #    Menggunakan \b untuk batas kata agar "SISI" tidak kena, tapi "ISI" kena
-    isi_match = re.search(r'ISI\s*(\d+)', variasi)
-    if isi_match:
-        return int(isi_match.group(1))
-
-    # 2. Cek Pola "PAKET X" atau "PAKETX" (e.g., A5 PAKET 5, PAKET3)
-    paket_match = re.search(r'PAKET\s*(\d+)', variasi)
-    if paket_match:
-        return int(paket_match.group(1))
-        
-    # 3. Cek Pola "SATUAN"
-    if 'SATUAN' in variasi:
+    if pd.isna(nama_produk): return 1
+    nama_produk = str(nama_produk).upper()
+    # Khusus Dama: B5 (Bigbos) dihitung 1
+    if 'BIGBOS' in nama_produk:
         return 1
-        
-    # 4. Fallback: Ambil angka paling belakang di string variasi
-    #    Berguna untuk format aneh asalkan angkanya di akhir (misal "A5 KORAN 10")
-    #    Hati-hati: "A5" akan terdeteksi sebagai 5 jika tidak ada angka lain. 
-    #    Jadi kita batasi hanya jika angka itu > 1 (karena 1 biasanya default)
-    #    ATAU kita asumsikan jika tidak ada kata "PAKET/ISI", maka itu 1.
-    
-    #    Strategi aman: Jika ada angka di AKHIR string (setelah spasi), ambil.
-    #    Contoh: "A5 KORAN" -> Tidak ada angka di akhir. "PAKET LEBARAN 10" -> 10.
-    last_number_match = re.search(r'\s(\d+)$', variasi)
-    if last_number_match:
-        return int(last_number_match.group(1))
-
+    match = re.search(r'(?:PAKET\s*ISI|PAKET|ISI)\s*(\d+)', nama_produk)
+    if match:
+        return int(match.group(1))
+    if 'SATUAN' in nama_produk:
+        return 1
     return 1
     
 # --- TAMBAHKAN FUNGSI BARU INI ---
@@ -1995,38 +2005,57 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     produk_khusus_raw = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "Paket Hemat Paket Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida"]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
-    for produk_base in produk_khusus:
-        iklan_cost_row = iklan_data[iklan_data['Nama Iklan'] == produk_base]
-        if not iklan_cost_row.empty:
-            total_iklan_cost = iklan_cost_row['Biaya'].iloc[0]
-            matching_summary_rows = summary_df['Nama Produk Original'].str.startswith(produk_base, na=False)
-            num_variations = matching_summary_rows.sum()
-            if num_variations > 0:
-                distributed_cost = total_iklan_cost / num_variations
-                summary_df.loc[matching_summary_rows, 'Iklan Klik'] = distributed_cost
-                iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
-            # if num_variations > 0:
-            #     # 1. Hitung Eksemplar
-            #     eksemplar_series = summary_df.loc[matching_summary_rows, 'Nama Produk'].apply(get_eksemplar_multiplier_dama)
-                
-            #     # 2. Cek keyword "SATUAN"
-            #     has_satuan = summary_df.loc[matching_summary_rows, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
+    # Konfigurasi Produk Khusus Dama
+    force_config_dama = {
+        "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida": {
+            "variasi": ["A5 SATUAN", "B5 (Bigbos)", "A5 PAKET3", "A5 PAKET 5", "A5 PAKET 7"],
+            "denom": 17
+        },
+        "Al Quran Wakaf Saku A6 Al Aqeel HVS Paket Wakaf": {
+            "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
+            "denom": 16
+        },
+        "Al Quran Gold Silver Al Aqeel Besar Sedang Kecil": {
+            "variasi": ["A4 Satuan", "B5 Satuan", "A7 Satuan", "A6 Satuan", "A5 Satuan", "A7 Paket isi 3", "A7 Paket isi 5", "A7 Paket isi 7", "A5 Paket isi 3"],
+            "denom": 23
+        }
+    }
 
-            #     # 3. Tentukan Mask untuk Rumus / 16
-            #     mask_rumus_16 = (eksemplar_series > 1) | has_satuan
-                
-            #     # TERAPKAN RUMUS A: (Eksemplar * Biaya) / 16
-            #     if mask_rumus_16.any():
-            #         idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
-            #         summary_df.loc[idx_rumus_16, 'Iklan Klik'] = (eksemplar_series.loc[idx_rumus_16] * total_iklan_cost) / 16
-                
-            #     # TERAPKAN RUMUS B: Biaya / Jumlah Produk
-            #     mask_rumus_bagi = ~mask_rumus_16
-            #     if mask_rumus_bagi.any():
-            #         idx_rumus_bagi = mask_rumus_bagi[mask_rumus_bagi].index
-            #         summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] = total_iklan_cost / num_variations
-                
-            #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != produk_base]
+    for produk_base, config in force_config_dama.items():
+        matching_ads = iklan_data[iklan_data['Nama Iklan'].str.contains(produk_base, case=False, na=False, regex=False)]
+        if not matching_ads.empty:
+            total_biaya_iklan = matching_ads['Biaya'].sum()
+            denom = config['denom']
+            
+            for var in config['variasi']:
+                nama_lengkap = f"{produk_base} ({var})"
+                if nama_lengkap not in summary_df['Nama Produk'].values:
+                    new_row = pd.DataFrame([{col: 0 for col in summary_df.columns}])
+                    new_row['Nama Produk'] = nama_lengkap
+                    summary_df = pd.concat([summary_df, new_row], ignore_index=True)
+            
+            mask_summary = summary_df['Nama Produk'].str.contains(produk_base, case=False, na=False, regex=False)
+            indices = summary_df[mask_summary].index
+            
+            for idx in indices:
+                p_name = summary_df.at[idx, 'Nama Produk']
+                count_same = (summary_df['Nama Produk'] == p_name).sum()
+                mult = get_eksemplar_multiplier_dama(p_name)
+                summary_df.at[idx, 'Iklan Klik'] = (mult * total_biaya_iklan) / denom / count_same
+            
+            iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(produk_base, case=False, na=False, regex=False)]
+
+    # Logika Standar Dama untuk Tahlil
+    if not iklan_data.empty:
+        p_tahlil = "ALQURAN SAKU A6 EDISI TAHLIL TERBARU"
+        matching_ads = iklan_data[iklan_data['Nama Iklan'].str.contains(p_tahlil, case=False, na=False, regex=False)]
+        if not matching_ads.empty:
+            total_biaya = matching_ads['Biaya'].sum()
+            mask_summary = summary_df['Nama Produk'].str.contains(p_tahlil, case=False, na=False, regex=False)
+            num_rows = mask_summary.sum()
+            if num_rows > 0:
+                summary_df.loc[mask_summary, 'Iklan Klik'] = total_biaya / num_rows
+            iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(p_tahlil, case=False, na=False, regex=False)]
                 
     summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk Original', right_on='Nama Iklan', how='left')
     summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
