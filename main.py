@@ -2715,6 +2715,66 @@ def process_ekspedisi_tiktok(summary_df, pdf_data_list):
 st.set_page_config(layout="wide")
 st.title("📊 Rekapanku - Sistem Otomatisasi Laporan")
 
+# --- UI PILIHAN JENIS REKAPAN ---
+st.header("1. Konfigurasi Rekapan")
+jenis_rekapan = st.radio("Pilih Jenis Rekapan:", ["Mingguan", "Bulanan"], horizontal=True)
+
+if jenis_rekapan == "Bulanan":
+    st.info("Mode Bulanan: Gabungkan 3-4 file SUMMARY mingguan menjadi satu file.")
+    toko_bulanan = st.selectbox("Pilih Toko untuk Rekapan Bulanan:", [
+        "Human Store Shopee", "Pacific Bookstore Shopee", "Dama.id Store Shopee"
+    ])
+    
+    files_mingguan = []
+    col1, col2 = st.columns(2)
+    with col1:
+        f1 = st.file_uploader("Impor Rekapan Minggu 1 (Wajib)", type=["xlsx"])
+        f2 = st.file_uploader("Impor Rekapan Minggu 2 (Wajib)", type=["xlsx"])
+    with col2:
+        f3 = st.file_uploader("Impor Rekapan Minggu 3 (Wajib)", type=["xlsx"])
+        f4 = st.file_uploader("Impor Rekapan Minggu 4 (Opsional)", type=["xlsx"])
+    
+    if st.button("🚀 Proses Rekapan Bulanan"):
+        uploaded_files = [f for f in [f1, f2, f3, f4] if f is not None]
+        if len(uploaded_files) < 3:
+            st.error("Minimal 3 file (Minggu 1, 2, dan 3) harus diunggah!")
+        else:
+            try:
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    for i, file in enumerate(uploaded_files):
+                        # Baca sheet SUMMARY
+                        df_summary = pd.read_excel(file, sheet_name='SUMMARY')
+                        
+                        # Ambil tanggal dari metadata file (jika ada) atau properti Excel
+                        try:
+                            from openpyxl import load_workbook
+                            wb_meta = load_workbook(file)
+                            created_dt = wb_meta.properties.created
+                            tgl_str = created_dt.strftime("%d/%m/%Y") if created_dt else datetime.now().strftime("%d/%m/%Y")
+                        except:
+                            tgl_str = datetime.now().strftime("%d/%m/%Y")
+                        
+                        # Set Header dengan Tanggal
+                        sheet_name = f"SUMMARY {i+1}"
+                        df_summary.to_excel(writer, sheet_name=sheet_name, index=False)
+                        
+                        # Tambahkan Tanggal di baris atas atau sel tertentu (Opsional)
+                        worksheet = writer.sheets[sheet_name]
+                        worksheet.write(0, df_summary.shape[1], f"Tanggal: {tgl_str}")
+                
+                output.seek(0)
+                st.success("✅ Rekapan Bulanan Berhasil!")
+                st.download_button(
+                    label=f"📥 Download Rekapan Bulanan {toko_bulanan}.xlsx",
+                    data=output,
+                    file_name=f"REKAPAN_BULANAN_{toko_bulanan.upper().replace(' ', '_')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            except Exception as e:
+                st.error(f"Error Bulanan: {e}")
+    st.stop() # Hentikan eksekusi di sini agar tidak masuk ke logika mingguan di bawah
+    
 marketplace_choice = st.selectbox(
     "Pilih Marketplace:",
     ("", "Shopee", "TikTok")
