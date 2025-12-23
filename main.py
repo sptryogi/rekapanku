@@ -2722,7 +2722,8 @@ jenis_rekapan = st.radio("Pilih Jenis Rekapan:", ["Mingguan", "Bulanan"], horizo
 if jenis_rekapan == "Bulanan":
     st.info("Mode Bulanan: Gabungkan 3-4 file SUMMARY mingguan menjadi satu file.")
     toko_bulanan = st.selectbox("Pilih Toko untuk Rekapan Bulanan:", [
-        "Human Store Shopee", "Pacific Bookstore Shopee", "Dama.id Store Shopee"
+        "Human Store Shopee", "Pacific Bookstore Shopee", "Dama.id Store Shopee",
+        "Human Store Tiktok", "Pacific Bookstore Tiktok", "Dama.id Store Tiktok"
     ])
     
     files_mingguan = []
