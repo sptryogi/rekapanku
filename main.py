@@ -1447,36 +1447,48 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
 
     # PROSES GENERASI BARIS & HITUNG IKLAN KHUSUS
     for produk_base, config in force_config.items():
-        # Cari total biaya di iklan_data
+        # Bersihkan nama produk di summary_df untuk matching yang akurat
+        summary_df['Nama Produk Clean'] = summary_df['Nama Produk'].astype(str).str.replace(r'\s+', ' ', regex=True).str.strip()
+        
+        # Cari biaya di iklan_data
         matching_ads = iklan_data[iklan_data['Nama Iklan'].str.contains(produk_base, case=False, na=False, regex=False)]
+        
         if not matching_ads.empty:
             total_biaya_iklan = matching_ads['Biaya'].sum()
             denom = config['denom']
             
-            # Pastikan setiap variasi ada di summary_df
+            # 1. Pastikan SEMUA variasi wajib ada
             for var in config['variasi']:
-                nama_lengkap = f"{produk_base} ({var})"
-                if nama_lengkap not in summary_df['Nama Produk'].values:
-                    # Buat baris kosong baru
+                # Format pencarian: "Nama Produk (Variasi)"
+                nama_lengkap_search = f"{produk_base} ({var})".replace('  ', ' ').strip()
+                
+                # Cek apakah sudah ada (case-insensitive & space-insensitive)
+                exists = summary_df['Nama Produk Clean'].str.contains(re.escape(nama_lengkap_search), case=False, na=False).any()
+                
+                if not exists:
+                    # Buat baris baru jika tidak ada
                     new_row = pd.DataFrame([{col: 0 for col in summary_df.columns}])
-                    new_row['Nama Produk'] = nama_lengkap
+                    new_row['Nama Produk'] = f"{produk_base} ({var})"
                     summary_df = pd.concat([summary_df, new_row], ignore_index=True)
-            
-            # Hitung Iklan Klik per baris
+                    # Update Nama Produk Clean untuk iterasi selanjutnya
+                    summary_df['Nama Produk Clean'] = summary_df['Nama Produk'].astype(str).str.replace(r'\s+', ' ', regex=True).str.strip()
+
+            # 2. Hitung Iklan Klik untuk semua baris yang mengandung produk_base ini
             mask_summary = summary_df['Nama Produk'].str.contains(produk_base, case=False, na=False, regex=False)
             indices = summary_df[mask_summary].index
             
             for idx in indices:
                 p_name = summary_df.at[idx, 'Nama Produk']
-                # Hitung berapa banyak produk yang namanya sama persis untuk pembagi
+                # Hitung jumlah baris yang memiliki Nama Produk yang SAMA PERSIS (untuk pembagi)
                 count_same = (summary_df['Nama Produk'] == p_name).sum()
                 mult = get_eksemplar_multiplier(p_name)
                 
-                # Rumus: (Mult * Biaya) / Denom / Count
+                # Rumus: (Multiplier * Biaya) / Denom / Count
                 summary_df.at[idx, 'Iklan Klik'] = (mult * total_biaya_iklan) / denom / count_same
             
-            # Hapus dari iklan_data agar tidak diproses ulang oleh logika standar
+            # Hapus dari iklan_data agar tidak terproses logika standar di bawah
             iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(produk_base, case=False, na=False, regex=False)]
+    summary_df.drop(columns=['Nama Produk Clean'], inplace=True, errors='ignore')
 
     # LOGIKA STANDAR UNTUK PRODUK KHUSUS LAINNYA (TANPA GENERATE VARIASI)
     produk_khusus_biasa = [
@@ -2022,17 +2034,22 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     }
 
     for produk_base, config in force_config_dama.items():
+        summary_df['Nama Produk Clean'] = summary_df['Nama Produk'].astype(str).str.replace(r'\s+', ' ', regex=True).str.strip()
+        
         matching_ads = iklan_data[iklan_data['Nama Iklan'].str.contains(produk_base, case=False, na=False, regex=False)]
         if not matching_ads.empty:
             total_biaya_iklan = matching_ads['Biaya'].sum()
             denom = config['denom']
             
             for var in config['variasi']:
-                nama_lengkap = f"{produk_base} ({var})"
-                if nama_lengkap not in summary_df['Nama Produk'].values:
+                nama_lengkap_search = f"{produk_base} ({var})".replace('  ', ' ').strip()
+                exists = summary_df['Nama Produk Clean'].str.contains(re.escape(nama_lengkap_search), case=False, na=False).any()
+                
+                if not exists:
                     new_row = pd.DataFrame([{col: 0 for col in summary_df.columns}])
-                    new_row['Nama Produk'] = nama_lengkap
+                    new_row['Nama Produk'] = f"{produk_base} ({var})"
                     summary_df = pd.concat([summary_df, new_row], ignore_index=True)
+                    summary_df['Nama Produk Clean'] = summary_df['Nama Produk'].astype(str).str.replace(r'\s+', ' ', regex=True).str.strip()
             
             mask_summary = summary_df['Nama Produk'].str.contains(produk_base, case=False, na=False, regex=False)
             indices = summary_df[mask_summary].index
@@ -2044,6 +2061,8 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
                 summary_df.at[idx, 'Iklan Klik'] = (mult * total_biaya_iklan) / denom / count_same
             
             iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(produk_base, case=False, na=False, regex=False)]
+
+    summary_df.drop(columns=['Nama Produk Clean'], inplace=True, errors='ignore')
 
     # Logika Standar Dama untuk Tahlil
     if not iklan_data.empty:
