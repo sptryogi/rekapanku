@@ -1418,7 +1418,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
                 "denom": 20
             },
             "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF": {
-                "variasi": ["SATUAN", "PAKET ISI 3", "AKET ISI 5", "PAKET ISI 7"],
+                "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
                 "denom": 16
             }
         }
