@@ -1374,53 +1374,42 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     ]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus]
     
-    # Ambil data iklan yang relevan
-    iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
+    # # Ambil data iklan yang relevan
+    # iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
 
-    # 1. Definisikan Nama Iklan dan target Nama Produk
-    nama_iklan_kustom = "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers"
-    # nama_iklan_kustom = "INDEX"
-    target_produk_kustom = [
-        "Al Qur'an Saku Pastel Al Aqeel A6 Kertas HVS | Hadiah Islami, Cover Cantik",
-        "Al Qur'an Pastel Al Aqeel A6 Kertas HVS | Wakaf, Hadiah Islami, Cover Cantik",
-        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |"
-        # Tambahkan nama produk target lainnya di sini jika ada
-    ]
+    # # 1. Definisikan Nama Iklan dan target Nama Produk
+    # nama_iklan_kustom = "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers"
+    # # nama_iklan_kustom = "INDEX"
+    # target_produk_kustom = [
+    #     "Al Qur'an Saku Pastel Al Aqeel A6 Kertas HVS | Hadiah Islami, Cover Cantik",
+    #     "Al Qur'an Pastel Al Aqeel A6 Kertas HVS | Wakaf, Hadiah Islami, Cover Cantik",
+    #     "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |"
+    #     # Tambahkan nama produk target lainnya di sini jika ada
+    # ]
     
-    # 2. Cek hanya jika ini Pacific Bookstore
-    if store_type == 'Pacific Bookstore':
-        # 3. Cari biaya iklan kustom
-        iklan_cost_row_kustom = iklan_data[iklan_data['Nama Iklan'] == nama_iklan_kustom]
+    # # 2. Cek hanya jika ini Pacific Bookstore
+    # if store_type == 'Pacific Bookstore':
+    #     # 3. Cari biaya iklan kustom
+    #     iklan_cost_row_kustom = iklan_data[iklan_data['Nama Iklan'] == nama_iklan_kustom]
         
-        if not iklan_cost_row_kustom.empty:
-            total_iklan_cost_kustom = iklan_cost_row_kustom['Biaya'].iloc[0]
+    #     if not iklan_cost_row_kustom.empty:
+    #         total_iklan_cost_kustom = iklan_cost_row_kustom['Biaya'].iloc[0]
             
-            # 4. Cari baris summary yang cocok (gunakan .isin() untuk list)
-            matching_summary_rows_kustom = summary_df['Nama Produk'].isin(target_produk_kustom)
+    #         # 4. Cari baris summary yang cocok (gunakan .isin() untuk list)
+    #         matching_summary_rows_kustom = summary_df['Nama Produk'].isin(target_produk_kustom)
             
-            # 5. Hitung jumlah yang cocok
-            num_variations_kustom = matching_summary_rows_kustom.sum()
+    #         # 5. Hitung jumlah yang cocok
+    #         num_variations_kustom = matching_summary_rows_kustom.sum()
             
-            if num_variations_kustom > 0:
-                # 6. Bagi dan alokasikan biaya
-                distributed_cost_kustom = total_iklan_cost_kustom / num_variations_kustom
-                summary_df.loc[matching_summary_rows_kustom, 'Iklan Klik'] = distributed_cost_kustom
+    #         if num_variations_kustom > 0:
+    #             # 6. Bagi dan alokasikan biaya
+    #             distributed_cost_kustom = total_iklan_cost_kustom / num_variations_kustom
+    #             summary_df.loc[matching_summary_rows_kustom, 'Iklan Klik'] = distributed_cost_kustom
                 
-                # 7. Hapus iklan ini dari 'iklan_data' agar tidak diproses lagi oleh loop di bawah
-                iklan_data = iklan_data[iklan_data['Nama Iklan'] != nama_iklan_kustom]
-            # if num_variations_kustom > 0:
-            #     # 6. Hitung Iklan Klik dengan Rumus: (Eksemplar * Biaya) / 16
-            #     #    Kita hitung eksemplar untuk baris yang cocok dulu
-            #     eksemplar_kustom = summary_df.loc[matching_summary_rows_kustom, 'Nama Produk'].apply(get_eksemplar_multiplier)
-                
-            #     #    Terapkan rumus
-            #     summary_df.loc[matching_summary_rows_kustom, 'Iklan Klik'] = (eksemplar_kustom * total_iklan_cost_kustom) / 16
-                
-            #     # 7. Hapus iklan ini dari 'iklan_data'
-            #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != nama_iklan_kustom]
+    #             # 7. Hapus iklan ini dari 'iklan_data' agar tidak diproses lagi oleh loop di bawah
+    #             iklan_data = iklan_data[iklan_data['Nama Iklan'] != nama_iklan_kustom]
     
     # Konfigurasi Produk Khusus dengan Variasi Wajib & Denominator
-    # format: { 'Nama Iklan': { 'variasi': [list], 'denom': int } }
     force_config = {}
     if store_type == "Human Store":
         force_config = {
@@ -1515,35 +1504,6 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # `summary_df['Biaya']` akan berisi biaya untuk produk normal
     summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
     summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
-    # # Terapkan rumus (Eksemplar * Biaya) / 16 juga untuk produk normal
-    # if 'Nama Iklan' in summary_df.columns:
-    #     summary_df['ad_group_count'] = summary_df.groupby('Nama Iklan')['Nama Iklan'].transform('count')
-    #     biaya_normal = summary_df['Biaya'].fillna(0)
-        
-    #     mask_biaya = biaya_normal > 0
-    #     if mask_biaya.any():
-    #         # 1. Hitung Eksemplar
-    #         eksemplar_normal = summary_df.loc[mask_biaya, 'Nama Produk'].apply(get_eksemplar_multiplier)
-            
-    #         # 2. Cek keyword "SATUAN"
-    #         has_satuan_normal = summary_df.loc[mask_biaya, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
-            
-    #         # 3. Mask Rumus / 16 (Paket > 1 ATAU Satuan)
-    #         mask_rumus_16 = ((eksemplar_normal > 1) | has_satuan_normal) & mask_biaya
-            
-    #         if mask_rumus_16.any():
-    #             summary_df.loc[mask_rumus_16, 'Iklan Klik'] += (eksemplar_normal[mask_rumus_16] * biaya_normal[mask_rumus_16]) / 16
-            
-    #         # 4. Mask Rumus Bagi (Sisanya)
-    #         # Kita gunakan index dari mask_biaya dikurangi index mask_rumus_16
-    #         idx_biaya_all = mask_biaya[mask_biaya].index
-    #         idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
-    #         idx_rumus_bagi = idx_biaya_all.difference(idx_rumus_16)
-            
-    #         if not idx_rumus_bagi.empty:
-    #             summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] += (biaya_normal.loc[idx_rumus_bagi] / summary_df.loc[idx_rumus_bagi, 'ad_group_count'])
-
-    # summary_df.drop(columns=['Nama Iklan', 'Biaya', 'ad_group_count'], inplace=True, errors='ignore')
     
     # 3. Tambahkan Produk yang Hanya Ada di IKLAN (dan bukan produk khusus)
     iklan_only_names = set(iklan_data['Nama Iklan']) - set(summary_df['Nama Produk'])
@@ -1868,46 +1828,6 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
         # st.error(f"Error di get_harga_beli_dama for '{summary_product_name}': {e}")
         return 0
 
-# def get_eksemplar_multiplier_dama(nama_produk):
-#     """
-#     Mengekstrak angka paket khusus untuk DamaStore.
-#     Mencari pola 'ISI X', 'PAKET X', atau angka di akhir string variasi dalam kurung.
-#     """
-#     # Ambil bagian dalam kurung (variasi)
-#     match_var = re.search(r'\((.*?)\)', str(nama_produk))
-#     if not match_var:
-#         return 1 # Tidak ada kurung/variasi -> Satuan
-        
-#     variasi = match_var.group(1).upper()
-    
-#     # 1. Cek Pola Eksplisit "ISI X" atau "ISIX" (e.g., ISI 1, ISI3, PAKET ISI 7)
-#     #    Menggunakan \b untuk batas kata agar "SISI" tidak kena, tapi "ISI" kena
-#     isi_match = re.search(r'ISI\s*(\d+)', variasi)
-#     if isi_match:
-#         return int(isi_match.group(1))
-
-#     # 2. Cek Pola "PAKET X" atau "PAKETX" (e.g., A5 PAKET 5, PAKET3)
-#     paket_match = re.search(r'PAKET\s*(\d+)', variasi)
-#     if paket_match:
-#         return int(paket_match.group(1))
-        
-#     # 3. Cek Pola "SATUAN"
-#     if 'SATUAN' in variasi:
-#         return 1
-        
-#     # 4. Fallback: Ambil angka paling belakang di string variasi
-#     #    Berguna untuk format aneh asalkan angkanya di akhir (misal "A5 KORAN 10")
-#     #    Hati-hati: "A5" akan terdeteksi sebagai 5 jika tidak ada angka lain. 
-#     #    Jadi kita batasi hanya jika angka itu > 1 (karena 1 biasanya default)
-#     #    ATAU kita asumsikan jika tidak ada kata "PAKET/ISI", maka itu 1.
-    
-#     #    Strategi aman: Jika ada angka di AKHIR string (setelah spasi), ambil.
-#     #    Contoh: "A5 KORAN" -> Tidak ada angka di akhir. "PAKET LEBARAN 10" -> 10.
-#     last_number_match = re.search(r'\s(\d+)$', variasi)
-#     if last_number_match:
-#         return int(last_number_match.group(1))
-
-#     return 1
 def get_eksemplar_multiplier_dama(nama_produk):
     if pd.isna(nama_produk): return 1
     nama_produk = str(nama_produk).upper()
@@ -2079,34 +1999,6 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk Original', right_on='Nama Iklan', how='left')
     summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
     summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
-    # # Terapkan rumus (Eksemplar * Biaya) / 16 untuk produk normal
-    # if 'Nama Iklan' in summary_df.columns:
-    #     summary_df['ad_group_count'] = summary_df.groupby('Nama Iklan')['Nama Iklan'].transform('count')
-    #     biaya_normal = summary_df['Biaya'].fillna(0)
-        
-    #     mask_biaya = biaya_normal > 0
-    #     if mask_biaya.any():
-    #         # 1. Hitung Eksemplar
-    #         eksemplar_normal = summary_df.loc[mask_biaya, 'Nama Produk'].apply(get_eksemplar_multiplier_dama)
-            
-    #         # 2. Cek keyword "SATUAN"
-    #         has_satuan_normal = summary_df.loc[mask_biaya, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
-            
-    #         # 3. Mask Rumus / 16
-    #         mask_rumus_16 = ((eksemplar_normal > 1) | has_satuan_normal) & mask_biaya
-            
-    #         if mask_rumus_16.any():
-    #             summary_df.loc[mask_rumus_16, 'Iklan Klik'] += (eksemplar_normal[mask_rumus_16] * biaya_normal[mask_rumus_16]) / 16
-            
-    #         # 4. Mask Rumus Bagi (Sisanya)
-    #         idx_biaya_all = mask_biaya[mask_biaya].index
-    #         idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
-    #         idx_rumus_bagi = idx_biaya_all.difference(idx_rumus_16)
-            
-    #         if not idx_rumus_bagi.empty:
-    #             summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] += (biaya_normal.loc[idx_rumus_bagi] / summary_df.loc[idx_rumus_bagi, 'ad_group_count'])
-
-    # summary_df.drop(columns=['Nama Iklan', 'Biaya', 'ad_group_count'], inplace=True, errors='ignore')
 
     iklan_only_names = set(iklan_data['Nama Iklan']) - set(summary_df['Nama Produk Original'])
     if iklan_only_names:
