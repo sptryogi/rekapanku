@@ -1670,8 +1670,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             
             return nama_full
 
-        # Terapkan ke kolom Nama Produk
-        summary_df['Nama Produk'] = summary_df['Nama Produk'].apply(apply_shorten)
+    # Terapkan ke kolom Nama Produk
+    summary_final['Nama Produk'] = summary_final['Nama Produk'].apply(apply_shorten)
         
     summary_final = summary_final.sort_values(by='Nama Produk', ascending=True).reset_index(drop=True)
     
