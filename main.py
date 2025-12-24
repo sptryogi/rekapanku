@@ -1622,7 +1622,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_final = pd.DataFrame(summary_final_data)
 
     # --- LOGIKA PERSINGKAT NAMA PRODUK (KHUSUS HUMAN STORE) ---
-    if store_type == "Human Store Shopee":
+    if store_type == "Human Store":
         mapping_singkatan = {
             "AL-QUR'AN TERJEMAH HC AL ALEEM QPP A6": "Al Aleem A6 QPP",
             "AL-QURAN AL AQEEL SILVER TERMURAH": "Al Aqeel Silver",
