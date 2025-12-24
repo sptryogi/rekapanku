@@ -1620,6 +1620,59 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         'Penjualan Per Hari': summary_df['Penjualan Per Hari'], 'Jumlah buku per pesanan': summary_df['Jumlah buku per pesanan']
     })
     summary_final = pd.DataFrame(summary_final_data)
+
+    # --- LOGIKA PERSINGKAT NAMA PRODUK (KHUSUS HUMAN STORE) ---
+    if store_type == "Human Store Shopee":
+        mapping_singkatan = {
+            "AL-QUR'AN TERJEMAH HC AL ALEEM QPP A6": "Al Aleem A6 QPP",
+            "AL-QURAN AL AQEEL SILVER TERMURAH": "Al Aqeel Silver",
+            "AL QUR'AN WAQF IBTIDA | AL QUDDUS A5 KERTAS HVS": "Al Quddus A5 HVS",
+            "AL QUR'AN AL AQEEL B5 KERTAS HVS": "Al Aqeel B5 HVS",
+            "KAMUS BERGAMBAR 3 BAHASA - INDONESIA INGGRIS ARAB": "Kamus Bergambar 3 Bahasa",
+            "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF": "AL AQEEL A5 KORAN",
+            "Paket Alquran Khusus Wakaf Al Aqeel A5 Kertas Koran | Alquran Murah Kualitas Terbaik Harga Ekonomis | Jakarta": "Al Aqeel A5 Koran",
+            "Al QUR'AN NON TERJEMAH AL AQEEL KERTAS KORAN B5 WAKAF": "Al Aqeel B5 Koran",
+            "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah": "Al Aqeel Gold",
+            "AL-QUR'AN TERJEMAH HC AL ALEEM A5": "Al Aleem A5",
+            "Komik Pahlawan, Pendidikan Sejarah Untuk Anak": "Komik Pahlawan",
+            "AL QUR'AN AL FIKRAH TERJEMAH PER AYAT PER KATA A4 KERTAS HVS": "Al Fikrah A4 HVS",
+            "AL QUR'AN HAFALAN SAKU A7 MAHEER KERTAS QPP": "A7 Maheer QPP",
+            "AL QUR'AN B5 NON TERJEMAH HVS WARNA PASTEL": "Al Aqeel B5 Pastel",
+            "AL QURAN SAKU RESLETING A7 AL QUDDUS KERTAS QPP": "Al Quddus A7 Saku QPP",
+            "BUKU CERITA ANAK FABEL SERI DONGENG BINATANG DUA BAHASA": "Fabel Binatang",
+            "BUKU CERITA KISAH TELADAN NABI SERI VOL 1-6": "Kisah Teladan Nabi",
+            "AL- QUR'AN TAJWID WARNA WAQF IBTIDA | SUBHAAN A5 KERTAS QPP": "Subhaan A5 QPP",
+            "BUKU LAGU HARMONI NUSANTARA LAGU NASIONAL & DAERAH": "Buku Lagu Harmoni Nusantara",
+            "[KOLEKSI TERBARU] SERI CERITA RAKYAT": "Seri Cerita Rakyat",
+            "[KOLEKSI TERBARU] BUKU CERITA ANAK SERI BUDI PEKERTI": "Seri Budi Pekerti",
+            "AL- QUR'AN TERJEMAH TAJWID MUMTAAZ A5 KERTAS QPP": "Mumtaaz A5 QPP",
+            "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL": "Al Aqeel 6 Pastel",
+            "Custom Al Quran Mengenang/Wafat 40/100/1000 Hari": "Alquran Custom",
+            "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan": "A6 edisi Tahlilan",
+            "Al-Qur'an Non Terjemah Al Aqeel HVS A5": "Al Aqeel A5 HVS",
+            "Al Qur'an Terjemah Per Kata | Tajwid 2 Warna | Al Fikrah A5 Kertas HVS": "Al Fikrah A5 HVS"
+        }
+
+        def apply_shorten(nama_full):
+            if pd.isna(nama_full): return nama_full
+            
+            # Pisahkan nama produk dan variasi (teks di dalam kurung)
+            # Regex ini mencari bagian dalam kurung terakhir
+            match_variasi = re.search(r'(\s*\(.*\))$', nama_full)
+            variasi_part = match_variasi.group(1) if match_variasi else ""
+            nama_produk_saja = nama_full.replace(variasi_part, "").strip()
+
+            # Cek apakah nama produk mengandung salah satu keyword di mapping
+            for original_name, short_name in mapping_singkatan.items():
+                if original_name.lower() in nama_produk_saja.lower():
+                    # Gabungkan Nama Singkat dengan Variasi aslinya
+                    return f"{short_name}{variasi_part}"
+            
+            return nama_full
+
+        # Terapkan ke kolom Nama Produk
+        summary_df['Nama Produk'] = summary_df['Nama Produk'].apply(apply_shorten)
+        
     summary_final = summary_final.sort_values(by='Nama Produk', ascending=True).reset_index(drop=True)
     
     total_row = pd.DataFrame(summary_final.sum(numeric_only=True)).T
