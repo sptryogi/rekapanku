@@ -1416,6 +1416,10 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah": {
                 "variasi": ["A7 SATUAN", "A7 PAKET ISI 3", "A7 PAKET ISI 5", "A7 PAKET ISI 7", "A5 SATUAN", "A5 PAKET ISI 3"],
                 "denom": 20
+            },
+            "AL QUR'AN NON TERJEMAH Al AQEEL A5 KERTAS KORAN WAKAF": {
+                "variasi": ["SATUAN", "PAKET ISI 3", "AKET ISI 5", "PAKET ISI 7"],
+                "denom": 16
             }
         }
     elif store_type == "Pacific Bookstore":
