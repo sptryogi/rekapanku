@@ -1435,13 +1435,13 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     # Konfigurasi Khusus per Toko (Force Generate Variasi)
     force_configs = {
-        'HumanStore': {
+        'Human Store': {
             'Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah': {
                 'variasi': ['A7 SATUAN', 'A7 PAKET ISI 3', 'A7 PAKET ISI 5', 'A7 PAKET ISI 7', 'A5 SATUAN', 'A5 PAKET ISI 3'],
                 'divisor': 20
             }
         },
-        'PacificBookStore': {
+        'Pacific Bookstore': {
             'Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers': {
                 'variasi': ['SATUAN', 'PAKET ISI 3', 'PAKET ISI 5', 'PAKET ISI 7'],
                 'divisor': 16
@@ -1457,7 +1457,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         }
     }
 
-    current_config = force_configs.get(toko_pilihan, {})
+    current_config = force_configs.get(store_type, {})
 
     # Langkah 1: Tambahkan Baris Kosong untuk Variasi yang di-Force tapi tidak ada di summary_df
     for nama_iklan, config in current_config.items():
