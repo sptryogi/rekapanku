@@ -1422,14 +1422,14 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # Konfigurasi Produk Khusus dengan Variasi Wajib & Denominator
     # format: { 'Nama Iklan': { 'variasi': [list], 'denom': int } }
     force_config = {}
-    if store_type == "Human Store Shopee":
+    if store_type == "Human Store":
         force_config = {
             "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah": {
                 "variasi": ["A7 SATUAN", "A7 PAKET ISI 3", "A7 PAKET ISI 5", "A7 PAKET ISI 7", "A5 SATUAN", "A5 PAKET ISI 3"],
                 "denom": 20
             }
         }
-    elif store_type == "Pacific Bookstore Shopee":
+    elif store_type == "Pacific Bookstore":
         force_config = {
             "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers": {
                 "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
