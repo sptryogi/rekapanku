@@ -1284,6 +1284,17 @@ def get_eksemplar_multiplier(nama_produk):
     if 'SATUAN' in nama_produk:
         return 1
     return 1
+
+def extract_packet_multiplier(nama_produk):
+    """Mengambil angka dari string 'PAKET ISI X' atau 'PAKET X'. Jika SATUAN atau tidak ada, return 1."""
+    nama_upper = str(nama_produk).upper()
+    if 'SATUAN' in nama_upper:
+        return 1
+    # Mencari pola angka setelah kata PAKET
+    match = re.search(r'PAKET(?: ISI)?\s*(\d+)', nama_upper)
+    if match:
+        return int(match.group(1))
+    return 1
     
 def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, store_type):
     """
@@ -1420,75 +1431,79 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             #     iklan_data = iklan_data[iklan_data['Nama Iklan'] != nama_iklan_kustom]
     
     # Konfigurasi Produk Khusus dengan Variasi Wajib & Denominator
-    # format: { 'Nama Iklan': { 'variasi': [list], 'denom': int } }
-    force_config = {}
-    if store_type == "Human Store Shopee":
-        force_config = {
-            "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah": {
-                "variasi": ["A7 SATUAN", "A7 PAKET ISI 3", "A7 PAKET ISI 5", "A7 PAKET ISI 7", "A5 SATUAN", "A5 PAKET ISI 3"],
-                "denom": 20
+    iklan_klik_list = []
+    
+    # Konfigurasi Khusus per Toko (Force Generate Variasi)
+    force_configs = {
+        'HumanStore': {
+            'Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah': {
+                'variasi': ['A7 SATUAN', 'A7 PAKET ISI 3', 'A7 PAKET ISI 5', 'A7 PAKET ISI 7', 'A5 SATUAN', 'A5 PAKET ISI 3'],
+                'divisor': 20
+            }
+        },
+        'PacificBookStore': {
+            'Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers': {
+                'variasi': ['SATUAN', 'PAKET ISI 3', 'PAKET ISI 5', 'PAKET ISI 7'],
+                'divisor': 16
+            },
+            'Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers': {
+                'variasi': ['SATUAN', 'PAKET ISI 3', 'PAKET ISI 5', 'PAKET ISI 7'],
+                'divisor': 16
+            },
+            'Alquran GOLD Hard Cover Al Aqeel Kertas HVS | SURABAYA | Alquran untuk Pengajian Wakaf Hadiah Islami Hampers': {
+                'variasi': ['A5 Gold Satuan', 'A5 Gold Paket isi 3', 'A7 Gold Satuan', 'A7 Gold Paket isi 3', 'A7 Gold Paket isi 5', 'A7 Gold Paket isi 7'],
+                'divisor': 20
             }
         }
-    elif store_type == "Pacific Bookstore Shopee":
-        force_config = {
-            "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers": {
-                "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
-                "denom": 16
-            },
-            "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers": {
-                "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
-                "denom": 16
-            },
-            "Alquran GOLD Hard Cover Al Aqeel Kertas HVS | SURABAYA | Alquran untuk Pengajian Wakaf Hadiah Islami Hampers": {
-                "variasi": ["A5 Gold Satuan", "A5 Gold Paket isi 3", "A7 Gold Satuan", "A7 Gold Paket isi 3", "A7 Gold Paket isi 5", "A7 Gold Paket isi 7"],
-                "denom": 20
-            }
-        }
+    }
 
-    # PROSES GENERASI BARIS & HITUNG IKLAN KHUSUS
-    for produk_base, config in force_config.items():
-        # Bersihkan nama produk di summary_df untuk matching yang akurat
-        summary_df['Nama Produk Clean'] = summary_df['Nama Produk'].astype(str).str.replace(r'\s+', ' ', regex=True).str.strip()
-        
-        # Cari biaya di iklan_data
-        matching_ads = iklan_data[iklan_data['Nama Iklan'].str.contains(produk_base, case=False, na=False, regex=False)]
-        
-        if not matching_ads.empty:
-            total_biaya_iklan = matching_ads['Biaya'].sum()
-            denom = config['denom']
-            
-            # 1. Pastikan SEMUA variasi wajib ada
-            for var in config['variasi']:
-                # Format pencarian: "Nama Produk (Variasi)"
-                nama_lengkap_search = f"{produk_base} ({var})".replace('  ', ' ').strip()
-                
-                # Cek apakah sudah ada (case-insensitive & space-insensitive)
-                exists = summary_df['Nama Produk Clean'].str.contains(re.escape(nama_lengkap_search), case=False, na=False).any()
-                
-                if not exists:
-                    # Buat baris baru jika tidak ada
-                    new_row = pd.DataFrame([{col: 0 for col in summary_df.columns}])
-                    new_row['Nama Produk'] = f"{produk_base} ({var})"
-                    summary_df = pd.concat([summary_df, new_row], ignore_index=True)
-                    # Update Nama Produk Clean untuk iterasi selanjutnya
-                    summary_df['Nama Produk Clean'] = summary_df['Nama Produk'].astype(str).str.replace(r'\s+', ' ', regex=True).str.strip()
+    current_config = force_configs.get(toko_pilihan, {})
 
-            # 2. Hitung Iklan Klik untuk semua baris yang mengandung produk_base ini
-            mask_summary = summary_df['Nama Produk'].str.contains(produk_base, case=False, na=False, regex=False)
-            indices = summary_df[mask_summary].index
+    # Langkah 1: Tambahkan Baris Kosong untuk Variasi yang di-Force tapi tidak ada di summary_df
+    for nama_iklan, config in current_config.items():
+        for v in config['variasi']:
+            full_name = f"{nama_iklan} ({v})"
+            if full_name not in summary_df['Nama Produk'].values:
+                # Buat baris baru dengan nilai 0
+                new_row = pd.DataFrame([{col: 0 for col in summary_df.columns}])
+                new_row['Nama Produk'] = full_name
+                summary_df = pd.concat([summary_df, new_row], ignore_index=True)
+
+    # Langkah 2: Hitung Iklan Klik
+    for idx, row in summary_df.iterrows():
+        nama_p = str(row['Nama Produk']).lower()
+        biaya_iklan = 0
+        
+        # Cek apakah produk ini masuk kategori Force Config
+        found_config = None
+        for base_name, config in current_config.items():
+            if base_name.lower() in nama_p:
+                found_config = (base_name, config)
+                break
+        
+        if found_config:
+            base_name, config = found_config
+            # Cari biaya iklan mentah (contains base_name)
+            raw_biaya = iklan_df[iklan_df['Nama Iklan'].str.contains(base_name, case=False, na=False)]['Biaya'].sum()
+            multiplier = extract_packet_multiplier(nama_p)
             
-            for idx in indices:
-                p_name = summary_df.at[idx, 'Nama Produk']
-                # Hitung jumlah baris yang memiliki Nama Produk yang SAMA PERSIS (untuk pembagi)
-                count_same = (summary_df['Nama Produk'] == p_name).sum()
-                mult = get_eksemplar_multiplier(p_name)
-                
-                # Rumus: (Multiplier * Biaya) / Denom / Count
-                summary_df.at[idx, 'Iklan Klik'] = (mult * total_biaya_iklan) / denom / count_same
+            # Hitung: (Variasi * Biaya / Divisor)
+            calculated = (multiplier * raw_biaya) / config['divisor']
             
-            # Hapus dari iklan_data agar tidak terproses logika standar di bawah
-            iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(produk_base, case=False, na=False, regex=False)]
-    summary_df.drop(columns=['Nama Produk Clean'], inplace=True, errors='ignore')
+            # Dibagi jumlah produk yang sama (mengandung nama yang sama di summary)
+            count_same = summary_df['Nama Produk'].str.contains(re.escape(nama_p), case=False, na=False).sum()
+            biaya_iklan = calculated / count_same if count_same > 0 else calculated
+        else:
+            # Logika Standar (Contains)
+            match_iklan = iklan_df[iklan_df['Nama Iklan'].apply(lambda x: str(x).lower() in nama_p or nama_p in str(x).lower())]
+            if not match_iklan.empty:
+                total_biaya = match_iklan['Biaya'].sum()
+                count_same = summary_df['Nama Produk'].apply(lambda x: str(x).lower() in nama_p or nama_p in str(x).lower()).sum()
+                biaya_iklan = total_biaya / count_same if count_same > 0 else total_biaya
+        
+        iklan_klik_list.append(biaya_iklan)
+
+    summary_df['Iklan Klik'] = iklan_klik_list
 
     # LOGIKA STANDAR UNTUK PRODUK KHUSUS LAINNYA (TANPA GENERATE VARIASI)
     produk_khusus_biasa = [
@@ -1515,35 +1530,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # `summary_df['Biaya']` akan berisi biaya untuk produk normal
     summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
     summary_df.drop(columns=['Nama Iklan', 'Biaya'], inplace=True, errors='ignore')
-    # # Terapkan rumus (Eksemplar * Biaya) / 16 juga untuk produk normal
-    # if 'Nama Iklan' in summary_df.columns:
-    #     summary_df['ad_group_count'] = summary_df.groupby('Nama Iklan')['Nama Iklan'].transform('count')
-    #     biaya_normal = summary_df['Biaya'].fillna(0)
-        
-    #     mask_biaya = biaya_normal > 0
-    #     if mask_biaya.any():
-    #         # 1. Hitung Eksemplar
-    #         eksemplar_normal = summary_df.loc[mask_biaya, 'Nama Produk'].apply(get_eksemplar_multiplier)
-            
-    #         # 2. Cek keyword "SATUAN"
-    #         has_satuan_normal = summary_df.loc[mask_biaya, 'Nama Produk'].astype(str).str.contains('SATUAN', case=False, na=False)
-            
-    #         # 3. Mask Rumus / 16 (Paket > 1 ATAU Satuan)
-    #         mask_rumus_16 = ((eksemplar_normal > 1) | has_satuan_normal) & mask_biaya
-            
-    #         if mask_rumus_16.any():
-    #             summary_df.loc[mask_rumus_16, 'Iklan Klik'] += (eksemplar_normal[mask_rumus_16] * biaya_normal[mask_rumus_16]) / 16
-            
-    #         # 4. Mask Rumus Bagi (Sisanya)
-    #         # Kita gunakan index dari mask_biaya dikurangi index mask_rumus_16
-    #         idx_biaya_all = mask_biaya[mask_biaya].index
-    #         idx_rumus_16 = mask_rumus_16[mask_rumus_16].index
-    #         idx_rumus_bagi = idx_biaya_all.difference(idx_rumus_16)
-            
-    #         if not idx_rumus_bagi.empty:
-    #             summary_df.loc[idx_rumus_bagi, 'Iklan Klik'] += (biaya_normal.loc[idx_rumus_bagi] / summary_df.loc[idx_rumus_bagi, 'ad_group_count'])
-
-    # summary_df.drop(columns=['Nama Iklan', 'Biaya', 'ad_group_count'], inplace=True, errors='ignore')
+    
     
     # 3. Tambahkan Produk yang Hanya Ada di IKLAN (dan bukan produk khusus)
     iklan_only_names = set(iklan_data['Nama Iklan']) - set(summary_df['Nama Produk'])
@@ -2018,51 +2005,57 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
     # Konfigurasi Produk Khusus Dama
-    force_config_dama = {
-        "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida": {
-            "variasi": ["A5 SATUAN", "B5 (Bigbos)", "A5 PAKET3", "A5 PAKET 5", "A5 PAKET 7"],
-            "denom": 17
+    force_configs_dama = {
+        'Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida': {
+            'variasi': ['A5 SATUAN', 'B5 (Bigbos)', 'A5 PAKET3', 'A5 PAKET 5', 'A5 PAKET 7'],
+            'divisor': 17
         },
-        "Al Quran Wakaf Saku A6 Al Aqeel HVS Paket Wakaf": {
-            "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
-            "denom": 16
+        'Al Quran Wakaf Saku A6 Al Aqeel HVS Paket Wakaf': {
+            'variasi': ['SATUAN', 'PAKET ISI 3', 'PAKET ISI 5', 'PAKET ISI 7'],
+            'divisor': 16
         },
-        "Al Quran Gold Silver Al Aqeel Besar Sedang Kecil": {
-            "variasi": ["A4 Satuan", "B5 Satuan", "A7 Satuan", "A6 Satuan", "A5 Satuan", "A7 Paket isi 3", "A7 Paket isi 5", "A7 Paket isi 7", "A5 Paket isi 3"],
-            "denom": 23
+        'Al Quran Gold Silver Al Aqeel Besar Sedang Kecil': {
+            'variasi': ['A4 Satuan', 'B5 Satuan', 'A7 Satuan', 'A6 Satuan', 'A5 Satuan', 'A7 Paket isi 3', 'A7 Paket isi 5', 'A7 Paket isi 7', 'A5 Paket isi 3'],
+            'divisor': 23
         }
     }
 
-    for produk_base, config in force_config_dama.items():
-        summary_df['Nama Produk Clean'] = summary_df['Nama Produk'].astype(str).str.replace(r'\s+', ' ', regex=True).str.strip()
-        
-        matching_ads = iklan_data[iklan_data['Nama Iklan'].str.contains(produk_base, case=False, na=False, regex=False)]
-        if not matching_ads.empty:
-            total_biaya_iklan = matching_ads['Biaya'].sum()
-            denom = config['denom']
-            
-            for var in config['variasi']:
-                nama_lengkap_search = f"{produk_base} ({var})".replace('  ', ' ').strip()
-                exists = summary_df['Nama Produk Clean'].str.contains(re.escape(nama_lengkap_search), case=False, na=False).any()
-                
-                if not exists:
-                    new_row = pd.DataFrame([{col: 0 for col in summary_df.columns}])
-                    new_row['Nama Produk'] = f"{produk_base} ({var})"
-                    summary_df = pd.concat([summary_df, new_row], ignore_index=True)
-                    summary_df['Nama Produk Clean'] = summary_df['Nama Produk'].astype(str).str.replace(r'\s+', ' ', regex=True).str.strip()
-            
-            mask_summary = summary_df['Nama Produk'].str.contains(produk_base, case=False, na=False, regex=False)
-            indices = summary_df[mask_summary].index
-            
-            for idx in indices:
-                p_name = summary_df.at[idx, 'Nama Produk']
-                count_same = (summary_df['Nama Produk'] == p_name).sum()
-                mult = get_eksemplar_multiplier_dama(p_name)
-                summary_df.at[idx, 'Iklan Klik'] = (mult * total_biaya_iklan) / denom / count_same
-            
-            iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(produk_base, case=False, na=False, regex=False)]
+    # Force Generate Variasi Dama
+    for nama_iklan, config in force_configs_dama.items():
+        for v in config['variasi']:
+            full_name = f"{nama_iklan} ({v})"
+            if full_name not in summary_df['Nama Produk'].values:
+                new_row = pd.DataFrame([{col: 0 for col in summary_df.columns}])
+                new_row['Nama Produk'] = full_name
+                summary_df = pd.concat([summary_df, new_row], ignore_index=True)
 
-    summary_df.drop(columns=['Nama Produk Clean'], inplace=True, errors='ignore')
+    iklan_klik_list = []
+    for idx, row in summary_df.iterrows():
+        nama_p = str(row['Nama Produk']).lower()
+        biaya_iklan = 0
+        
+        found_config = None
+        for base_name, config in force_configs_dama.items():
+            if base_name.lower() in nama_p:
+                found_config = (base_name, config)
+                break
+        
+        if found_config:
+            base_name, config = found_config
+            raw_biaya = iklan_df[iklan_df['Nama Iklan'].str.contains(base_name, case=False, na=False)]['Biaya'].sum()
+            multiplier = extract_packet_multiplier(nama_p)
+            calculated = (multiplier * raw_biaya) / config['divisor']
+            count_same = summary_df['Nama Produk'].str.contains(re.escape(nama_p), case=False, na=False).sum()
+            biaya_iklan = calculated / (count_same if count_same > 0 else 1)
+        else:
+            # Standard Contains
+            match_iklan = iklan_df[iklan_df['Nama Iklan'].apply(lambda x: str(x).lower() in nama_p)]
+            if not match_iklan.empty:
+                biaya_iklan = match_iklan['Biaya'].sum() / summary_df['Nama Produk'].str.contains(re.escape(nama_p), case=False, na=False).sum()
+
+        iklan_klik_list.append(biaya_iklan)
+    
+    summary_df['Iklan Klik'] = iklan_klik_list
 
     # Logika Standar Dama untuk Tahlil
     if not iklan_data.empty:
