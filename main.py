@@ -1622,6 +1622,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_final = pd.DataFrame(summary_final_data)
 
     # --- LOGIKA PERSINGKAT NAMA PRODUK (KHUSUS HUMAN STORE) ---
+    mapping_singkatan = {}
     if store_type == "Human Store":
         mapping_singkatan = {
             "AL-QUR'AN TERJEMAH HC AL ALEEM QPP A6": "Al Aleem A6 QPP",
@@ -1653,26 +1654,53 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "Al-Qur'an Non Terjemah Al Aqeel HVS A5": "Al Aqeel A5 HVS",
             "Al Qur'an Terjemah Per Kata | Tajwid 2 Warna | Al Fikrah A5 Kertas HVS": "Al Fikrah A5 HVS"
         }
+    elif store_type == "Pacific Bookstore":
+        mapping_singkatan = {
+            "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami": "Alquran Custom Al Aqeel",
+            "PAKET MURAH MERIAH ALQURAN AL AQEEL NON TERJEMAHAN | SURABAYA | al quran untuk wakaf shodaqoh hadiah hampers islami": "PAKET MURAH AL AQEEL MIN ORDER 10 EKS",
+            "Al Quran Terjemah Per Kata A5 | Tajwid 2 Warna | Alquran Al Fikrah HVS 15 Baris | SURABAYA": "Al Fikrah A5 HVS",
+            "Alquran GOLD Hard Cover Al Aqeel Kertas HVS | SURABAYA | Alquran untuk Pengajian Wakaf Hadiah Islami Hampers": "Al Aqeel Gold Kertas HVS",
+            "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers": "Al Aqeel A5 Kertas Koran",
+            "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers": "Al Aqeel A6 Kertas HVS",
+            "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |": "Al Aqeel A6 Edisi Tahlilan Kertas HVS",
+            "Al Quran Saku Resleting Al Quddus A7 Cover Kulit Kertas QPP | Alquran SURABAYA": "Al Quddus A7 Cover Kulit Kertas QPP",
+            "Al Quran Terjemah Al Aleem A5 Kertas HVS 15 Baris | SURABAYA | Alquran Untuk Majelis Taklim Kajian": "Al Aleem A5 Kertas HVS",
+            "Al Quddus Al Quran Wakaf Ibtida A5 Kertas HVS | Alquran SURABAYA": "Al Quddus Ibtida A5 Kertas HVS"
+        }
 
+        # def apply_shorten(nama_full):
+        #     if pd.isna(nama_full): return nama_full
+            
+        #     # Pisahkan nama produk dan variasi (teks di dalam kurung)
+        #     # Regex ini mencari bagian dalam kurung terakhir
+        #     match_variasi = re.search(r'(\s*\(.*\))$', nama_full)
+        #     variasi_part = match_variasi.group(1) if match_variasi else ""
+        #     nama_produk_saja = nama_full.replace(variasi_part, "").strip()
+
+        #     # Cek apakah nama produk mengandung salah satu keyword di mapping
+        #     for original_name, short_name in mapping_singkatan.items():
+        #         if original_name.lower() in nama_produk_saja.lower():
+        #             # Gabungkan Nama Singkat dengan Variasi aslinya
+        #             return f"{short_name}{variasi_part}"
+            
+        #     return nama_full
+    # Jika ada mapping yang terisi (Human/Pacific), jalankan fungsinya
+    if mapping_singkatan:
         def apply_shorten(nama_full):
             if pd.isna(nama_full): return nama_full
-            
-            # Pisahkan nama produk dan variasi (teks di dalam kurung)
-            # Regex ini mencari bagian dalam kurung terakhir
+            # Deteksi variasi di dalam kurung terakhir
             match_variasi = re.search(r'(\s*\(.*\))$', nama_full)
             variasi_part = match_variasi.group(1) if match_variasi else ""
             nama_produk_saja = nama_full.replace(variasi_part, "").strip()
 
-            # Cek apakah nama produk mengandung salah satu keyword di mapping
             for original_name, short_name in mapping_singkatan.items():
                 if original_name.lower() in nama_produk_saja.lower():
-                    # Gabungkan Nama Singkat dengan Variasi aslinya
                     return f"{short_name}{variasi_part}"
-            
             return nama_full
 
+        summary_final['Nama Produk'] = summary_final['Nama Produk'].apply(apply_shorten)
     # Terapkan ke kolom Nama Produk
-    summary_final['Nama Produk'] = summary_final['Nama Produk'].apply(apply_shorten)
+    # summary_final['Nama Produk'] = summary_final['Nama Produk'].apply(apply_shorten)
         
     summary_final = summary_final.sort_values(by='Nama Produk', ascending=True).reset_index(drop=True)
     summary_final['No'] = range(1, len(summary_final) + 1)
