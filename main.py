@@ -1620,6 +1620,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         'Penjualan Per Hari': summary_df['Penjualan Per Hari'], 'Jumlah buku per pesanan': summary_df['Jumlah buku per pesanan']
     })
     summary_final = pd.DataFrame(summary_final_data)
+    summary_final = summary_final.sort_values(by='Nama Produk', ascending=True).reset_index(drop=True)
+    
     total_row = pd.DataFrame(summary_final.sum(numeric_only=True)).T
     total_row['Nama Produk'] = 'Total'
     total_penjualan_netto = total_row['Penjualan Netto'].iloc[0]
