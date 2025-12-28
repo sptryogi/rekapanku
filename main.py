@@ -2178,6 +2178,10 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         'Penjualan Per Hari': summary_df['Penjualan Per Hari'], 'Jumlah buku per pesanan': summary_df['Jumlah buku per pesanan']
     }
     summary_final = pd.DataFrame(summary_final_data)
+    # Pastikan semua data di kolom Nama Produk menjadi teks agar bisa diurutkan
+    summary_final['Nama Produk'] = summary_final['Nama Produk'].astype(str)
+    
+    # Baru lakukan pengurutan
     summary_final = summary_final.sort_values(by='Nama Produk', ascending=True).reset_index(drop=True)
     summary_final['No'] = range(1, len(summary_final) + 1)
 
