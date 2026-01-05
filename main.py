@@ -464,7 +464,7 @@ def process_rekap(order_df, income_df, seller_conv_df):
         'Waktu Dana Dilepas': rekap_df['Tanggal Dana Dilepaskan'],
         'Nama Produk': rekap_df['Nama Produk'],
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
-        'Harga Satuan': rekap_df['Harga Setelah Diskon'],
+        'Harga Normal': rekap_df['Harga Setelah Diskon'],
         'Total Harga Produk': rekap_df['Total Harga Produk'],
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
@@ -836,7 +836,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         'Waktu Dana Dilepas': rekap_df['Tanggal Dana Dilepaskan'],
         'Nama Produk': rekap_df['Nama Produk'],
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
-        'Harga Satuan': rekap_df['Harga Setelah Diskon'],
+        'Harga Normal': rekap_df['Harga Setelah Diskon'],
         'Total Harga Produk': rekap_df['Total Harga Produk'],
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
@@ -1126,7 +1126,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
         'Nama Produk': rekap_df['Nama Produk'],
         'Nama Variasi': rekap_df['Nama Variasi'],
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
-        'Harga Satuan': rekap_df['Harga Setelah Diskon'],
+        'Harga Normal': rekap_df['Harga Setelah Diskon'],
         'Total Harga Produk': rekap_df['Total Harga Produk'],
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
@@ -1331,7 +1331,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # Sekarang groupby ini akan menggabungkan retur (yang Harga Satuannya sudah "diperbaiki")
     # dengan penjualan normal.
     biaya_layanan_col = 'Biaya Layanan 4,5%' if store_type == 'Pacific Bookstore' else 'Biaya Layanan 2%'
-    summary_df = rekap_copy.groupby(['Nama Produk', 'Harga Satuan'], as_index=False).agg({
+    summary_df = rekap_copy.groupby(['Nama Produk', 'Harga Normal'], as_index=False).agg({
         'Jumlah Terjual': 'sum', 
         # 'Harga Satuan': 'first', <-- Dihapus karena sudah jadi bagian key
         'Total Harga Produk': 'sum',
@@ -1602,7 +1602,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_final_data = {
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'],
         'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Eksemplar': summary_df['Jumlah Eksemplar'], 
-        'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
+        'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Normal': summary_df['Harga Normal'],
         'Total Penjualan': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
         'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
         biaya_layanan_col: summary_df[biaya_layanan_col], 'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
@@ -1724,7 +1724,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     total_row['Jumlah Pesanan'] = total_jumlah_pesanan
     total_row['Penjualan Per Hari'] = round(total_harga_produk / 7, 1)
     total_row['Jumlah buku per pesanan'] = round(total_jumlah_eksemplar / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1) # <-- DIUBAH
-    for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ']:
+    for col in ['Harga Normal', 'Harga Beli', 'No', 'Harga Custom TLJ']:
         if col in total_row.columns: total_row[col] = None
     summary_with_total = pd.concat([summary_final, total_row], ignore_index=True)
     
@@ -1996,7 +1996,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     # summary_df = rekap_copy.groupby(grouping_key, as_index=False).agg(agg_dict)
     # summary_df.rename(columns={'Nama Produk Display': 'Nama Produk'}, inplace=True)
     
-    grouping_key_list = ['Nama Produk Display', 'Harga Satuan']
+    grouping_key_list = ['Nama Produk Display', 'Harga Normal']
     # --- ▲▲▲ AKHIR MODIFIKASI ▲▲▲ ---
     # --- AKHIR LOGIKA KHUSUS DAMA.ID STORE ---
     # summary_df = summary_df[summary_df['Total Penghasilan'] != 0].copy()
@@ -2007,7 +2007,6 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         'Nama Produk Display': 'first',
         # 'Cleaned Variation': 'first', 
         'Jumlah Terjual': 'sum', 
-        # 'Harga Satuan': 'first', <-- Dihapus dari dict
         'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
         'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
@@ -2165,7 +2164,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         'No': np.arange(1, len(summary_df) + 1),
         'Nama Produk': summary_df['Nama Produk'], # Nama produk display
         'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Eksemplar': summary_df['Jumlah Eksemplar'], 
-        'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
+        'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Normal': summary_df['Harga Normal'],
         'Total Penjualan': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
         'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
         'Biaya Layanan 2%': summary_df['Biaya Layanan 2%'], 'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
@@ -2206,7 +2205,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     total_row['Jumlah Pesanan'] = total_jumlah_pesanan
     total_row['Penjualan Per Hari'] = round(total_harga_produk / 7, 1)
     total_row['Jumlah buku per pesanan'] = round(total_jumlah_eksemplar / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
-    for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ']:
+    for col in ['Harga Normal', 'Harga Beli', 'No', 'Harga Custom TLJ']:
         if col in total_row.columns: total_row[col] = None
     summary_with_total = pd.concat([summary_final, total_row], ignore_index=True)
 
@@ -2334,7 +2333,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     cols_to_clean = [
         'SKU SUBTOTAL BEFORE DISCOUNT', 'SKU SELLER DISCOUNT', 'QUANTITY', 
         'BONUS CASHBACK SERVICE FEE', 'VOUCHER XTRA SERVICE FEE', 'TOTAL SETTLEMENT AMOUNT',
-        'SKU UNIT ORIGINAL PRICE' # Penting untuk Harga Satuan nanti
+        'SKU UNIT ORIGINAL PRICE' # Penting untuk Harga Normal nanti
     ]
     for col in cols_to_clean:
         if col in rekap_df.columns:
@@ -2369,7 +2368,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'QUANTITY': 'sum', # <-- Penjumlahan Kuantitas terjadi di sini
         'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
         'SKU SELLER DISCOUNT': 'sum',
-        'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga satuan pertama
+        'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga normal pertama
         'BONUS CASHBACK SERVICE FEE': 'first', # Jumlahkan biaya ini
         'VOUCHER XTRA SERVICE FEE': 'first',   # Jumlahkan biaya ini
         'TOTAL SETTLEMENT AMOUNT': 'first' # Ambil settlement amount pertama (biasanya sama per pesanan)
@@ -2384,9 +2383,9 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     rekap_df.rename(columns={'QUANTITY': 'Jumlah Terjual'}, inplace=True) # Ganti nama setelah agregasi
     
     # 3. MENGHITUNG BIAYA-BIAYA BARU (setelah agregasi)
-    rekap_df['Total Harga Setelah Diskon'] = rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'] - rekap_df['SKU SELLER DISCOUNT']
-    rekap_df['Biaya Komisi Platform 8%'] = rekap_df['Total Harga Setelah Diskon'] * 0.08
-    rekap_df['Komisi Dinamis 5%'] = rekap_df['Total Harga Setelah Diskon'] * 0.05
+    rekap_df['Total Penjualan'] = rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'] - rekap_df['SKU SELLER DISCOUNT']
+    rekap_df['Biaya Komisi Platform 8%'] = rekap_df['Total Penjualan'] * 0.08
+    rekap_df['Komisi Dinamis 5%'] = rekap_df['Total Penjualan'] * 0.05
     
     product_count = rekap_df.groupby('ORDER ID')['ORDER ID'].transform('size')
     rekap_df['Biaya Layanan Cashback Bonus 1,5%'] = rekap_df['BONUS CASHBACK SERVICE FEE'] / product_count
@@ -2433,7 +2432,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     # 5. RUMUS BARU UNTUK TOTAL PENGHASILAN
     rekap_df['Total Penghasilan'] = (
-        rekap_df['Total Harga Setelah Diskon'] -
+        rekap_df['Total Penjualan'] -
         rekap_df['Komisi Affiliate'] -
         rekap_df['Biaya Komisi Platform 8%'] -
         rekap_df['Komisi Dinamis 5%'] -
@@ -2451,10 +2450,10 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Nama Produk': rekap_df['PRODUCT NAME'],
         'Variasi': rekap_df['Variasi'],
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
-        'Harga Satuan': rekap_df['SKU UNIT ORIGINAL PRICE'],
+        'Harga Normal': rekap_df['SKU UNIT ORIGINAL PRICE'],
         'Total Harga Sebelum Diskon': rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'],
         'Diskon Penjual': rekap_df['SKU SELLER DISCOUNT'],
-        'Total Harga Setelah Diskon': rekap_df['Total Harga Setelah Diskon'],
+        'Total Penjualan': rekap_df['Total Penjualan'],
         'Komisi Affiliate': rekap_df['Komisi Affiliate'],
         'Biaya Komisi Platform 8%': rekap_df['Biaya Komisi Platform 8%'],
         'Komisi Dinamis 5%': rekap_df['Komisi Dinamis 5%'],
@@ -2478,7 +2477,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Diskon Penjual',
         'Biaya Layanan Cashback Bonus 1,5%',
         'Biaya Layanan Voucher Xtra',
-        'Harga Satuan',
+        'Harga Normal',
         'Biaya Proses Pesanan'
     ]
     
@@ -2492,16 +2491,16 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     
     # 3. Hitung ulang kolom-kolom yang bergantung pada hasil agregasi
     
-    # Hitung ulang Total Harga Setelah Diskon dari komponen yang sudah dijumlahkan
-    rekap_final['Total Harga Setelah Diskon'] = rekap_final['Total Harga Sebelum Diskon'] - rekap_final['Diskon Penjual']
+    # Hitung ulang Total Penjualan dari komponen yang sudah dijumlahkan
+    rekap_final['Total Penjualan'] = rekap_final['Total Harga Sebelum Diskon'] - rekap_final['Diskon Penjual']
     
     # Hitung ulang biaya berbasis persentase
-    rekap_final['Biaya Komisi Platform 8%'] = rekap_final['Total Harga Setelah Diskon'] * 0.08
-    rekap_final['Komisi Dinamis 5%'] = rekap_final['Total Harga Setelah Diskon'] * 0.05
+    rekap_final['Biaya Komisi Platform 8%'] = rekap_final['Total Penjualan'] * 0.08
+    rekap_final['Komisi Dinamis 5%'] = rekap_final['Total Penjualan'] * 0.05
     
     # Hitung ulang Total Penghasilan
     rekap_final['Total Penghasilan'] = (
-        rekap_final['Total Harga Setelah Diskon'] -
+        rekap_final['Total Penjualan'] -
         rekap_final['Komisi Affiliate'] -
         rekap_final['Biaya Komisi Platform 8%'] -
         rekap_final['Komisi Dinamis 5%'] -
@@ -2513,8 +2512,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     # 4. Susun ulang kolom dan perbarui nomor baris 'No.'
     final_columns_order = [
         'No.', 'No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Nama Produk',
-        'Variasi', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Sebelum Diskon',
-        'Diskon Penjual', 'Total Harga Setelah Diskon', 'Komisi Affiliate',
+        'Variasi', 'Jumlah Terjual', 'Harga Normal', 'Total Harga Sebelum Diskon',
+        'Diskon Penjual', 'Total Penjualan', 'Komisi Affiliate',
         'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Biaya Layanan Cashback Bonus 1,5%',
         'Biaya Layanan Voucher Xtra', 'Biaya Proses Pesanan', 'Total Penghasilan'
     ]
@@ -2531,9 +2530,9 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     # Agregasi data dari REKAP berdasarkan Nama Produk dan Variasi (ini sudah mencegah duplikasi)
     summary_df = rekap_df.groupby(['Nama Produk', 'Variasi']).agg({
         'Jumlah Terjual': 'sum',
-        'Harga Satuan': 'first',
+        'Harga Normal': 'first',
         'Diskon Penjual': 'sum',
-        'Total Harga Setelah Diskon': 'sum',
+        'Total Penjualan': 'sum',
         'Komisi Affiliate': 'sum',
         'Biaya Komisi Platform 8%': 'sum',
         'Komisi Dinamis 5%': 'sum',
@@ -2544,7 +2543,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
 
     # Hitung Penjualan Netto
     summary_df['Penjualan Netto'] = (
-        summary_df['Total Harga Setelah Diskon'] -
+        summary_df['Total Penjualan'] -
         summary_df['Komisi Affiliate'] -
         summary_df['Biaya Komisi Platform 8%'] -
         summary_df['Komisi Dinamis 5%'] -
@@ -2628,22 +2627,22 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     )
     
     # ... (Sisa fungsi Anda dari sini sampai akhir tetap sama persis) ...
-    summary_df['Persentase'] = summary_df.apply(lambda row: row['Margin'] / row['Total Harga Setelah Diskon'] if row['Total Harga Setelah Diskon'] != 0 else 0, axis=1)
+    summary_df['Persentase'] = summary_df.apply(lambda row: row['Margin'] / row['Total Penjualan'] if row['Total Penjualan'] != 0 else 0, axis=1)
     summary_df['Jumlah Pesanan'] = summary_df['Biaya Proses Pesanan'] / 1250
-    summary_df['Penjualan Per Hari'] = round(summary_df['Total Harga Setelah Diskon'] / 7, 1)
+    summary_df['Penjualan Per Hari'] = round(summary_df['Penjualan Netto'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1)
 
     summary_final = pd.DataFrame({
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'], 'Variasi': summary_df['Variasi'],
-        'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Harga Satuan': summary_df['Harga Satuan'],
-        'Total Diskon Penjual': summary_df['Diskon Penjual'], 'Total Harga Sesudah Diskon': summary_df['Total Harga Setelah Diskon'],
+        'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Normal': summary_df['Harga Normal'],
+        'Total Diskon Penjual': summary_df['Diskon Penjual'], 'Total Harga Sesudah Diskon': summary_df['Total Penjualan'],
         'Komisi Affiliate': summary_df['Komisi Affiliate'], 'Biaya Komisi Platform 8%': summary_df['Biaya Komisi Platform 8%'],
         'Komisi Dinamis 5%': summary_df['Komisi Dinamis 5%'], 'Biaya Layanan Cashback Bonus 1,5%': summary_df['Biaya Layanan Cashback Bonus 1,5%'],
         'Biaya Layanan Voucher Xtra': summary_df['Biaya Layanan Voucher Xtra'], 'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Biaya Packing': summary_df['Biaya Packing'],
         'Biaya Ekspedisi': summary_df['Biaya Ekspedisi'], 'Harga Beli': summary_df['Harga Beli'],
         'Harga Custom TLJ': summary_df['Harga Custom TLJ'], 'Total Pembelian': summary_df['Total Pembelian'],
-        'Margin': summary_df['Margin'], 'Persentase': summary_df['Persentase'], 'Jumlah Pesanan': summary_df['Jumlah Pesanan'],
+        'Margin': summary_df['Margin'], 'Persentase': summary_df['Persentase'],
         'Penjualan Per Hari': summary_df['Penjualan Per Hari'], 'Jumlah buku per pesanan': summary_df['Jumlah buku per pesanan']
     })
 
@@ -2661,7 +2660,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     total_jumlah_pesanan = total_row['Jumlah Pesanan'].iloc[0]
     total_jumlah_terjual = total_row['Jumlah Terjual'].iloc[0]
     total_row['Jumlah buku per pesanan'] = round(total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
-    for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ', 'Variasi']:
+    for col in ['Harga Normal', 'Harga Beli', 'No', 'Harga Custom TLJ', 'Variasi']:
         if col in total_row.columns: total_row[col] = None
     
     summary_with_total = pd.concat([summary_final, total_row], ignore_index=True)
