@@ -2177,6 +2177,57 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         'Penjualan Per Hari': summary_df['Penjualan Per Hari'], 'Jumlah buku per pesanan': summary_df['Jumlah buku per pesanan']
     }
     summary_final = pd.DataFrame(summary_final_data)
+
+    # --- LOGIKA PERSINGKAT NAMA PRODUK DAMA.ID STORE ---
+    mapping_dama = {
+        "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida": "Al Aqeel A5 Kertas Koran",
+        "AL QUR'AN CUSTOM NAMA FOTO DI COVER SISIPAN ACARA TASYAKUR TAHLIL YASIN": "AL QUR'AN CUSTOM COVER SISIPAN",
+        "PAKET MURAH Alquran Al-Aqeel Tanpa Terjemahan | BANDUNG | Alquran Wakaf Hadiah Hampers Islami": "PAKET MURAH Al-Aqeel Tanpa Terjemahan",
+        "Al Quran Gold Silver Al Aqeel Besar Sedang Kecil": "Al Aqeel Gold Silver",
+        "ALQURAN A6 HVS EDISI TAHLIL TERBARU": "al aqeel A6 edisi tahlilan",
+        "Al Quran Wakaf Saku A6 Al Aqeel HVS Paket Wakaf": "Al Aqeel A6 HVS",
+        "AL QURAN LATIN TERJEMAHAN DAN TADJWID MUSHAF AL FIKRAH KERTAS HVS": "AL FIKRAH A5 HVS",
+        "Al Quran Mushaf Al Aqeel Full Color A5 HVS": "Al Aqeel A5 HVS",
+        "AL QURAN AL QUDDUS SAKU A7 KULIT RESLETING": "AL QUDDUS SAKU A7 KULIT",
+        "BELLA SQUARE PREMIUM | HIJAB SEGIEMPAT | VARIASI WARNA | MURAH FASHION MUSLIM": "HIJAB SEGIEMPAT BELLA SQUARE",
+        "Mushaf Al-Qur'an Al Quddus Tanpa terjemahan uk A5 DAN A4": "Al Quddus Tanpa terjemahan uk A5 DAN A4",
+        "Juz'amma Edisi Terbaru Lebih Lengkap Terjemahan Tadjwid Asmaul Husna Soft Cover Kertas Koran": "Juz'amma Kertas Koran",
+        "HIJAB PASMINA KAOS RAYON COOL TECH BY DAMA": "PASMINA KAOS RAYON",
+        "PASHMINA OVAL CERUTY BABYDOLL PREMIUM": "PASHMINA OVAL CERUTY BABYDOLL",
+        "BUKU CERITA ANAK SERI BUDI PEKERTI KOBER TK SD": "BUKU CERITA SERI BUDI PEKERTI TK SD",
+        "AL QUR'AN TERJEMAHAN AL ALEEM WAQAF IBTIDA": "AL ALEEM WAQAF IBTIDA",
+        "AlQuran Mushaf Al Aqeel B5": "Al Aqeel B5 HVS",
+        "SERI DONGENG BINATANG | DONGENG FABEL | DONGENG BINATANG MENARIK": "SERI DONGENG BINATANG",
+        "Buku Cerita Seri Terladan Nabi Seri 6 Untuk Anak Anak": "Buku Cerita Seri Teladan Nabi",
+        "BUKU CERITA SERI CERITA RAKYAT | NUSANTARA": "BUKU CERITA SERI CERITA RAKYAT",
+        "AL QUR'AN TADJWID DAN TERJEMAHAN TAFSIR ASBABUNNUZUL WAQAF IBTIDA MUSHAF MUMTAAZ": "AL QUR'AN TADJWID DAN TERJEMAHAN MUMTAAZ WAQAF IBTIDA",
+        "Juz'amma Edisi Terbaru Lebih Lengkap Terjemahan Tajwid Asmaul Husnah kertas HVS": "Juz'amma kertas HVS",
+        "Kamus Bergambar Bilingual TK SD PAUD": "Kamus Bergambar TK SD PAUD",
+        "AL QURAN MUSHAF AL ALEEM A6 SAKU": "AL ALEEM A6 SAKU",
+        "HIJAB PAYET CANTIK | PARIS JEPANG | hijab kekinian": "HIJAB PAYET PARIS JEPANG",
+        "TERBARU KOMIK SERI PAHLAWAN INDONESIA | BUKU PAHLAWAN": "KOMIK SERI PAHLAWAN INDONESIA",
+        "HARMONI NUSANTARA | LAGU NASIONAL DAN LAGU DAERAH INDONESIA": "LAGU NASIONAL DAN LAGU DAERAH INDONESIA",
+        "HIJAB BERGO JERSEY BY DAMA | KERUDUNG INSTAN": "HIJAB BERGO JERSEY",
+        "HIJAB VOAL MOTIF LASER CUT PREMIUM": "HIJAB VOAL MOTIF LASER CUT",
+        "Al QURAN TADJWID TANPA TERJEMAHAN MUSHAF SUBHAAN": "SUBHAAN TADJWID TANPA TERJEMAHAN"
+    }
+
+    def apply_shorten_dama(nama_full):
+        if pd.isna(nama_full): return nama_full
+        nama_full_str = str(nama_full)
+        # Ambil variasi dalam kurung jika ada
+        match_variasi = re.search(r'(\s*\(.*\))$', nama_full_str)
+        variasi_part = match_variasi.group(1) if match_variasi else ""
+        nama_produk_saja = nama_full_str.replace(variasi_part, "").strip()
+
+        for original_name, short_name in mapping_dama.items():
+            if original_name.lower() in nama_produk_saja.lower():
+                return f"{short_name}{variasi_part}"
+        return nama_full_str
+
+    summary_final['Nama Produk'] = summary_final['Nama Produk'].apply(apply_shorten_dama)
+    # --- AKHIR LOGIKA PERSINGKAT ---
+    
     # Pastikan semua data di kolom Nama Produk menjadi teks agar bisa diurutkan
     summary_final['Nama Produk'] = summary_final['Nama Produk'].astype(str)
     
