@@ -2485,12 +2485,12 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
         rekap_df = pd.merge(
             rekap_df,
-            creator_order_all_df[['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL']],
+            creator_order_all_df[['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'Perkiraan pembayaran komisi standar']],
             left_on=['ORDER ID', 'PRODUCT NAME', 'Variasi'],
             right_on=['ID PESANAN', 'PRODUK', 'Variasi_Clean'],
             how='left'
         )
-        rekap_df.rename(columns={'PEMBAYARAN KOMISI AKTUAL': 'Komisi Affiliate'}, inplace=True)
+        rekap_df.rename(columns={'Perkiraan pembayaran komisi standar': 'Komisi Affiliate'}, inplace=True)
         rekap_df['Komisi Affiliate'] = pd.to_numeric(rekap_df['Komisi Affiliate'], errors='coerce').fillna(0).abs()
         rekap_df.drop(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean'], inplace=True, errors='ignore')
     else:
