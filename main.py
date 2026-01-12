@@ -332,7 +332,12 @@ def process_rekap(order_df, income_df, seller_conv_df):
     rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
 
     basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
-    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # Ambil tahun dari kolom Waktu Pesanan Dibuat
+    tahun_pesanan = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat']).dt.year
+    
+    # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
+    rekap_df['Biaya Adm 8%'] = np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     rekap_df['Biaya Layanan 2%'] = 0
@@ -700,7 +705,12 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     # rekap_df['Biaya Proses Pesanan Dibagi'] = 0
 
     basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
-    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # Ambil tahun dari kolom Waktu Pesanan Dibuat
+    tahun_pesanan = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat']).dt.year
+    
+    # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
+    rekap_df['Biaya Adm 8%'] = np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     # rekap_df['Biaya Layanan 4,5%'] = basis_biaya * 0.045
@@ -994,7 +1004,12 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
 
     # Hitung biaya berdasarkan (Total Harga Produk - Voucher Dibagi)
     basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
-    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # Ambil tahun dari kolom Waktu Pesanan Dibuat
+    tahun_pesanan = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat']).dt.year
+    
+    # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
+    rekap_df['Biaya Adm 8%'] = np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     # --- AKHIR LOGIKA DAMA.ID STORE ---
@@ -2413,13 +2428,14 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         rekap_df['ORDER SETTLED TIME_MISSING'] = pd.NaT # Buat kolom dummy
         settled_time_col = 'ORDER SETTLED TIME_MISSING' # Gunakan kolom dummy
 
+    rekap_df['Harga Satuan Temp'] = rekap_df['SKU UNIT ORIGINAL PRICE'] - (rekap_df['SKU SELLER DISCOUNT'] / rekap_df['QUANTITY'].replace(0, 1))
 
     # 2. LOGIKA AGREGASI PRODUK (Sekarang akan bekerja dengan benar)
     agg_rules = {
         'QUANTITY': 'sum', # <-- Penjumlahan Kuantitas terjadi di sini
         'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
         'SKU SELLER DISCOUNT': 'sum',
-        'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga satuan pertama
+        'Harga Satuan Temp': 'first', # Ambil harga satuan pertama
         'BONUS CASHBACK SERVICE FEE': 'first', # Jumlahkan biaya ini
         'VOUCHER XTRA SERVICE FEE': 'first',   # Jumlahkan biaya ini
         'TOTAL SETTLEMENT AMOUNT': 'first' # Ambil settlement amount pertama (biasanya sama per pesanan)
@@ -2501,7 +2517,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Nama Produk': rekap_df['PRODUCT NAME'],
         'Variasi': rekap_df['Variasi'],
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
-        'Harga Satuan': rekap_df['SKU UNIT ORIGINAL PRICE'],
+        # 'Harga Satuan': rekap_df['SKU UNIT ORIGINAL PRICE'],
+        'Harga Satuan': rekap_df['Harga Satuan Temp'],
         'Total Harga Sebelum Diskon': rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'],
         'Diskon Penjual': rekap_df['SKU SELLER DISCOUNT'],
         'Total Penjualan': rekap_df['Total Penjualan'],
@@ -2686,7 +2703,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     summary_final = pd.DataFrame({
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'], 'Variasi': summary_df['Variasi'],
         'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
-        'Total Diskon Penjual': summary_df['Diskon Penjual'], 'Total Harga Sesudah Diskon': summary_df['Total Penjualan'],
+        # 'Total Diskon Penjual': summary_df['Diskon Penjual'], 'Total Harga Sesudah Diskon': summary_df['Total Penjualan'],
         'Komisi Affiliate': summary_df['Komisi Affiliate'], 'Biaya Komisi Platform 8%': summary_df['Biaya Komisi Platform 8%'],
         'Komisi Dinamis 5%': summary_df['Komisi Dinamis 5%'], 'Biaya Layanan Cashback Bonus 1,5%': summary_df['Biaya Layanan Cashback Bonus 1,5%'],
         'Biaya Layanan Voucher Xtra': summary_df['Biaya Layanan Voucher Xtra'], 'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
