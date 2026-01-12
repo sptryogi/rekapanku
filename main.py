@@ -2697,7 +2697,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     # ... (Sisa fungsi Anda dari sini sampai akhir tetap sama persis) ...
     summary_df['Persentase'] = summary_df.apply(lambda row: row['Margin'] / row['Total Penjualan'] if row['Total Penjualan'] != 0 else 0, axis=1)
     summary_df['Jumlah Pesanan'] = summary_df['Biaya Proses Pesanan'] / 1250
-    summary_df['Total Pemasukan'] = summary_df['Jumlah Pesanan'] * summary_df['Harga Satuan']
+    summary_df['Total Pemasukan'] = summary_df['Jumlah Terjual'] * summary_df['Harga Satuan']
     summary_df['Penjualan Per Hari'] = round(summary_df['Penjualan Netto'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1)
 
