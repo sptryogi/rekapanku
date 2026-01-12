@@ -2384,7 +2384,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     cols_to_clean = [
         'SKU SUBTOTAL BEFORE DISCOUNT', 'SKU SELLER DISCOUNT', 'QUANTITY', 
         'BONUS CASHBACK SERVICE FEE', 'VOUCHER XTRA SERVICE FEE', 'TOTAL SETTLEMENT AMOUNT',
-        'SKU UNIT ORIGINAL PRICE' # Penting untuk Harga Normal nanti
+        'SKU UNIT ORIGINAL PRICE' # Penting untuk Harga Satuan nanti
     ]
     for col in cols_to_clean:
         if col in rekap_df.columns:
@@ -2419,7 +2419,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'QUANTITY': 'sum', # <-- Penjumlahan Kuantitas terjadi di sini
         'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
         'SKU SELLER DISCOUNT': 'sum',
-        'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga normal pertama
+        'SKU UNIT ORIGINAL PRICE': 'first', # Ambil harga satuan pertama
         'BONUS CASHBACK SERVICE FEE': 'first', # Jumlahkan biaya ini
         'VOUCHER XTRA SERVICE FEE': 'first',   # Jumlahkan biaya ini
         'TOTAL SETTLEMENT AMOUNT': 'first' # Ambil settlement amount pertama (biasanya sama per pesanan)
@@ -2501,7 +2501,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Nama Produk': rekap_df['PRODUCT NAME'],
         'Variasi': rekap_df['Variasi'],
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
-        'Harga Normal': rekap_df['SKU UNIT ORIGINAL PRICE'],
+        'Harga Satuan': rekap_df['SKU UNIT ORIGINAL PRICE'],
         'Total Harga Sebelum Diskon': rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'],
         'Diskon Penjual': rekap_df['SKU SELLER DISCOUNT'],
         'Total Penjualan': rekap_df['Total Penjualan'],
@@ -2528,7 +2528,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Diskon Penjual',
         'Biaya Layanan Cashback Bonus 1,5%',
         'Biaya Layanan Voucher Xtra',
-        'Harga Normal',
+        'Harga Satuan',
         'Biaya Proses Pesanan'
     ]
     
@@ -2563,7 +2563,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     # 4. Susun ulang kolom dan perbarui nomor baris 'No.'
     final_columns_order = [
         'No.', 'No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Nama Produk',
-        'Variasi', 'Jumlah Terjual', 'Harga Normal', 'Total Harga Sebelum Diskon',
+        'Variasi', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Sebelum Diskon',
         'Diskon Penjual', 'Total Penjualan', 'Komisi Affiliate',
         'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Biaya Layanan Cashback Bonus 1,5%',
         'Biaya Layanan Voucher Xtra', 'Biaya Proses Pesanan', 'Total Penghasilan'
@@ -2581,7 +2581,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     # Agregasi data dari REKAP berdasarkan Nama Produk dan Variasi (ini sudah mencegah duplikasi)
     summary_df = rekap_df.groupby(['Nama Produk', 'Variasi']).agg({
         'Jumlah Terjual': 'sum',
-        'Harga Normal': 'first',
+        'Harga Satuan': 'first',
         'Diskon Penjual': 'sum',
         'Total Penjualan': 'sum',
         'Komisi Affiliate': 'sum',
@@ -2685,7 +2685,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
 
     summary_final = pd.DataFrame({
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'], 'Variasi': summary_df['Variasi'],
-        'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Normal': summary_df['Harga Normal'],
+        'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Diskon Penjual': summary_df['Diskon Penjual'], 'Total Harga Sesudah Diskon': summary_df['Total Penjualan'],
         'Komisi Affiliate': summary_df['Komisi Affiliate'], 'Biaya Komisi Platform 8%': summary_df['Biaya Komisi Platform 8%'],
         'Komisi Dinamis 5%': summary_df['Komisi Dinamis 5%'], 'Biaya Layanan Cashback Bonus 1,5%': summary_df['Biaya Layanan Cashback Bonus 1,5%'],
@@ -2711,7 +2711,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     total_jumlah_pesanan = total_row['Jumlah Pesanan'].iloc[0]
     total_jumlah_terjual = total_row['Jumlah Terjual'].iloc[0]
     total_row['Jumlah buku per pesanan'] = round(total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
-    for col in ['Harga Normal', 'Harga Beli', 'No', 'Harga Custom TLJ', 'Variasi']:
+    for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ', 'Variasi']:
         if col in total_row.columns: total_row[col] = None
     
     summary_with_total = pd.concat([summary_final, total_row], ignore_index=True)
