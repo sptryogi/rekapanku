@@ -2697,13 +2697,15 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     # ... (Sisa fungsi Anda dari sini sampai akhir tetap sama persis) ...
     summary_df['Persentase'] = summary_df.apply(lambda row: row['Margin'] / row['Total Penjualan'] if row['Total Penjualan'] != 0 else 0, axis=1)
     summary_df['Jumlah Pesanan'] = summary_df['Biaya Proses Pesanan'] / 1250
+    summary_df['Total Pemasukan'] = summary_df['Jumlah Pesanan'] * summary_df['Harga Satuan']
     summary_df['Penjualan Per Hari'] = round(summary_df['Penjualan Netto'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1)
 
     summary_final = pd.DataFrame({
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'], 'Variasi': summary_df['Variasi'],
         'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
-        # 'Total Diskon Penjual': summary_df['Diskon Penjual'], 'Total Harga Sesudah Diskon': summary_df['Total Penjualan'],
+        'Total Penjualan': summary_df['Total Pemasukan'],
+        # 'Total Diskon Penjual': summary_df['Diskon Penjual'], 'Total Harga Sesudah Diskon': summary_df['Total Penjualan'], 
         'Komisi Affiliate': summary_df['Komisi Affiliate'], 'Biaya Komisi Platform 8%': summary_df['Biaya Komisi Platform 8%'],
         'Komisi Dinamis 5%': summary_df['Komisi Dinamis 5%'], 'Biaya Layanan Cashback Bonus 1,5%': summary_df['Biaya Layanan Cashback Bonus 1,5%'],
         'Biaya Layanan Voucher Xtra': summary_df['Biaya Layanan Voucher Xtra'], 'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
@@ -2722,9 +2724,9 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     total_row['Nama Produk'] = 'Total'
     total_margin = total_row['Penjualan Netto'].iloc[0] - total_row['Biaya Packing'].iloc[0] - total_row['Biaya Ekspedisi'].iloc[0] - total_row['Total Pembelian'].iloc[0]
     total_row['Margin'] = total_margin
-    # total_harga_diskon = total_row['Total Harga Sesudah Diskon'].iloc[0]
-    # total_row['Persentase'] = (total_margin / total_harga_diskon) if total_harga_diskon != 0 else 0
-    # total_row['Penjualan Per Hari'] = round(total_harga_diskon / 7, 1)
+    total_penjualan = total_row['Total Penjualan'].iloc[0]
+    total_row['Persentase'] = (total_margin / total_penjualan) if total_penjualan != 0 else 0
+    total_row['Penjualan Per Hari'] = round(total_penjualan / 7, 1)
     total_jumlah_pesanan = total_row['Jumlah Pesanan'].iloc[0]
     total_jumlah_terjual = total_row['Jumlah Terjual'].iloc[0]
     total_row['Jumlah buku per pesanan'] = round(total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
