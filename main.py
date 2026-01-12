@@ -2722,9 +2722,9 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     total_row['Nama Produk'] = 'Total'
     total_margin = total_row['Penjualan Netto'].iloc[0] - total_row['Biaya Packing'].iloc[0] - total_row['Biaya Ekspedisi'].iloc[0] - total_row['Total Pembelian'].iloc[0]
     total_row['Margin'] = total_margin
-    total_harga_diskon = total_row['Total Harga Sesudah Diskon'].iloc[0]
-    total_row['Persentase'] = (total_margin / total_harga_diskon) if total_harga_diskon != 0 else 0
-    total_row['Penjualan Per Hari'] = round(total_harga_diskon / 7, 1)
+    # total_harga_diskon = total_row['Total Harga Sesudah Diskon'].iloc[0]
+    # total_row['Persentase'] = (total_margin / total_harga_diskon) if total_harga_diskon != 0 else 0
+    # total_row['Penjualan Per Hari'] = round(total_harga_diskon / 7, 1)
     total_jumlah_pesanan = total_row['Jumlah Pesanan'].iloc[0]
     total_jumlah_terjual = total_row['Jumlah Terjual'].iloc[0]
     total_row['Jumlah buku per pesanan'] = round(total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
