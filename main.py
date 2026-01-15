@@ -638,8 +638,35 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                             part_to_append = var_str # Ambil jika bukan warna
                         else:
                             part_to_append = '' # Abaikan jika cuma warna
+
+                elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean:
+
+                    harga = str(rekap_df['Total Harga Produk']).replace('.', '').replace(',', '').strip()
+                
+                    if harga == "19200":
+                        part_to_append = "GROSIR 3-4"
+                    elif harga == "18900":
+                        part_to_append = "GROSIR 5-6"
+                    elif harga == "18600":
+                        part_to_append = "GROSIR > 7"
+                    else:
+                        part_to_append = ""
+                
+                elif "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean:
+                
+                    harga = str(rekap_df['Total Harga Produk']).replace('.', '').replace(',', '').strip()
+                
+                    if harga == "21550":
+                        part_to_append = "GROSIR 3-4"
+                    elif harga == "21300":
+                        part_to_append = "GROSIR 5-6"
+                    elif harga == "21000":
+                        part_to_append = "GROSIR > 7"
+                    else:
+                        part_to_append = ""
                             
-                elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean or "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean or "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris" in nama_produk_clean:
+                # elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean or "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean or "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris" in nama_produk_clean:
+                elif "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris" in nama_produk_clean:
                     var_upper = var_str.upper()
                     # Cari "PAKET ISI X" atau "SATUAN"
                     paket_match = re.search(r'(PAKET\s*ISI\s*\d+)', var_upper)
@@ -1439,14 +1466,14 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         }
     elif store_type == "Pacific Bookstore":
         force_config = {
-            "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers": {
-                "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
-                "denom": 16
-            },
-            "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers": {
-                "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
-                "denom": 16
-            },
+            # "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers": {
+            #     "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
+            #     "denom": 16
+            # },
+            # "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers": {
+            #     "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
+            #     "denom": 16
+            # },
             "Alquran GOLD Hard Cover Al Aqeel Kertas HVS | SURABAYA | Alquran untuk Pengajian Wakaf Hadiah Islami Hampers": {
                 "variasi": ["A5 Gold Satuan", "A5 Gold Paket isi 3", "A7 Gold Satuan", "A7 Gold Paket isi 3", "A7 Gold Paket isi 5", "A7 Gold Paket isi 7"],
                 "denom": 20
@@ -1502,7 +1529,9 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     produk_khusus_biasa = [
         "Paket Alquran Khusus Wakaf Al Aqeel A5 Kertas Koran",
         "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
-        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa"
+        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa",
+        "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers",
+        "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers"
     ]
     
     for p_biasa in produk_khusus_biasa:
