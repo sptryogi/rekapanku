@@ -611,6 +611,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
             if pd.notna(nama_variasi_ori):
                 var_str = str(nama_variasi_ori).strip()
                 part_to_append = ''
+                harga_satuan = int(float(str(row['Harga Setelah Diskon']).replace(',', '')) if pd.notnull(row['Harga Setelah Diskon']) else 0)
     
                 # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
                 produk_yang_ambil_full_variasi = [
@@ -668,9 +669,6 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                 #         part_to_append = ""
                             
                 # elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean or "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean or "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris" in nama_produk_clean:
-                harga_satuan = int(float(str(row['Harga Setelah Diskon']).replace(',', '')) if pd.notnull(row['Harga Setelah Diskon']) else 0)
-
-                part_to_append = ""
                 elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean:
                     if harga_satuan == 19200:
                         part_to_append = "GROSIR 3-4"
