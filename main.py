@@ -611,7 +611,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
             if pd.notna(nama_variasi_ori):
                 var_str = str(nama_variasi_ori).strip()
                 part_to_append = ''
-                harga_satuan = int(float(str(rekap_df['Harga Setelah Diskon']).replace(',', '')) if pd.notnull(rekap_df['Harga Setelah Diskon']) else 0)
+                harga_satuan = str(rekap_df['Harga Setelah Diskon']).replace('.', '').replace(',', '').strip()
     
                 # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
                 produk_yang_ambil_full_variasi = [
