@@ -643,7 +643,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
 
                 elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean:
 
-                    harga = str(rekap_df['Total Harga Produk']).replace('.', '').replace(',', '').strip()
+                    harga = str(rekap_df['Harga Setelah Diskon']).replace('.', '').replace(',', '').strip()
                 
                     if harga == "19200":
                         part_to_append = "GROSIR 3-4"
@@ -656,7 +656,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                 
                 elif "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean:
                 
-                    harga = str(rekap_df['Total Harga Produk']).replace('.', '').replace(',', '').strip()
+                    harga = str(rekap_df['Harga Setelah Diskon']).replace('.', '').replace(',', '').strip()
                 
                     if harga == "21550":
                         part_to_append = "GROSIR 3-4"
