@@ -199,7 +199,8 @@ def process_rekap(order_df, income_df, seller_conv_df):
         "AL-QURAN AL AQEEL SILVER TERMURAH", # <-- TAMBAHKAN INI
         "AL-QUR'AN TERJEMAH HC AL ALEEM A5",
         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan",
-        "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL"
+        "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
+        "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
@@ -228,7 +229,8 @@ def process_rekap(order_df, income_df, seller_conv_df):
                     "AL QUR'AN GOLD TERMURAH",
                     "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
                     "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
-                    "AL-QURAN AL AQEEL SILVER TERMURAH"
+                    "AL-QURAN AL AQEEL SILVER TERMURAH",
+                    "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris"
                 ]
                 if any(produk in nama_produk_clean for produk in produk_yang_ambil_full_variasi):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
@@ -1299,6 +1301,7 @@ def calculate_eksemplar(nama_produk, jumlah_terjual):
         paket_match = re.search(r'PAKET\s*ISI\s*(\d+)', nama_produk_upper)
         # Cari "SATUAN"
         satuan_match = 'SATUAN' in nama_produk_upper
+        paket_khusus = re.search(r'PAKET WAKAF MURAH 50 PCS', nama_produk_upper)
         
         faktor = 1 # Default adalah 1
         
@@ -1308,6 +1311,8 @@ def calculate_eksemplar(nama_produk, jumlah_terjual):
         elif satuan_match:
             # Jika ketemu "SATUAN", faktornya 1
             faktor = 1
+        elif paket_khusus:
+            faktor = 50
         # else:
             # Jika tidak ada keduanya, faktor tetap 1 (dihitung satuan)
             
@@ -1318,6 +1323,7 @@ def calculate_eksemplar(nama_produk, jumlah_terjual):
 def get_eksemplar_multiplier(nama_produk):
     if pd.isna(nama_produk): return 1
     nama_produk = str(nama_produk).upper()
+        
     # Deteksi PAKET ISI X atau PAKET X atau ISI X
     match = re.search(r'(?:PAKET\s*ISI|PAKET|ISI)\s*(\d+)', nama_produk)
     if match:
@@ -1412,7 +1418,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Al Quran Saku Resleting Al Quddus A7 Cover Kulit Kertas QPP | Alquran SURABAYA",
         "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers",
         "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers",
-        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |"
+        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |",
+        "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris"
     ]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus]
     
@@ -1531,7 +1538,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
         "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa",
         "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers",
-        "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers"
+        "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers",
+        "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris"
     ]
     
     for p_biasa in produk_khusus_biasa:
@@ -1672,6 +1680,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "AL-QUR'AN TERJEMAH HC AL ALEEM QPP A6": "Al Aleem A6 QPP",
             "AL-QUR'AN TERJEMAH  HC AL ALEEM QPP A6": "Al Aleem A6 QPP",
             "AL-QURAN AL AQEEL SILVER TERMURAH": "Al Aqeel Silver",
+            "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris": "Paket Wakaf Murah Al Aqeel 50 pcs",
             "AL QUR'AN WAQF IBTIDA | AL QUDDUS A5 KERTAS HVS": "Al Quddus A5 HVS",
             "AL QUR'AN AL AQEEL B5 KERTAS HVS": "Al Aqeel B5 HVS",
             "KAMUS BERGAMBAR 3 BAHASA - INDONESIA INGGRIS ARAB": "Kamus Bergambar 3 Bahasa",
