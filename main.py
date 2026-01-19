@@ -1809,7 +1809,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     total_biaya_proses_pesanan = total_row['Biaya Proses Pesanan'].iloc[0]
     total_jumlah_terjual = total_row['Jumlah Terjual'].iloc[0]
     total_jumlah_eksemplar = total_row['Jumlah Eksemplar'].iloc[0] # <-- DITAMBAH
-    biaya_ekspedisi_col_name = 'Biaya Kirim ke Sby' if store_type == 'Pacific Bookstore' else 'Biaya Ekspedisi'
+    biaya_ekspedisi_col_name = 'Biaya Ekspedisi' if store_type == 'Pacific Bookstore' else 'Biaya Ekspedisi'
     total_biaya_ekspedisi = total_row[biaya_ekspedisi_col_name].iloc[0]
     total_margin = total_penjualan_netto - total_biaya_packing - total_biaya_ekspedisi - total_pembelian - total_iklan_klik
     total_row['Margin'] = total_margin
