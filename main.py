@@ -641,33 +641,53 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                         else:
                             part_to_append = '' # Abaikan jika cuma warna
 
-                elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean:
+                # elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean:
 
-                    harga = str(rekap_df['Harga Setelah Diskon']).replace('.', '').replace(',', '').strip()
+                #     harga = str(rekap_df['Harga Setelah Diskon']).replace('.', '').replace(',', '').strip()
                 
-                    if harga == "19200":
-                        part_to_append = "GROSIR 3-4"
-                    elif harga == "18900":
-                        part_to_append = "GROSIR 5-6"
-                    elif harga == "18600":
-                        part_to_append = "GROSIR > 7"
-                    else:
-                        part_to_append = ""
+                #     if harga == "19200":
+                #         part_to_append = "GROSIR 3-4"
+                #     elif harga == "18900":
+                #         part_to_append = "GROSIR 5-6"
+                #     elif harga == "18600":
+                #         part_to_append = "GROSIR > 7"
+                #     else:
+                #         part_to_append = ""
                 
-                elif "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean:
+                # elif "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean:
                 
-                    harga = str(rekap_df['Harga Setelah Diskon']).replace('.', '').replace(',', '').strip()
+                #     harga = str(rekap_df['Harga Setelah Diskon']).replace('.', '').replace(',', '').strip()
                 
-                    if harga == "21550":
-                        part_to_append = "GROSIR 3-4"
-                    elif harga == "21300":
-                        part_to_append = "GROSIR 5-6"
-                    elif harga == "21000":
-                        part_to_append = "GROSIR > 7"
-                    else:
-                        part_to_append = ""
+                #     if harga == "21550":
+                #         part_to_append = "GROSIR 3-4"
+                #     elif harga == "21300":
+                #         part_to_append = "GROSIR 5-6"
+                #     elif harga == "21000":
+                #         part_to_append = "GROSIR > 7"
+                #     else:
+                #         part_to_append = ""
                             
                 # elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean or "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean or "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris" in nama_produk_clean:
+                harga_satuan = int(float(str(row['Harga Setelah Diskon']).replace(',', '')) if pd.notnull(row['Harga Setelah Diskon']) else 0)
+
+                part_to_append = ""
+                elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean:
+                    if harga_satuan == 19200:
+                        part_to_append = "GROSIR 3-4"
+                    elif harga_satuan == 18900:
+                        part_to_append = "GROSIR 5-6"
+                    elif harga_satuan == 18600:
+                        part_to_append = "GROSIR > 7"
+                
+                elif "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean:
+                    if harga_satuan == 21550:
+                        part_to_append = "GROSIR 3-4"
+                    elif harga_satuan == 21300:
+                        part_to_append = "GROSIR 5-6"
+                    elif harga_satuan == 21000:
+                        part_to_append = "GROSIR > 7"
+    
+            
                 elif "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris" in nama_produk_clean:
                     var_upper = var_str.upper()
                     # Cari "PAKET ISI X" atau "SATUAN"
@@ -1581,7 +1601,18 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     #     summary_df['Biaya Layanan 2%'] - summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] -
     #     summary_df['Biaya Proses Pesanan']
     # )
-    summary_df['Penjualan Netto'] = summary_df['Total Penghasilan']
+    # summary_df['Penjualan Netto'] = summary_df['Total Penghasilan']
+
+    if store_type in ['Pacific Bookstore']:
+        summary_df['Penjualan Netto'] = (
+            summary_df['Total Harga Produk'] - summary_df['Voucher Ditanggung Penjual'] -
+            summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 8%'] -
+            summary_df['Biaya Layanan 2%'] - summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] -
+            summary_df['Biaya Proses Pesanan']
+        )
+    else:
+        summary_df['Penjualan Netto'] = summary_df['Total Penghasilan']
+        
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
     summary_df['Jumlah Eksemplar'] = summary_df.apply(
