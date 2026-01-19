@@ -611,7 +611,15 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
             if pd.notna(nama_variasi_ori):
                 var_str = str(nama_variasi_ori).strip()
                 part_to_append = ''
-                harga_satuan = str(rekap_df['Harga Setelah Diskon']).replace('.', '').replace(',', '').strip()
+                
+                val_raw = rekap_df.loc[idx, 'Harga Setelah Diskon']
+                
+                # 2. Bersihkan dan ubah ke integer agar bisa dibandingkan dengan angka
+                try:
+                    # Menghilangkan titik/koma jika ada dan konversi ke int
+                    harga_satuan = int(float(str(val_raw).replace('.', '').replace(',', '')))
+                except:
+                    harga_satuan = 0
     
                 # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
                 produk_yang_ambil_full_variasi = [
@@ -1619,7 +1627,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     )
 
     if store_type in ['Pacific Bookstore']:
-        summary_df['Biaya Kirim ke Sby'] = summary_df['Jumlah Terjual'] * 733
+        # summary_df['Biaya Kirim ke Sby'] = summary_df['Jumlah Terjual'] * 733
+        summary_df['Biaya Kirim ke Sby'] = 0
         biaya_ekspedisi_final = summary_df['Biaya Kirim ke Sby']
     else:
         summary_df['Biaya Ekspedisi'] = 0
@@ -1693,7 +1702,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan Klik': summary_df['Iklan Klik'], 'Biaya Packing': summary_df['Biaya Packing'],
     }
     if store_type in ['Pacific Bookstore']:
-        summary_final_data['Biaya Kirim ke Sby'] = biaya_ekspedisi_final
+        # summary_final_data['Biaya Kirim ke Sby'] = biaya_ekspedisi_final
+        summary_final_data['Biaya Ekspedisi'] = biaya_ekspedisi_final
     else:
         summary_final_data['Biaya Ekspedisi'] = biaya_ekspedisi_final
     summary_final_data.update({
