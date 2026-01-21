@@ -2948,10 +2948,10 @@ elif marketplace_choice == "TikTok":
     # Untuk sekarang, TikTok hanya untuk Human Store
     store_choice = st.selectbox(
         "Pilih Toko TikTok:",
-        ("Human Store", "DAMA.ID STORE"), # Hanya toko yang relevan untuk TikTok
+        ("Human Store", "DAMA.ID STORE", "Pacific Bookstore"), # Hanya toko yang relevan untuk TikTok
         key='tiktok_store'
     )
-    st.info("Marketplace TikTok saat ini hanya tersedia untuk Human Store dan DAMA.ID STORE.")
+    st.info("Marketplace TikTok saat ini hanya tersedia untuk Human Store, DAMA.ID STORE dan "Pacific Bookstore.")
 
 # Hanya tampilkan uploader jika marketplace sudah dipilih
 if marketplace_choice:
@@ -3095,7 +3095,7 @@ if marketplace_choice:
     if tiktok_base_files and store_choice == "DAMA.ID STORE":
         # DAMA.ID STORE: creator_order & pdfs opsional
         show_tiktok_button = True
-    elif tiktok_base_files and store_choice == "Human Store":
+    elif tiktok_base_files and store_choice in ["Human Store", "Pacific Bookstore"]:
         # Human Store: creator_order & pdfs wajib
         show_tiktok_button = uploaded_creator_order
 
