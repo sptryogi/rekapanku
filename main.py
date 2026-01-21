@@ -2951,7 +2951,7 @@ elif marketplace_choice == "TikTok":
         ("Human Store", "DAMA.ID STORE", "Pacific Bookstore"), # Hanya toko yang relevan untuk TikTok
         key='tiktok_store'
     )
-    st.info("Marketplace TikTok saat ini hanya tersedia untuk Human Store, DAMA.ID STORE dan "Pacific Bookstore.")
+    st.info("Marketplace TikTok saat ini hanya tersedia untuk Human Store, DAMA.ID STORE dan Pacific Bookstore.")
 
 # Hanya tampilkan uploader jika marketplace sudah dipilih
 if marketplace_choice:
