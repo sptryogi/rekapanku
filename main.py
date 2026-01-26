@@ -2504,7 +2504,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     cols_to_clean = [
         'SKU SUBTOTAL BEFORE DISCOUNT', 'SKU SELLER DISCOUNT', 'QUANTITY', 
         'BONUS CASHBACK SERVICE FEE', 'VOUCHER XTRA SERVICE FEE', 'TOTAL SETTLEMENT AMOUNT',
-        'SKU UNIT ORIGINAL PRICE' # Penting untuk Harga Satuan nanti
+        'SKU UNIT ORIGINAL PRICE', 'PRE-ORDER SERVICE FEE' # Penting untuk Harga Satuan nanti
     ]
     for col in cols_to_clean:
         if col in rekap_df.columns:
@@ -2535,11 +2535,16 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     rekap_df['Harga Satuan Temp'] = rekap_df['SKU UNIT ORIGINAL PRICE'] - (rekap_df['SKU SELLER DISCOUNT'] / rekap_df['QUANTITY'].replace(0, 1))
 
+    product_count = rekap_df.groupby('ORDER ID')['ORDER ID'].transform('size')
+    rekap_df['Biaya Pre-order'] = rekap_df['PRE-ORDER SERVICE FEE'] / product_count
+
     # 2. LOGIKA AGREGASI PRODUK (Sekarang akan bekerja dengan benar)
     agg_rules = {
         'QUANTITY': 'sum', # <-- Penjumlahan Kuantitas terjadi di sini
         'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
         'SKU SELLER DISCOUNT': 'sum',
+        'PRE-ORDER SERVICE FEE': 'first', # Ambil salah satu saja karena akan dibagi
+        'Biaya Pre-order': 'first',
         'Harga Satuan Temp': 'first', # Ambil harga satuan pertama
         'BONUS CASHBACK SERVICE FEE': 'first', # Jumlahkan biaya ini
         'VOUCHER XTRA SERVICE FEE': 'first',   # Jumlahkan biaya ini
@@ -2610,7 +2615,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         rekap_df['Komisi Dinamis 5%'] -
         rekap_df['Biaya Layanan Cashback Bonus 1,5%'] -
         rekap_df['Biaya Layanan Voucher Xtra'] -
-        rekap_df['Biaya Proses Pesanan']
+        rekap_df['Biaya Proses Pesanan'] -
+        rekap_df['Biaya Pre-order']
     )
 
     # 6. MEMBUAT FINAL DATAFRAME
@@ -2630,6 +2636,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Komisi Affiliate': rekap_df['Komisi Affiliate'],
         'Biaya Komisi Platform 8%': rekap_df['Biaya Komisi Platform 8%'],
         'Komisi Dinamis 5%': rekap_df['Komisi Dinamis 5%'],
+        'Biaya Pre-order':rekap_df['Biaya Pre-order'],
         'Biaya Layanan Cashback Bonus 1,5%': rekap_df['Biaya Layanan Cashback Bonus 1,5%'],
         'Biaya Layanan Voucher Xtra': rekap_df['Biaya Layanan Voucher Xtra'],
         'Biaya Proses Pesanan': rekap_df['Biaya Proses Pesanan'],
@@ -2679,7 +2686,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         rekap_final['Komisi Dinamis 5%'] -
         rekap_final['Biaya Layanan Cashback Bonus 1,5%'] -
         rekap_final['Biaya Layanan Voucher Xtra'] -
-        rekap_final['Biaya Proses Pesanan']
+        rekap_final['Biaya Proses Pesanan'] -
+        rekap_df['Biaya Pre-order']
     )
     
     # 4. Susun ulang kolom dan perbarui nomor baris 'No.'
@@ -2687,7 +2695,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'No.', 'No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Nama Produk',
         'Variasi', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Sebelum Diskon',
         'Diskon Penjual', 'Total Penjualan', 'Komisi Affiliate',
-        'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Biaya Layanan Cashback Bonus 1,5%',
+        'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Biaya Pre-order' 'Biaya Layanan Cashback Bonus 1,5%',
         'Biaya Layanan Voucher Xtra', 'Biaya Proses Pesanan', 'Total Penghasilan'
     ]
     rekap_final = rekap_final.reindex(columns=final_columns_order)
@@ -2709,6 +2717,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         'Komisi Affiliate': 'sum',
         'Biaya Komisi Platform 8%': 'sum',
         'Komisi Dinamis 5%': 'sum',
+        'Biaya Pre-order': 'sum',
         'Biaya Layanan Cashback Bonus 1,5%': 'sum',
         'Biaya Layanan Voucher Xtra': 'sum',
         'Biaya Proses Pesanan': 'sum',
@@ -2722,7 +2731,8 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         summary_df['Komisi Dinamis 5%'] -
         summary_df['Biaya Layanan Cashback Bonus 1,5%'] -
         summary_df['Biaya Layanan Voucher Xtra'] -
-        summary_df['Biaya Proses Pesanan']
+        summary_df['Biaya Proses Pesanan'] -
+        summary_df['Biaya Pre-order']
     )
     
     # # 1. Ambil 'Nama Produk', 'Variasi', dan 'Jumlah' dari sheet EKSPEDISI
@@ -2791,12 +2801,29 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         (summary_df['Jumlah Terjual'] * summary_df['Harga Beli']) + (summary_df['Jumlah Terjual'] * summary_df['Harga Custom TLJ']),
         summary_df['Jumlah Terjual'] * summary_df['Harga Beli']
     )
+
+    # 2. Logika Distribusi Iklan (Taruh sebelum perhitungan Margin)
+    if not product_data_df.empty:
+        # Ambil kolom Biaya dan Nama Produk
+        ads_df = product_data_df[['NAMA PRODUK', 'BIAYA']].copy()
+        
+        # Hitung berapa banyak variasi untuk setiap Nama Produk di summary_df
+        var_count_per_product = summary_df.groupby('Nama Produk')['Variasi'].transform('count')
+        
+        # Merge biaya iklan ke summary_df berdasarkan Nama Produk
+        summary_df = pd.merge(summary_df, ads_df, left_on='Nama Produk', right_on='NAMA PRODUK', how='left')
+        
+        # Hitung Iklan: Biaya total / jumlah variasi yang ada di tabel
+        summary_df['Iklan'] = summary_df['BIAYA'].fillna(0) / var_count_per_product
+    else:
+        summary_df['Iklan'] = 0
     
     summary_df['Margin'] = (
         summary_df['Penjualan Netto'] -
         summary_df['Biaya Packing'] -
         summary_df['Biaya Ekspedisi'] -
-        summary_df['Total Pembelian']
+        summary_df['Total Pembelian'] -
+        summary_df['Biaya Pre-order']
     )
     
     # ... (Sisa fungsi Anda dari sini sampai akhir tetap sama persis) ...
@@ -2812,9 +2839,9 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         'Total Penjualan': summary_df['Total Pemasukan'],
         # 'Total Diskon Penjual': summary_df['Diskon Penjual'], 'Total Harga Sesudah Diskon': summary_df['Total Penjualan'], 
         'Komisi Affiliate': summary_df['Komisi Affiliate'], 'Biaya Komisi Platform 8%': summary_df['Biaya Komisi Platform 8%'],
-        'Komisi Dinamis 5%': summary_df['Komisi Dinamis 5%'], 'Biaya Layanan Cashback Bonus 1,5%': summary_df['Biaya Layanan Cashback Bonus 1,5%'],
+        'Komisi Dinamis 5%': summary_df['Komisi Dinamis 5%'], 'Biaya Pre-order': summary_df['Biaya Pre-order'], 'Biaya Layanan Cashback Bonus 1,5%': summary_df['Biaya Layanan Cashback Bonus 1,5%'],
         'Biaya Layanan Voucher Xtra': summary_df['Biaya Layanan Voucher Xtra'], 'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
-        'Penjualan Netto': summary_df['Penjualan Netto'], 'Biaya Packing': summary_df['Biaya Packing'],
+        'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan': summary_df['Iklan'],'Biaya Packing': summary_df['Biaya Packing'],
         'Biaya Ekspedisi': summary_df['Biaya Ekspedisi'], 'Harga Beli': summary_df['Harga Beli'],
         'Harga Custom TLJ': summary_df['Harga Custom TLJ'], 'Total Pembelian': summary_df['Total Pembelian'],
         'Margin': summary_df['Margin'], 'Persentase': summary_df['Persentase'],
@@ -2830,6 +2857,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     total_margin = total_row['Penjualan Netto'].iloc[0] - total_row['Biaya Packing'].iloc[0] - total_row['Biaya Ekspedisi'].iloc[0] - total_row['Total Pembelian'].iloc[0]
     total_row['Margin'] = total_margin
     total_penjualan = total_row['Total Penjualan'].iloc[0]
+    total_iklan = total_row['Biaya Pre-order'].iloc[0]
     total_row['Persentase'] = (total_margin / total_penjualan) if total_penjualan != 0 else 0
     total_row['Penjualan Per Hari'] = round(total_penjualan / 7, 1)
     total_jumlah_pesanan = total_row['Jumlah Pesanan'].iloc[0]
@@ -3073,6 +3101,7 @@ if marketplace_choice:
         with col1:
             uploaded_income_tiktok = st.file_uploader("1. Import file Income (Order details & Reports)", type="xlsx")
             uploaded_semua_pesanan = st.file_uploader("2. Import file semua pesanan.xlsx", type="xlsx")
+            product_data_file = st.file_uploader("3. Import file Product Data.xlsx", type="xlsx")
         with col2:
             # --- TAMBAHKAN KONDISI DI SINI ---
             # Hanya tampilkan uploader creator order jika BUKAN DAMA.ID STORE
@@ -3214,6 +3243,13 @@ if marketplace_choice:
                     reports_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=0)
                     reports_df = clean_columns(reports_df)
                     reports_df.columns = [col.upper() for col in reports_df.columns]
+                    if product_data_file:
+                        # Load file product data
+                        product_data_df = pd.read_excel(product_data_file)
+                        # Pastikan nama kolom konsisten
+                        product_data_df.columns = [col.upper().strip() for col in product_data_df.columns]
+                    else:
+                        product_data_df = pd.DataFrame()
                     # Baca 'semua pesanan' dan langsung bersihkan kolomnya
                     # 1. Baca file tanpa header, sehingga semua baris (termasuk header asli) menjadi data
                     wb = load_workbook(uploaded_semua_pesanan, data_only=True)
@@ -3273,7 +3309,7 @@ if marketplace_choice:
     
                     status_text.text("Menyusun sheet 'SUMMARY' (TikTok)...")
                     # summary_processed = process_summary_tiktok(rekap_processed, katalog_df, harga_custom_tlj_df, ekspedisi_processed)
-                    summary_processed = process_summary_tiktok(rekap_processed, katalog_df, harga_custom_tlj_df, ekspedisi_processed, store_choice)
+                    summary_processed = process_summary_tiktok(rekap_processed, katalog_df, harga_custom_tlj_df, ekspedisi_processed, product_data_df, store_choice)
                     progress_bar.progress(85, text="Sheet 'SUMMARY' selesai.")
     
                     file_name_output = f"Rekapanku_TikTok_{store_choice}.xlsx"
@@ -3284,7 +3320,8 @@ if marketplace_choice:
                         'sheet Order details': order_details_df,
                         'sheet Reports': reports_df,
                         'sheet semua pesanan': semua_pesanan_df,
-                        'sheet creator order-all': creator_order_all_df
+                        'sheet creator order-all': creator_order_all_df,
+                        'sheet Iklan': product_data_df
                     }
 
                 # ... (Sisa kode untuk membuat file Excel dan tombol download tetap sama) ...
