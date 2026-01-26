@@ -589,7 +589,8 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers",
         "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers",
         "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris",
-        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |"
+        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |",
+        "PAKET MURAH ALQURAN AL AQEEL MUSHAF NON TERJEMAHAN | SURABAYA | al quran Wakaf/Shodaqoh hadiah hampers islami"
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
@@ -633,6 +634,10 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
                     part_to_append = var_str
                 # --- AKHIR LOGIKA KHUSUS ---
+                elif "PAKET MURAH ALQURAN AL AQEEL MUSHAF NON TERJEMAHAN | SURABAYA | al quran Wakaf/Shodaqoh hadiah hampers islami" in nama_produk_clean:
+                    # Menghapus apapun yang ada di dalam kurung ( ) termasuk kurungnya
+                    # Contoh: "A5 KORAN (MERAH)" menjadi "A5 KORAN"
+                    part_to_append = re.sub(r'\(.*?\)', '', var_str).strip()
                 elif "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |" in nama_produk_clean:
                     # Asumsi format variasi: "WARNA, SPESIFIKASI" (misal: "Merah, sisipan 1 halaman")
                     if ',' in var_str:
