@@ -322,7 +322,7 @@ def process_rekap(order_df, income_df, seller_conv_df):
     rekap_df['Total Penghasilan Dibagi'] = (rekap_df['Total Penghasilan'] / product_count_per_order).fillna(0)
 
     # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
-    rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher dari Penjual'])
+    rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher disponsor oleh Penjual'])
     rekap_df['Promo Gratis Ongkir dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Promo Gratis Ongkir dari Penjual'])
     # Pastikan kolom ongkir retur dibersihkan TANPA abs()
 
