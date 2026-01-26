@@ -1579,6 +1579,13 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             num_rows = mask_summary.sum()
             if num_rows > 0:
                 summary_df.loc[mask_summary, 'Iklan Klik'] = total_biaya / num_rows
+            else:
+                # --- PERBAIKAN DI SINI ---
+                # Jika 0 penjualan, buat baris baru agar biaya iklan tetap muncul di Summary
+                new_row_ads = pd.DataFrame([{col: 0 for col in summary_df.columns}])
+                new_row_ads['Nama Produk'] = p_biasa
+                new_row_ads['Iklan Klik'] = total_biaya
+                summary_df = pd.concat([summary_df, new_row_ads], ignore_index=True)
             iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(p_biasa, case=False, na=False, regex=False)]
     
     # 2. Proses Produk Normal (yang tersisa di iklan_data)
