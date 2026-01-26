@@ -2655,6 +2655,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Jumlah Terjual',
         'Total Harga Sebelum Diskon',
         'Diskon Penjual',
+        'Biaya Pre-order',
         'Biaya Layanan Cashback Bonus 1,5%',
         'Biaya Layanan Voucher Xtra',
         'Harga Satuan',
@@ -2687,7 +2688,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         rekap_final['Biaya Layanan Cashback Bonus 1,5%'] -
         rekap_final['Biaya Layanan Voucher Xtra'] -
         rekap_final['Biaya Proses Pesanan'] -
-        rekap_df['Biaya Pre-order']
+        rekap_final['Biaya Pre-order']
     )
     
     # 4. Susun ulang kolom dan perbarui nomor baris 'No.'
@@ -2695,7 +2696,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'No.', 'No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Nama Produk',
         'Variasi', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Sebelum Diskon',
         'Diskon Penjual', 'Total Penjualan', 'Komisi Affiliate',
-        'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Biaya Pre-order' 'Biaya Layanan Cashback Bonus 1,5%',
+        'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Biaya Pre-order', 'Biaya Layanan Cashback Bonus 1,5%',
         'Biaya Layanan Voucher Xtra', 'Biaya Proses Pesanan', 'Total Penghasilan'
     ]
     rekap_final = rekap_final.reindex(columns=final_columns_order)
