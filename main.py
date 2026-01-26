@@ -683,7 +683,9 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                             
                 # elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean or "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean or "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris" in nama_produk_clean:
                 elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean:
-                    if harga_satuan == 19200:
+                    if harga_satuan == 19500:
+                        part_to_append = "GROSIR 1-2"
+                    elif harga_satuan == 19200:
                         part_to_append = "GROSIR 3-4"
                     elif harga_satuan == 18900:
                         part_to_append = "GROSIR 5-6"
@@ -691,7 +693,9 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                         part_to_append = "GROSIR > 7"
                 
                 elif "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean:
-                    if harga_satuan == 21550:
+                    if harga_satuan == 21800:
+                        part_to_append = "GROSIR 1-2"
+                    elif harga_satuan == 21550:
                         part_to_append = "GROSIR 3-4"
                     elif harga_satuan == 21300:
                         part_to_append = "GROSIR 5-6"
@@ -1770,7 +1774,9 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers": "Al Aqeel A5 Kertas Koran",
             "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers": "Al Aqeel A6 Kertas HVS",
             "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |": "Al Aqeel A6 Edisi Tahlilan Kertas HVS",
+            "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa": "Al Aqeel A6 Edisi Tahlilan Kertas HVS",
             "Al Quran Saku Resleting Al Quddus A7 Cover Kulit Kertas QPP | Alquran SURABAYA": "Al Quddus A7 Cover Kulit Kertas QPP",
+            "Al Quran Saku Resleting Al Quddus A7 QPP Cover Kulit | SURABAYA | Untuk Santri Traveler Muslim": "Al Quddus A7 Cover Kulit Kertas QPP",
             "Al Quran Terjemah Al Aleem A5 Kertas HVS 15 Baris | SURABAYA | Alquran Untuk Majelis Taklim Kajian": "Al Aleem A5 Kertas HVS",
             "Al Quran Wakaf Ibtida Al Quddus A5 Kertas HVS | Alquran SURABAYA": "Al Quddus Ibtida A5 Kertas HVS"
         }
@@ -2189,6 +2195,13 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
             num_rows = mask_summary.sum()
             if num_rows > 0:
                 summary_df.loc[mask_summary, 'Iklan Klik'] = total_biaya / num_rows
+            else:
+                # --- PERBAIKAN DI SINI ---
+                # Jika 0 penjualan, buat baris baru agar biaya iklan tetap muncul di Summary
+                new_row_ads = pd.DataFrame([{col: 0 for col in summary_df.columns}])
+                new_row_ads['Nama Produk'] = p_biasa
+                new_row_ads['Iklan Klik'] = total_biaya
+                summary_df = pd.concat([summary_df, new_row_ads], ignore_index=True)
             iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(p_tahlil, case=False, na=False, regex=False)]
                 
     summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk Original', right_on='Nama Iklan', how='left')
