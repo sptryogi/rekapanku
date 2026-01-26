@@ -2802,19 +2802,38 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         summary_df['Jumlah Terjual'] * summary_df['Harga Beli']
     )
 
-    # 2. Logika Distribusi Iklan (Taruh sebelum perhitungan Margin)
+    # 2. Logika Distribusi Iklan (MODIFIKASI: Menambahkan produk iklan tanpa penjualan)
     if not product_data_df.empty:
         # Ambil kolom Biaya dan Nama Produk
         ads_df = product_data_df[['NAMA PRODUK', 'BIAYA']].copy()
         
-        # Hitung berapa banyak variasi untuk setiap Nama Produk di summary_df
+        # Hitung berapa banyak variasi untuk setiap Nama Produk yang ADA di penjualan
         var_count_per_product = summary_df.groupby('Nama Produk')['Variasi'].transform('count')
+        summary_df['var_count'] = var_count_per_product
+
+        # Merge dengan 'outer' agar produk di ads_df yang tidak ada di summary_df tetap masuk
+        summary_df = pd.merge(
+            summary_df, 
+            ads_df, 
+            left_on='Nama Produk', 
+            right_on='NAMA PRODUK', 
+            how='outer'
+        )
         
-        # Merge biaya iklan ke summary_df berdasarkan Nama Produk
-        summary_df = pd.merge(summary_df, ads_df, left_on='Nama Produk', right_on='NAMA PRODUK', how='left')
+        # Jika Nama Produk kosong (hasil outer merge dari iklan saja), isi dari NAMA PRODUK iklan
+        summary_df['Nama Produk'] = summary_df['Nama Produk'].fillna(summary_df['NAMA PRODUK'])
         
-        # Hitung Iklan: Biaya total / jumlah variasi yang ada di tabel
-        summary_df['Iklan'] = summary_df['BIAYA'].fillna(0) / var_count_per_product
+        # Hitung Iklan: 
+        # Jika ada penjualannya (var_count > 0), bagi biayanya. 
+        # Jika tidak ada penjualan (iklan saja), tampilkan biaya penuh.
+        summary_df['Iklan'] = np.where(
+            summary_df['var_count'] > 0,
+            summary_df['BIAYA'].fillna(0) / summary_df['var_count'],
+            summary_df['BIAYA'].fillna(0)
+        )
+        
+        # Hapus kolom pembantu
+        summary_df.drop(columns=['NAMA PRODUK', 'BIAYA', 'var_count'], inplace=True, errors='ignore')
     else:
         summary_df['Iklan'] = 0
     
@@ -2865,6 +2884,18 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     total_row['Jumlah buku per pesanan'] = round(total_jumlah_terjual / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1)
     for col in ['Harga Satuan', 'Harga Beli', 'No', 'Harga Custom TLJ', 'Variasi']:
         if col in total_row.columns: total_row[col] = None
+
+    # Pastikan semua kolom numerik yang kosong diisi 0 (terutama untuk produk yang cuma ada di iklan)
+    cols_to_fix = [
+        'Jumlah Terjual', 'Total Penjualan', 'Penjualan Netto', 'Margin', 
+        'Persentase', 'Total Pemasukan', 'Harga Satuan', 'Biaya Proses Pesanan', 'Jumlah Pesanan'
+    ]
+    for col in cols_to_fix:
+        if col in summary_df.columns:
+            summary_df[col] = summary_df[col].fillna(0)
+
+    # Variasi untuk produk iklan saja bisa diisi strip atau kosong
+    summary_df['Variasi'] = summary_df['Variasi'].fillna('')
     
     summary_with_total = pd.concat([summary_final, total_row], ignore_index=True)
     return summary_with_total.fillna(0)
