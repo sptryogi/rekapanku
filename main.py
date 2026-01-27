@@ -2847,14 +2847,14 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     else:
         summary_df['Iklan'] = 0
 
-    summary_df['Penjualan Netto'] = summary_df['Penjualan Netto'] - summary_df['Iklan']
+    # summary_df['Penjualan Netto'] = summary_df['Penjualan Netto'] - summary_df['Iklan']
     
     summary_df['Margin'] = (
         summary_df['Penjualan Netto'] -
         summary_df['Biaya Packing'] -
         summary_df['Biaya Ekspedisi'] -
         summary_df['Total Pembelian'] -
-        summary_df['Biaya Pre-order']
+        summary_df['Iklan']
     )
     
     # ... (Sisa fungsi Anda dari sini sampai akhir tetap sama persis) ...
