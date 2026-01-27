@@ -2545,7 +2545,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'SKU SUBTOTAL BEFORE DISCOUNT': 'sum',
         'SKU SELLER DISCOUNT': 'sum',
         'PRE-ORDER SERVICE FEE': 'sum', # Ambil salah satu saja karena akan dibagi
-        'Biaya Pre-order': 'first',
+        'Biaya Pre-order': 'sum',
         'Komisi Iklan Affiliate': 'first',
         'Harga Satuan Temp': 'first', # Ambil harga satuan pertama
         'BONUS CASHBACK SERVICE FEE': 'first', # Jumlahkan biaya ini
