@@ -2742,7 +2742,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         summary_df['Biaya Layanan Cashback Bonus 1,5%'] -
         summary_df['Biaya Layanan Voucher Xtra'] -
         summary_df['Biaya Proses Pesanan'] -
-        summary_df['Biaya Pre-order']
+        summary_df['Biaya Pre-order'] -
     )
     
     # # 1. Ambil 'Nama Produk', 'Variasi', dan 'Jumlah' dari sheet EKSPEDISI
@@ -2846,6 +2846,8 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         summary_df.drop(columns=['NAMA PRODUK', 'BIAYA', 'var_count'], inplace=True, errors='ignore')
     else:
         summary_df['Iklan'] = 0
+
+    summary_df['Penjualan Netto'] = summary_df['Penjualan Netto'] - summary_df['Iklan']
     
     summary_df['Margin'] = (
         summary_df['Penjualan Netto'] -
