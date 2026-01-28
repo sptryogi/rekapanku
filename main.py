@@ -2850,7 +2850,10 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     else:
         summary_df['Iklan'] = 0
 
-    # summary_df['Penjualan Netto'] = summary_df['Penjualan Netto'] - summary_df['Iklan']
+    cols_calc = ['Penjualan Netto', 'Biaya Packing', 'Biaya Ekspedisi', 'Total Pembelian', 'Biaya Pre-order']
+    for col in cols_calc:
+        if col in summary_df.columns:
+            summary_df[col] = summary_df[col].fillna(0)
     
     summary_df['Margin'] = (
         summary_df['Penjualan Netto'] -
@@ -2888,7 +2891,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
 
     total_row = pd.DataFrame(summary_final.sum(numeric_only=True)).T
     total_row['Nama Produk'] = 'Total'
-    total_margin = total_row['Penjualan Netto'].iloc[0] - total_row['Biaya Packing'].iloc[0] - total_row['Biaya Ekspedisi'].iloc[0] - total_row['Total Pembelian'].iloc[0]
+    total_margin = total_row['Penjualan Netto'].iloc[0] - total_row['Biaya Packing'].iloc[0] - total_row['Biaya Ekspedisi'].iloc[0] - total_row['Total Pembelian'].iloc[0] - total_row['Iklan'].iloc[0]
     total_row['Margin'] = total_margin
     total_penjualan = total_row['Total Penjualan'].iloc[0]
     total_iklan = total_row['Biaya Pre-order'].iloc[0]
