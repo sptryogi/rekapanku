@@ -2550,7 +2550,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Harga Satuan Temp': 'first', # Ambil harga satuan pertama
         'BONUS CASHBACK SERVICE FEE': 'first', # Jumlahkan biaya ini
         'VOUCHER XTRA SERVICE FEE': 'first',   # Jumlahkan biaya ini
-        'TOTAL SETTLEMENT AMOUNT': 'first' # Ambil settlement amount pertama (biasanya sama per pesanan)
+        'TOTAL SETTLEMENT AMOUNT': 'first', # Ambil settlement amount pertama (biasanya sama per pesanan)
+        'ORDER SOURCE': 'first'
     }
 
     # Tambahkan kolom waktu secara dinamis menggunakan variabel yang kita buat
@@ -2644,7 +2645,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Biaya Layanan Cashback Bonus 1,5%': rekap_df['Biaya Layanan Cashback Bonus 1,5%'],
         'Biaya Layanan Voucher Xtra': rekap_df['Biaya Layanan Voucher Xtra'],
         'Biaya Proses Pesanan': rekap_df['Biaya Proses Pesanan'],
-        'Total Penghasilan': rekap_df['Total Penghasilan']
+        'Total Penghasilan': rekap_df['Total Penghasilan'],
+        'Sumber Pesanan': rekap_df['ORDER SOURCE']
     })
 
     # 1. Tentukan kolom mana yang akan dijumlahkan dan mana yang akan diambil nilai pertamanya
@@ -2664,7 +2666,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Biaya Layanan Cashback Bonus 1,5%',
         'Biaya Layanan Voucher Xtra',
         'Harga Satuan',
-        'Biaya Proses Pesanan'
+        'Biaya Proses Pesanan',
+        'Sumber Pesanan'
     ]
     
     # Buat dictionary aturan agregasi
@@ -2703,12 +2706,12 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Variasi', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Sebelum Diskon',
         'Diskon Penjual', 'Total Penjualan', 'Komisi Affiliate',
         'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Komisi Iklan Affiliate', 'Biaya Pre-order', 'Biaya Layanan Cashback Bonus 1,5%',
-        'Biaya Layanan Voucher Xtra', 'Biaya Proses Pesanan', 'Total Penghasilan'
+        'Biaya Layanan Voucher Xtra', 'Biaya Proses Pesanan', 'Total Penghasilan', 'Sumber Pesanan'
     ]
     rekap_final = rekap_final.reindex(columns=final_columns_order)
     rekap_final['No.'] = np.arange(1, len(rekap_final) + 1)
 
-    cols_to_blank = ['No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas']
+    cols_to_blank = ['No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Sumber Pesanan']
     rekap_final.loc[rekap_final['No. Pesanan'].duplicated(), cols_to_blank] = ''
 
     return rekap_final.fillna(0)
