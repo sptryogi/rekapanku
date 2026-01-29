@@ -16,6 +16,25 @@ from openpyxl import load_workbook
 
 # --- FUNGSI-FUNGSI PEMROSESAN ---
 
+def get_pretty_date_range(start_date, end_date):
+    try:
+        dt_start = pd.to_datetime(start_date)
+        dt_end = pd.to_datetime(end_date)
+        
+        bulan_indo = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+        
+        d1, m1, y1 = dt_start.day, dt_start.month, dt_start.year
+        d2, m2, y2 = dt_end.day, dt_end.month, dt_end.year
+        
+        if y1 != y2:
+            return f"{d1} {bulan_indo[m1-1]} {y1} - {d2} {bulan_indo[m2-1]} {y2}"
+        elif m1 != m2:
+            return f"{d1} {bulan_indo[m1-1]} - {d2} {bulan_indo[m2-1]} {y2}"
+        else:
+            return f"{d1} - {d2} {bulan_indo[m1-1]} {y2}"
+    except:
+        return ""
+
 def clean_and_convert_to_numeric(column):
     """Menghapus semua karakter non-digit (kecuali titik dan minus) dan mengubah kolom menjadi numerik."""
     if column.dtype == 'object':
@@ -3248,6 +3267,15 @@ if marketplace_choice:
                             if col in df.columns:
                               # Gunakan fungsi lama yang umum
                               df[col] = clean_and_convert_to_numeric(df[col])
+
+                    try:
+                        # Baca mentah sheet Summary untuk ambil cell B7 dan B8
+                        df_date_raw = pd.read_excel(uploaded_income, sheet_name='Summary', header=None, nrows=10, usecols="B")
+                        tgl_awal = df_date_raw.iloc[6, 0] # B7
+                        tgl_akhir = df_date_raw.iloc[7, 0] # B8
+                        date_range_str = get_pretty_date_range(tgl_awal, tgl_akhir)
+                    except:
+                        date_range_str = ""
                 
                     # --- LOGIKA PEMROSESAN BERDASARKAN TOKO ---
                     status_text.text("Menyusun sheet 'REKAP' (Shopee)...")
@@ -3272,8 +3300,9 @@ if marketplace_choice:
                     else: # Human Store atau Pacific Bookstore
                         summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df, harga_custom_tlj_df, store_type=store_choice)
                     progress_bar.progress(80, text="Sheet 'SUMMARY' selesai.")
-                    
-                    file_name_output = f"Rekapanku_Shopee_{store_choice}.xlsx"
+
+                    suffix_tgl = f" {date_range_str}" if date_range_str else ""
+                    file_name_output = f"Rekapanku_Shopee_{store_choice}_{suffix_tgl}.xlsx"
                     sheets = {
                         'SUMMARY': summary_processed, 'REKAP': rekap_processed, 'IKLAN': iklan_processed,
                         'sheet order-all': order_all_df, 'sheet income dilepas': income_dilepas_df,
@@ -3343,6 +3372,18 @@ if marketplace_choice:
                         # Jika tidak ada PDF (kasus DAMA.ID STORE opsional)
                         status_text.text("Melewati pemrosesan PDF nota resi...")
                     progress_bar.progress(40, text="File PDF selesai diproses.")
+
+                    try:
+                        # Baca mentah sheet Reports cell F2
+                        df_date_raw = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=None, nrows=5)
+                        raw_val = str(df_date_raw.iloc[1, 5]) # F2
+                        # Format biasanya '2026/01/19-2026/01/25'
+                        split_tgl = raw_val.split('-')
+                        tgl_awal = split_tgl[0].replace('/', '-')
+                        tgl_akhir = split_tgl[1].replace('/', '-')
+                        date_range_str = get_pretty_date_range(tgl_awal, tgl_akhir)
+                    except:
+                        date_range_str = ""
     
                     status_text.text("Menyusun sheet 'REKAP' (TikTok)...")
                     rekap_processed = process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_df, store_choice)
@@ -3360,8 +3401,10 @@ if marketplace_choice:
                     # summary_processed = process_summary_tiktok(rekap_processed, katalog_df, harga_custom_tlj_df, ekspedisi_processed)
                     summary_processed = process_summary_tiktok(rekap_processed, katalog_df, harga_custom_tlj_df, ekspedisi_processed, product_data_df, store_choice)
                     progress_bar.progress(85, text="Sheet 'SUMMARY' selesai.")
+
+                    suffix_tgl = f" {date_range_str}" if date_range_str else ""
     
-                    file_name_output = f"Rekapanku_TikTok_{store_choice}.xlsx"
+                    file_name_output = f"Rekapanku_TikTok_{store_choice}_{suffix_tgl}.xlsx"
                     sheets = {
                         'SUMMARY': summary_processed,
                         'REKAP': rekap_processed,
@@ -3412,7 +3455,31 @@ if marketplace_choice:
                         start_row_header = 0
                         if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN']:
                             # --- PERUBAHAN 4: Buat judul dinamis dan merge 2 baris ---
-                            judul_sheet = f"{sheet_name} {store_choice.upper()} {marketplace_choice}"
+                            if marketplace_choice == "Shopee":
+                                try:
+                                    # Baca mentah sheet Summary untuk ambil cell B7 dan B8
+                                    df_date_raw = pd.read_excel(uploaded_income, sheet_name='Summary', header=None, nrows=10, usecols="B")
+                                    tgl_awal = df_date_raw.iloc[6, 0] # B7
+                                    tgl_akhir = df_date_raw.iloc[7, 0] # B8
+                                    date_range_str = get_pretty_date_range(tgl_awal, tgl_akhir)
+                                except:
+                                    date_range_str = ""
+                                suffix_tgl = f" {date_range_str}" if date_range_str else ""
+                                judul_sheet = f"{sheet_name} {store_choice.upper()} {marketplace_choice} {suffix_tgl}"
+                            else:
+                                try:
+                                    # Baca mentah sheet Reports cell F2
+                                    df_date_raw = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=None, nrows=5)
+                                    raw_val = str(df_date_raw.iloc[1, 5]) # F2
+                                    # Format biasanya '2026/01/19-2026/01/25'
+                                    split_tgl = raw_val.split('-')
+                                    tgl_awal = split_tgl[0].replace('/', '-')
+                                    tgl_akhir = split_tgl[1].replace('/', '-')
+                                    date_range_str = get_pretty_date_range(tgl_awal, tgl_akhir)
+                                except:
+                                    date_range_str = ""
+                                suffix_tgl = f" {date_range_str}" if date_range_str else ""
+                                judul_sheet = f"{sheet_name} {store_choice.upper()} {marketplace_choice} {suffix_tgl}"
                             worksheet.merge_range(0, 0, 1, len(df.columns) - 1, judul_sheet, title_format) # merge dari baris 0 hingga 1
                             start_row_header = 2 # Header kolom sekarang mulai di baris ke-3 (index 2)
                         
