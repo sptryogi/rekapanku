@@ -1455,6 +1455,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "AL QUR'AN GOLD TERMURAH",
         "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
         "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
+        "Alquran Cover Emas Kertas HVS Al Aqeel A5 Gold Murah",
         "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris",
         "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
         "AL-QUR'AN TERJEMAH HC AL ALEEM A5",
@@ -1596,7 +1597,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers",
         "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris",
         "PAKET MURAH ALQURAN AL AQEEL MUSHAF NON TERJEMAHAN | SURABAYA | al quran Wakaf/Shodaqoh hadiah hampers islami",
-        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |"
+        "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |",
+        "Alquran Cover Emas Kertas HVS Al Aqeel A5 Gold Murah"
     ]
     
     for p_biasa in produk_khusus_biasa:
