@@ -219,7 +219,9 @@ def process_rekap(order_df, income_df, seller_conv_df):
         "AL-QUR'AN TERJEMAH HC AL ALEEM A5",
         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan",
         "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
-        "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris"
+        "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris", 
+        "Alquran Cover Emas Kertas HVS Al Aqeel A7 Gold Murah"
+        
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
@@ -1456,6 +1458,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
         "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
         "Alquran Cover Emas Kertas HVS Al Aqeel A5 Gold Murah",
+        "Alquran Cover Emas Kertas HVS Al Aqeel A7 Gold Murah", 
         "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris",
         "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
         "AL-QUR'AN TERJEMAH HC AL ALEEM A5",
@@ -1598,7 +1601,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris",
         "PAKET MURAH ALQURAN AL AQEEL MUSHAF NON TERJEMAHAN | SURABAYA | al quran Wakaf/Shodaqoh hadiah hampers islami",
         "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |",
-        "Alquran Cover Emas Kertas HVS Al Aqeel A5 Gold Murah"
+        "Alquran Cover Emas Kertas HVS Al Aqeel A5 Gold Murah", 
+        "Alquran Cover Emas Kertas HVS Al Aqeel A7 Gold Murah"
     ]
     
     for p_biasa in produk_khusus_biasa:
