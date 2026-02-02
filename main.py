@@ -3287,7 +3287,7 @@ if marketplace_choice:
                     # --- LOGIKA PEMROSESAN BERDASARKAN TOKO ---
                     status_text.text("Menyusun sheet 'REKAP' (Shopee)...")
                     # if store_choice == "Human Store":
-                    if store_choice in ["Human Store", "Raka Bookstore"]
+                    if store_choice in ["Human Store", "Raka Bookstore"]:
                         rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df)
                     elif store_choice == "Pacific Bookstore": # Hanya Pacific yang pakai logic ini
                         rekap_processed = process_rekap_pacific(order_all_df, income_dilepas_df, seller_conversion_df)
