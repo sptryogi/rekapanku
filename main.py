@@ -976,21 +976,16 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
 
-    if rekap_df['Nama Produk'] == 'Paket Hemat Paket Grosir Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah':
-        if rekap_df['Harga Setelah Diskon'] == 21799:
-            rekap_df['Nama Variasi'] = ''
-            rekap_df['Nama Variasi'] = 'GROSIR 1-2'
-        elif rekap_df['Harga Setelah Diskon'] == 21499:
-            rekap_df['Nama Variasi'] = ''
-            rekap_df['Nama Variasi'] = 'GROSIR 3-4'
-        elif rekap_df['Harga Setelah Diskon'] == 21229:
-            rekap_df['Nama Variasi'] = ''
-            rekap_df['Nama Variasi'] = 'GROSIR 5-6'
-        elif rekap_df['Harga Setelah Diskon'] == 21099:
-            rekap_df['Nama Variasi'] = ''
-            rekap_df['Nama Variasi'] = 'GROSIR >7'
-    else:
-        rekap_df['Nama Variasi'] = rekap_df['Nama Variasi']
+    mask_produk = (
+        rekap_df['Nama Produk'] ==
+        'Paket Hemat Paket Grosir Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah'
+    )
+
+    rekap_df.loc[mask_produk & (rekap_df['Harga Setelah Diskon'] == 21799), 'Nama Variasi'] = 'GROSIR 1-2'
+    rekap_df.loc[mask_produk & (rekap_df['Harga Setelah Diskon'] == 21499), 'Nama Variasi'] = 'GROSIR 3-4'
+    rekap_df.loc[mask_produk & (rekap_df['Harga Setelah Diskon'] == 21229), 'Nama Variasi'] = 'GROSIR 5-6'
+    rekap_df.loc[mask_produk & (rekap_df['Harga Setelah Diskon'] == 21099), 'Nama Variasi'] = 'GROSIR >7'
+
     # # 1. Pastikan 'Total Penghasilan' (dari income_df) adalah numerik
     # rekap_df['Total Penghasilan'] = clean_and_convert_to_numeric(rekap_df['Total Penghasilan'])
     
@@ -2778,10 +2773,14 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
 
     summary_df['Komisi Affiliate'] = summary_df['Komisi Affiliate'] + summary_df['Komisi Iklan Affiliate']
 
-    if summary_df['Nama Produk'] == 'Alquran Paket Wakaf Murah 50 pcs Al Aqeel | Alquran 18 Baris':
-        summary_df['Jumlah Terjual'] = summary_df['Jumlah Terjual'] * 50
-    else:
-        summary_df['Jumlah Terjual'] = summary_df['Jumlah Terjual']
+    mask = (
+        summary_df['Nama Produk'] ==
+        'Alquran Paket Wakaf Murah 50 pcs Al Aqeel | Alquran 18 Baris'
+    )
+
+    summary_df.loc[mask, 'Jumlah Terjual'] = (
+        summary_df.loc[mask, 'Jumlah Terjual'] * 50
+    )
 
     # Hitung Penjualan Netto
     summary_df['Penjualan Netto'] = (
