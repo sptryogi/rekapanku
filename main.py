@@ -976,6 +976,21 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
 
+    if rekap_df['Nama Produk'] == 'Paket Hemat Paket Grosir Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah':
+        if rekap_df['Harga Setelah Diskon'] == 21799:
+            rekap_df['Nama Variasi'] = ''
+            rekap_df['Nama Variasi'] = 'GROSIR 1-2'
+        elif rekap_df['Harga Setelah Diskon'] == 21499:
+            rekap_df['Nama Variasi'] = ''
+            rekap_df['Nama Variasi'] = 'GROSIR 3-4'
+        elif rekap_df['Harga Setelah Diskon'] == 21229:
+            rekap_df['Nama Variasi'] = ''
+            rekap_df['Nama Variasi'] = 'GROSIR 5-6'
+        elif rekap_df['Harga Setelah Diskon'] == 21099:
+            rekap_df['Nama Variasi'] = ''
+            rekap_df['Nama Variasi'] = 'GROSIR >7'
+    else:
+        rekap_df['Nama Variasi'] = rekap_df['Nama Variasi']
     # # 1. Pastikan 'Total Penghasilan' (dari income_df) adalah numerik
     # rekap_df['Total Penghasilan'] = clean_and_convert_to_numeric(rekap_df['Total Penghasilan'])
     
@@ -2167,10 +2182,10 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
     # Konfigurasi Produk Khusus Dama
     force_config_dama = {
-        "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida": {
-            "variasi": ["A5 SATUAN", "B5 (Bigbos)", "A5 PAKET3", "A5 PAKET 5", "A5 PAKET 7"],
-            "denom": 17
-        },
+        # "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida": {
+        #     "variasi": ["A5 SATUAN", "B5 (Bigbos)", "A5 PAKET3", "A5 PAKET 5", "A5 PAKET 7"],
+        #     "denom": 17
+        # },
         "Al Quran Wakaf Saku A6 Al Aqeel HVS Paket Wakaf": {
             "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
             "denom": 16
@@ -2763,6 +2778,11 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
 
     summary_df['Komisi Affiliate'] = summary_df['Komisi Affiliate'] + summary_df['Komisi Iklan Affiliate']
 
+    if summary_df['Nama Produk'] == 'Alquran Paket Wakaf Murah 50 pcs Al Aqeel | Alquran 18 Baris':
+        summary_df['Jumlah Terjual'] = summary_df['Jumlah Terjual'] * 50
+    else:
+        summary_df['Jumlah Terjual'] = summary_df['Jumlah Terjual']
+
     # Hitung Penjualan Netto
     summary_df['Penjualan Netto'] = (
         summary_df['Total Penjualan'] -
@@ -2843,40 +2863,82 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     )
 
     # 2. Logika Distribusi Iklan (MODIFIKASI: Menambahkan produk iklan tanpa penjualan)
-    if not product_data_df.empty:
-        # Ambil kolom Biaya dan Nama Produk
-        ads_df = product_data_df[['NAMA PRODUK', 'BIAYA']].copy()
+    # if not product_data_df.empty:
+    #     # Ambil kolom Biaya dan Nama Produk
+    #     ads_df = product_data_df[['NAMA PRODUK', 'BIAYA']].copy()
         
-        # Hitung berapa banyak variasi untuk setiap Nama Produk yang ADA di penjualan
-        var_count_per_product = summary_df.groupby('Nama Produk')['Variasi'].transform('count')
-        summary_df['var_count'] = var_count_per_product
+    #     # Hitung berapa banyak variasi untuk setiap Nama Produk yang ADA di penjualan
+    #     var_count_per_product = summary_df.groupby('Nama Produk')['Variasi'].transform('count')
+    #     summary_df['var_count'] = var_count_per_product
 
-        # Merge dengan 'outer' agar produk di ads_df yang tidak ada di summary_df tetap masuk
-        summary_df = pd.merge(
-            summary_df, 
-            ads_df, 
-            left_on='Nama Produk', 
-            right_on='NAMA PRODUK', 
-            how='outer'
-        )
+    #     # Merge dengan 'outer' agar produk di ads_df yang tidak ada di summary_df tetap masuk
+    #     summary_df = pd.merge(
+    #         summary_df, 
+    #         ads_df, 
+    #         left_on='Nama Produk', 
+    #         right_on='NAMA PRODUK', 
+    #         how='outer'
+    #     )
         
-        # Jika Nama Produk kosong (hasil outer merge dari iklan saja), isi dari NAMA PRODUK iklan
-        summary_df['Nama Produk'] = summary_df['Nama Produk'].fillna(summary_df['NAMA PRODUK'])
+    #     # Jika Nama Produk kosong (hasil outer merge dari iklan saja), isi dari NAMA PRODUK iklan
+    #     summary_df['Nama Produk'] = summary_df['Nama Produk'].fillna(summary_df['NAMA PRODUK'])
         
-        # Hitung Iklan: 
-        # Jika ada penjualannya (var_count > 0), bagi biayanya. 
-        # Jika tidak ada penjualan (iklan saja), tampilkan biaya penuh.
-        summary_df['Iklan'] = np.where(
-            summary_df['var_count'] > 0,
-            summary_df['BIAYA'].fillna(0) / summary_df['var_count'],
-            summary_df['BIAYA'].fillna(0)
-        )
+    #     # Hitung Iklan: 
+    #     # Jika ada penjualannya (var_count > 0), bagi biayanya. 
+    #     # Jika tidak ada penjualan (iklan saja), tampilkan biaya penuh.
+    #     summary_df['Iklan'] = np.where(
+    #         summary_df['var_count'] > 0,
+    #         summary_df['BIAYA'].fillna(0) / summary_df['var_count'],
+    #         summary_df['BIAYA'].fillna(0)
+    #     )
         
-        # Hapus kolom pembantu
-        summary_df.drop(columns=['NAMA PRODUK', 'BIAYA', 'var_count'], inplace=True, errors='ignore')
+    #     # Hapus kolom pembantu
+    #     summary_df.drop(columns=['NAMA PRODUK', 'BIAYA', 'var_count'], inplace=True, errors='ignore')
+    # else:
+    #     summary_df['Iklan'] = 0
+    if not product_data_df.empty:
+        # === PERBAIKAN ERROR KEYERROR ===
+        # Standarisasi nama kolom menjadi huruf besar dan strip spasi
+        product_data_df.columns = [str(col).upper().strip() for col in product_data_df.columns]
+        
+        # Cek apakah kolom yang dibutuhkan ada
+        if 'NAMA PRODUK' in product_data_df.columns and 'BIAYA' in product_data_df.columns:
+            # Ambil kolom Biaya dan Nama Produk
+            ads_df = product_data_df[['NAMA PRODUK', 'BIAYA']].copy()
+            
+            # Hitung berapa banyak variasi untuk setiap Nama Produk yang ADA di penjualan
+            var_count_per_product = summary_df.groupby('Nama Produk')['Variasi'].transform('count')
+            summary_df['var_count'] = var_count_per_product
+
+            # Merge dengan 'outer' agar produk di ads_df yang tidak ada di summary_df tetap masuk
+            summary_df = pd.merge(
+                summary_df, 
+                ads_df, 
+                left_on='Nama Produk', 
+                right_on='NAMA PRODUK', 
+                how='outer'
+            )
+            
+            # Jika Nama Produk kosong (hasil outer merge dari iklan saja), isi dari NAMA PRODUK iklan
+            summary_df['Nama Produk'] = summary_df['Nama Produk'].fillna(summary_df['NAMA PRODUK'])
+            
+            # Hitung Iklan: 
+            summary_df['Iklan'] = np.where(
+                summary_df['var_count'] > 0,
+                summary_df['BIAYA'].fillna(0) / summary_df['var_count'],
+                summary_df['BIAYA'].fillna(0)
+            )
+            
+            # Hapus kolom pembantu
+            summary_df.drop(columns=['NAMA PRODUK', 'BIAYA', 'var_count'], inplace=True, errors='ignore')
+        else:
+            # Jika kolom tidak ditemukan, beri warning di log (opsional) dan set 0
+            # st.warning("Kolom 'NAMA PRODUK' atau 'BIAYA' tidak ditemukan di file Iklan TikTok.")
+            summary_df['Iklan'] = 0
+            
     else:
         summary_df['Iklan'] = 0
-
+        
     cols_calc = ['Penjualan Netto', 'Biaya Packing', 'Biaya Ekspedisi', 'Total Pembelian', 'Biaya Pre-order']
     for col in cols_calc:
         if col in summary_df.columns:
