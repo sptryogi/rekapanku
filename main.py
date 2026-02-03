@@ -2901,9 +2901,9 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         product_data_df.columns = [str(col).upper().strip() for col in product_data_df.columns]
         
         # Cek apakah kolom yang dibutuhkan ada
-        if 'NAMA PRODUK' in product_data_df.columns and 'BIAYA' in product_data_df.columns:
+        if 'PRODUCT NAME' in product_data_df.columns and 'COST' in product_data_df.columns:
             # Ambil kolom Biaya dan Nama Produk
-            ads_df = product_data_df[['NAMA PRODUK', 'BIAYA']].copy()
+            ads_df = product_data_df[['PRODUCT NAME', 'COST']].copy()
             
             # Hitung berapa banyak variasi untuk setiap Nama Produk yang ADA di penjualan
             var_count_per_product = summary_df.groupby('Nama Produk')['Variasi'].transform('count')
@@ -2914,22 +2914,22 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
                 summary_df, 
                 ads_df, 
                 left_on='Nama Produk', 
-                right_on='NAMA PRODUK', 
+                right_on='PRODUCT NAME', 
                 how='outer'
             )
             
             # Jika Nama Produk kosong (hasil outer merge dari iklan saja), isi dari NAMA PRODUK iklan
-            summary_df['Nama Produk'] = summary_df['Nama Produk'].fillna(summary_df['NAMA PRODUK'])
+            summary_df['Nama Produk'] = summary_df['Nama Produk'].fillna(summary_df['PRODUCT NAME'])
             
             # Hitung Iklan: 
             summary_df['Iklan'] = np.where(
                 summary_df['var_count'] > 0,
-                summary_df['BIAYA'].fillna(0) / summary_df['var_count'],
-                summary_df['BIAYA'].fillna(0)
+                summary_df['COST'].fillna(0) / summary_df['var_count'],
+                summary_df['COST'].fillna(0)
             )
             
             # Hapus kolom pembantu
-            summary_df.drop(columns=['NAMA PRODUK', 'BIAYA', 'var_count'], inplace=True, errors='ignore')
+            summary_df.drop(columns=['PRODUCT NAME', 'COST', 'var_count'], inplace=True, errors='ignore')
         else:
             # Jika kolom tidak ditemukan, beri warning di log (opsional) dan set 0
             # st.warning("Kolom 'NAMA PRODUK' atau 'BIAYA' tidak ditemukan di file Iklan TikTok.")
