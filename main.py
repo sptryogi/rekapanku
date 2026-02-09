@@ -3050,7 +3050,7 @@ if jenis_rekapan == "Bulanan":
     toko_bulanan = st.selectbox("Pilih Toko untuk Rekapan Bulanan:", [
         "Human Store Shopee", "Pacific Bookstore Shopee", "Dama.id Store Shopee",
         "Human Store Tiktok", "Pacific Bookstore Tiktok", "Dama.id Store Tiktok",
-        "Raka Bookstore Shopee", "Raka Bookstore Tiktok"
+        "Raka Bookstore Shopee", "Raka Bookstore Tiktok", "Toko Kaliba Shopee", "Toko Kaliba Tiktok"
     ])
     
     files_mingguan = []
@@ -3112,14 +3112,14 @@ store_choice = ""
 if marketplace_choice == "Shopee":
     store_choice = st.selectbox(
         "Pilih Toko Shopee:",
-        ("Human Store", "Pacific Bookstore", "DAMA.ID STORE", "Raka Bookstore"),
+        ("Human Store", "Pacific Bookstore", "DAMA.ID STORE", "Raka Bookstore", "Toko Kaliba"),
         key='shopee_store'
     )
 elif marketplace_choice == "TikTok":
     # Untuk sekarang, TikTok hanya untuk Human Store
     store_choice = st.selectbox(
         "Pilih Toko TikTok:",
-        ("Human Store", "DAMA.ID STORE", "Pacific Bookstore", "Raka Bookstore"), # Hanya toko yang relevan untuk TikTok
+        ("Human Store", "DAMA.ID STORE", "Pacific Bookstore", "Raka Bookstore", "Toko Kaliba"), # Hanya toko yang relevan untuk TikTok
         key='tiktok_store'
     )
     st.info("Marketplace TikTok saat ini hanya tersedia untuk Human Store, DAMA.ID STORE, Raka Bookstore dan Pacific Bookstore.")
@@ -3329,7 +3329,7 @@ if marketplace_choice:
                     # --- LOGIKA PEMROSESAN BERDASARKAN TOKO ---
                     status_text.text("Menyusun sheet 'REKAP' (Shopee)...")
                     # if store_choice == "Human Store":
-                    if store_choice in ["Human Store", "Raka Bookstore"]:
+                    if store_choice in ["Human Store", "Raka Bookstore", "Toko Kaliba"]:
                         rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df)
                     elif store_choice == "Pacific Bookstore": # Hanya Pacific yang pakai logic ini
                         rekap_processed = process_rekap_pacific(order_all_df, income_dilepas_df, seller_conversion_df)
