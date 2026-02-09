@@ -1440,6 +1440,24 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # Ini terjadi di 'rekap_copy', jadi 'REKAP' asli tetap utuh
     rekap_copy.loc[kondisi_retur_summary, 'Jumlah Terjual'] = 0
     rekap_copy.loc[kondisi_retur_summary, 'Total Harga Produk'] = 0
+
+    if store_type == "Human Store":
+        target_name = "AL QUR'AN NON TERJEMAH AL AQEEL A5 KERTAS KORAN WAKAF"
+        colors_to_remove = ["BIRU", "COKLAT", "HIJAU", "MERAH", "RANDOM"]
+        
+        def clean_human_variasi(row):
+            # Cek apakah nama produk mengandung target (case insensitive)
+            if target_name in str(row['Nama Produk']).upper():
+                variasi_str = str(row['Variasi']).upper()
+                # Jika mengandung 'PAKET' atau 'ISI', jangan dihapus (biarkan)
+                if "PAKET" in variasi_str or "ISI" in variasi_str:
+                    return row['Variasi']
+                # Jika mengandung warna atau random, hapus variasinya
+                if any(color in variasi_str for color in colors_to_remove):
+                    return "" # Mengosongkan variasi agar nanti ter-SUM jadi satu
+            return row['Variasi']
+
+        rekap_copy['Variasi'] = rekap_copy.apply(clean_human_variasi, axis=1)
     
     # --- ▲▲▲ AKHIR BLOK PERBAIKAN ▲▲▲ ---
 
