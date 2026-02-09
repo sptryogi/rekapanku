@@ -981,7 +981,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
 
     mask_produk = (
         rekap_df['Nama Produk'] ==
-        'Paket Hemat Paket Grosir Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah'
+        'Paket Hemat Grosir Wakaf Al Quran Al Aqeel A5 Kertas koran Non Terjemah (BANDUNG)'
     )
 
     rekap_df.loc[mask_produk & (rekap_df['Harga Setelah Diskon'] == 21799), 'Nama Variasi'] = 'GROSIR 1-2'
@@ -2012,9 +2012,8 @@ def get_harga_beli_dama(summary_product_name, katalog_dama_df, score_threshold_p
         # 3. Iterasi Katalog Dama
         for index, row in katalog_dama_df.iterrows():
             katalog_name = row['NAMA PRODUK']
-            katalog_jenis = row['JENIS AL QUR\'AN']
+            katalog_jenis = row['JENIS AL QUR'AN']
             katalog_ukuran = row['UKURAN']
-            # Bersihkan spasi di data katalog juga untuk pencocokan yang adil
             katalog_paket = row['PAKET']
             katalog_warna = row['WARNA']
             
