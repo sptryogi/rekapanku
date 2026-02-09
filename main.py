@@ -2368,7 +2368,23 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         "HARMONI NUSANTARA | LAGU NASIONAL DAN LAGU DAERAH INDONESIA": "LAGU NASIONAL DAN LAGU DAERAH INDONESIA",
         "HIJAB BERGO JERSEY BY DAMA | KERUDUNG INSTAN": "HIJAB BERGO JERSEY",
         "HIJAB VOAL MOTIF LASER CUT PREMIUM": "HIJAB VOAL MOTIF LASER CUT",
-        "Al QURAN TADJWID TANPA TERJEMAHAN MUSHAF SUBHAAN": "SUBHAAN TADJWID TANPA TERJEMAHAN"
+        "Al QURAN TADJWID TANPA TERJEMAHAN MUSHAF SUBHAAN": "SUBHAAN TADJWID TANPA TERJEMAHAN",
+        "Al Quran Mushaf Al Aqeel Full Color A5 B5 Kertas HVS (BANDUNG)": "Al Aqeel A5 B5 HVS",
+        "Al Quran Wakaf Saku A6 Al Aqeel Kertas HVS (BANDUNG)": "Al Aqeel A6 HVS",
+        "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)": "Al Aqeel A5 Kertas Koran",
+        "Al Quran Legend Gold Silver Al Aqeel A5 A7 Kertas HVS (BANDUNG)": "Al Aqeel Gold Silver",
+        "PAKET MURAH Alquran Al-Aqeel Tanpa Terjemahan (BANDUNG) Alquran Untuk Wakaf Hadiah Hampers": "PAKET MURAH Al-Aqeel Tanpa Terjemahan",
+        "Paket Hemat Grosir Wakaf Al Quran Al Aqeel A5 Kertas koran Non Terjemah (BANDUNG)": "Paket Hemat Grosir Al Aqeel A5 Kertas Koran",
+        "AL QURAN AL AQEEL A6 KERTAS HVS EDISI TAHLILAN (BANDUNG)": "Al Aqeel A6 edisi tahlilan",
+        "AL QURAN AL QUDDUS SAKU A7 KULIT RESLETING (BANDUNG)": "AL QUDDUS SAKU A7 KULIT",
+        "AL QURAN CUSTOM NAMA FOTO DI COVER SISIPAN ACARA TASYAKUR TAHLIL YASIN (BANDUNG)": "AL QUR'AN CUSTOM COVER SISIPAN",
+        "Al Quran Al Quddus Tanpa terjemahan uk A5 DAN A4 Kertas HVS (BANDUNG)": "Al Quddus Tanpa terjemahan A4 A5 HVS",
+        "Al Quran Al Aqeel B5 Pastel Kertas HVS (BANDUNG)": "Al Aqeel B5 Pastel HVS",
+        "AL QURAN TERJEMAHAN AL ALEEM A5 KERTAS HVS WAQAF IBTIDA (BANDUNG)": "AL ALEEM WAQAF IBTIDA A5 HVS",
+        "AL QURAN TADJWID DAN TERJEMAHAN TAFSIR ASBABUNNUZUL WAQAF IBTIDA MUSHAF MUMTAAZ A5 KERTAS QPP (BANDUNG)": "AL QUR'AN TERJEMAHAN MUMTAAZ WAQAF IBTIDA A5 QPP",
+        "Juz'amma A5 kertas HVS Edisi Terbaru Lebih Lengkap Terjemahan Tajwid Asmaul Husnah (BANDUNG)": "Juz'amma kertas A5 HVS",
+        "AL QURAN MUSHAF AL ALEEM A6 SAKU KERTAS QPP (BANDUNG)": "AL ALEEM A6 SAKU",
+        "Al QURAN TADJWID TANPA TERJEMAHAN MUSHAF SUBHAAN A5 KERTAS QPP (BANDUNG)": "SUBHAAN TADJWID TANPA TERJEMAHAN A5 QPP"
     }
 
     def apply_shorten_dama(nama_full):
