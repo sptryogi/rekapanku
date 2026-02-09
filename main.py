@@ -279,6 +279,7 @@ def process_rekap(order_df, income_df, seller_conv_df):
                     # Cari "PAKET ISI X" atau "SATUAN"
                     paket_match = re.search(r'(PAKET\s*ISI\s*\d+)', var_upper)
                     satuan_match = 'SATUAN' in var_upper
+                    
                 
                     
                     if paket_match:
@@ -1448,16 +1449,16 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         def clean_human_variasi(row):
             # Cek apakah nama produk mengandung target (case insensitive)
             if target_name in str(row['Nama Produk']).upper():
-                variasi_str = str(row['Variasi']).upper()
+                variasi_str = str(row['Nama Variasi']).upper()
                 # Jika mengandung 'PAKET' atau 'ISI', jangan dihapus (biarkan)
                 if "PAKET" in variasi_str or "ISI" in variasi_str:
-                    return row['Variasi']
+                    return row['Nama Variasi']
                 # Jika mengandung warna atau random, hapus variasinya
                 if any(color in variasi_str for color in colors_to_remove):
                     return "" # Mengosongkan variasi agar nanti ter-SUM jadi satu
-            return row['Variasi']
+            return row['Nama Variasi']
 
-        rekap_copy['Variasi'] = rekap_copy.apply(clean_human_variasi, axis=1)
+        rekap_copy['Nama Variasi'] = rekap_copy.apply(clean_human_variasi, axis=1)
     
     # --- ▲▲▲ AKHIR BLOK PERBAIKAN ▲▲▲ ---
 
