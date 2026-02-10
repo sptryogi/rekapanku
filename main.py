@@ -2946,8 +2946,8 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         
         # --- TENTUKAN NAMA KOLOM BERDASARKAN TOKO ---
         if store_choice == "DAMA.ID STORE":
-            col_name_iklan = 'PRODUCT NAME'
-            col_biaya_iklan = 'COST'
+            col_name_iklan = 'PRODUCT NAME' if 'PRODUCT NAME' in product_data_df.columns else 'NAMA PRODUK'
+            col_biaya_iklan = 'COST' if 'COST' in product_data_df.columns else 'BIAYA'
         else:
             col_name_iklan = 'NAMA PRODUK'
             col_biaya_iklan = 'BIAYA'
