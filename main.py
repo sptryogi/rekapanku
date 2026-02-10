@@ -3380,28 +3380,88 @@ if marketplace_choice:
         uploaded_seller = None
 
     st.markdown("---")
+
+    # --- TAMBAHKAN BLOK INI SETELAH DEKLARASI store_choice ---
+    # Konfigurasi file opsional per toko
+    OPTIONAL_FILES_SHOPEE = {
+        'seller_conversion': ['Raka Bookstore', 'Toko Kaliba'],
+        'iklan': ['Raka Bookstore', 'Toko Kaliba']
+    }
+    
+    def is_file_optional_shopee(file_type, store):
+        """Cek apakah file tertentu opsional untuk toko tertentu di Shopee"""
+        return store in OPTIONAL_FILES_SHOPEE.get(file_type, [])
+
+    # Konfigurasi file opsional per toko untuk TikTok
+    OPTIONAL_FILES_TIKTOK = {
+        'creator_order': ['Raka Bookstore', 'Toko Kaliba'],
+        'product_data': ['Raka Bookstore', 'Toko Kaliba'],
+        'pdf_resi': ['Raka Bookstore', 'Toko Kaliba']  # Jika juga ingin PDF opsional
+    }
+    
+    def is_file_optional_tiktok(file_type, store):
+        """Cek apakah file tertentu opsional untuk toko tertentu di TikTok"""
+        return store in OPTIONAL_FILES_TIKTOK.get(file_type, [])
     
     # Kondisi untuk menampilkan tombol proses
     # show_shopee_button = marketplace_choice == "Shopee" and uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller
-    shopee_base_files = marketplace_choice == "Shopee" and uploaded_order and uploaded_income and uploaded_iklan
-    # Tentukan status tombol berdasarkan toko
-    if shopee_base_files and store_choice == "DAMA.ID STORE":
-        show_shopee_button = True # DAMA.ID STORE siap, seller conversion opsional
-    elif shopee_base_files: # Toko Shopee lain (Human/Pacific)
-        show_shopee_button = uploaded_seller # Wajib untuk Human/Pacific
+    # shopee_base_files = marketplace_choice == "Shopee" and uploaded_order and uploaded_income and uploaded_iklan
+    # # Tentukan status tombol berdasarkan toko
+    # if shopee_base_files and store_choice == "DAMA.ID STORE":
+    #     show_shopee_button = True # DAMA.ID STORE siap, seller conversion opsional
+    # elif shopee_base_files: # Toko Shopee lain (Human/Pacific)
+    #     show_shopee_button = uploaded_seller # Wajib untuk Human/Pacific
+    # else:
+    #     show_shopee_button = False
+    if marketplace_choice == "Shopee":
+        # File wajib untuk semua toko Shopee
+        required_files = uploaded_order and uploaded_income
+        
+        if required_files:
+            # Cek file opsional
+            seller_optional = is_file_optional_shopee('seller_conversion', store_choice)
+            iklan_optional = is_file_optional_shopee('iklan', store_choice)
+            
+            # Cek apakah file opsional di-upload atau memang opsional
+            seller_ok = uploaded_seller or seller_optional
+            iklan_ok = uploaded_iklan or iklan_optional
+            
+            show_shopee_button = seller_ok and iklan_ok
+        else:
+            show_shopee_button = False
     else:
         show_shopee_button = False
         
     # show_tiktok_button = marketplace_choice == "TikTok" and uploaded_income_tiktok and uploaded_semua_pesanan and uploaded_creator_order and uploaded_pdfs
-    tiktok_base_files = marketplace_choice == "TikTok" and uploaded_income_tiktok and uploaded_semua_pesanan
+    # tiktok_base_files = marketplace_choice == "TikTok" and uploaded_income_tiktok and uploaded_semua_pesanan
     
-    show_tiktok_button = False # Inisialisasi
-    if tiktok_base_files and store_choice == "DAMA.ID STORE":
-        # DAMA.ID STORE: creator_order & pdfs opsional
-        show_tiktok_button = True
-    elif tiktok_base_files and store_choice in ["Human Store", "Pacific Bookstore", "Raka Bookstore"]:
-        # Human Store: creator_order & pdfs wajib
-        show_tiktok_button = uploaded_creator_order
+    # show_tiktok_button = False # Inisialisasi
+    # if tiktok_base_files and store_choice == "DAMA.ID STORE":
+    #     # DAMA.ID STORE: creator_order & pdfs opsional
+    #     show_tiktok_button = True
+    # elif tiktok_base_files and store_choice in ["Human Store", "Pacific Bookstore", "Raka Bookstore"]:
+    #     # Human Store: creator_order & pdfs wajib
+    #     show_tiktok_button = uploaded_creator_order
+    if marketplace_choice == "TikTok":
+        # File wajib untuk semua toko TikTok
+        required_files = uploaded_income_tiktok and uploaded_semua_pesanan
+        
+        if required_files:
+            # Cek file opsional
+            creator_optional = is_file_optional_tiktok('creator_order', store_choice)
+            product_optional = is_file_optional_tiktok('product_data', store_choice)
+            pdf_optional = is_file_optional_tiktok('pdf_resi', store_choice)
+            
+            # Cek apakah file opsional di-upload atau memang opsional
+            creator_ok = uploaded_creator_order or creator_optional
+            product_ok = product_data_file or product_optional
+            pdf_ok = uploaded_pdfs or pdf_optional  # Hapus baris ini jika PDF tetap wajib
+            
+            show_tiktok_button = creator_ok and product_ok  # Tambahkan 'and pdf_ok' jika PDF ikut dicek
+        else:
+            show_tiktok_button = False
+    else:
+        show_tiktok_button = False
 
     if show_shopee_button or show_tiktok_button:
         button_label = f"🚀 Mulai Proses untuk {marketplace_choice} - {store_choice}"
@@ -3418,14 +3478,26 @@ if marketplace_choice:
                     income_dilepas_df = pd.read_excel(uploaded_income, sheet_name='Income', skiprows=5)
                     # if store_choice == "Human Store":
                     #     service_fee_df = pd.read_excel(uploaded_income, sheet_name='Service Fee Details', skiprows=1)
-                    iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
+                    # iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
+                    if uploaded_iklan:
+                        iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
+                    else:
+                        # Buat DataFrame kosong dengan kolom yang diperlukan
+                        iklan_produk_df = pd.DataFrame(columns=['Nama Iklan', 'Dilihat', 'Jumlah Klik', 'Biaya', 'Produk Terjual', 'Omzet Penjualan'])
+                        st.info("File Iklan tidak diupload, menggunakan data kosong.")
                     # seller_conversion_df = pd.read_csv(uploaded_seller)
+                    # if uploaded_seller:
+                    #     seller_conversion_df = pd.read_csv(uploaded_seller)
+                    # else:
+                    #     # Buat DataFrame kosong jika file tidak ada
+                    #     # Ini penting agar DAMA.ID STORE tidak error
+                    #     seller_conversion_df = pd.DataFrame(columns=['Kode Pesanan', 'Pengeluaran(Rp)'])
                     if uploaded_seller:
                         seller_conversion_df = pd.read_csv(uploaded_seller)
                     else:
-                        # Buat DataFrame kosong jika file tidak ada
-                        # Ini penting agar DAMA.ID STORE tidak error
+                        # Buat DataFrame kosong dengan kolom yang diperlukan
                         seller_conversion_df = pd.DataFrame(columns=['Kode Pesanan', 'Pengeluaran(Rp)'])
+                        st.info("File Seller Conversion tidak diupload, menggunakan data kosong.")
                     progress_bar.progress(20, text="File dimuat. Membersihkan format angka...")
 
                     # ... (Kode pembersihan data keuangan Anda tetap di sini) ...
@@ -3503,13 +3575,20 @@ if marketplace_choice:
                     reports_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=0)
                     reports_df = clean_columns(reports_df)
                     reports_df.columns = [col.upper() for col in reports_df.columns]
+                    # if product_data_file:
+                    #     # Load file product data
+                    #     product_data_df = pd.read_excel(product_data_file)
+                    #     # Pastikan nama kolom konsisten
+                    #     product_data_df.columns = [col.upper().strip() for col in product_data_df.columns]
+                    # else:
+                    #     product_data_df = pd.DataFrame()
                     if product_data_file:
-                        # Load file product data
                         product_data_df = pd.read_excel(product_data_file)
-                        # Pastikan nama kolom konsisten
                         product_data_df.columns = [col.upper().strip() for col in product_data_df.columns]
                     else:
                         product_data_df = pd.DataFrame()
+                        if is_file_optional_tiktok('product_data', store_choice):
+                            st.info("File Product Data tidak diupload (opsional untuk toko ini), menggunakan data kosong.")
                     # Baca 'semua pesanan' dan langsung bersihkan kolomnya
                     # 1. Baca file tanpa header, sehingga semua baris (termasuk header asli) menjadi data
                     wb = load_workbook(uploaded_semua_pesanan, data_only=True)
@@ -3532,14 +3611,22 @@ if marketplace_choice:
                     semua_pesanan_df.columns = semua_pesanan_df.columns.str.strip()
                     semua_pesanan_df = clean_columns(semua_pesanan_df)
                     semua_pesanan_df.columns = [col.upper() for col in semua_pesanan_df.columns]
+                    # if uploaded_creator_order:
+                    #     # Jika file di-upload (Human Store), baca filenya
+                    #     creator_order_all_df = clean_columns(pd.read_excel(uploaded_creator_order))
+                    #     creator_order_all_df.columns = [col.upper() for col in creator_order_all_df.columns]
+                    # else:
+                    #     # Jika DAMA.ID STORE (file=None), buat DataFrame kosong
+                    #     # Tambahkan 'SKU' ke daftar kolom agar merge tidak error
+                    #     creator_order_all_df = pd.DataFrame(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL', 'SKU'])
                     if uploaded_creator_order:
-                        # Jika file di-upload (Human Store), baca filenya
                         creator_order_all_df = clean_columns(pd.read_excel(uploaded_creator_order))
                         creator_order_all_df.columns = [col.upper() for col in creator_order_all_df.columns]
                     else:
-                        # Jika DAMA.ID STORE (file=None), buat DataFrame kosong
-                        # Tambahkan 'SKU' ke daftar kolom agar merge tidak error
+                        # Buat DataFrame kosong dengan kolom yang diperlukan
                         creator_order_all_df = pd.DataFrame(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL', 'SKU'])
+                        if is_file_optional_tiktok('creator_order', store_choice):
+                            st.info("File Creator Order tidak diupload (opsional untuk toko ini), menggunakan data kosong.")
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
                     
                     # status_text.text(f"Memproses {len(uploaded_pdfs)} file PDF nota resi...")
