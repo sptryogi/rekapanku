@@ -989,6 +989,63 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     rekap_df.loc[mask_produk & (rekap_df['Harga Setelah Diskon'] == 21229), 'Nama Variasi'] = 'GROSIR 5-6'
     rekap_df.loc[mask_produk & (rekap_df['Harga Setelah Diskon'] == 21099), 'Nama Variasi'] = 'GROSIR >7'
 
+    for idx in rekap_df[mask_produk].index:
+        variasi_grosir = rekap_df.loc[idx, 'Nama Variasi']
+        if pd.notna(variasi_grosir) and variasi_grosir != '':
+            nama_produk_asli = rekap_df.loc[idx, 'Nama Produk']
+            rekap_df.loc[idx, 'Nama Produk'] = f"{nama_produk_asli} ({variasi_grosir})"
+
+    mask_paket_murah = (
+        rekap_df['Nama Produk'] ==
+        'PAKET MURAH Alquran Al-Aqeel Tanpa Terjemahan (BANDUNG) Alquran Untuk Wakaf Hadiah Hampers'
+    )
+    
+    for idx in rekap_df[mask_paket_murah].index:
+        variasi_ori = str(rekap_df.loc[idx, 'Nama Variasi']).strip()
+        nama_produk_asli = rekap_df.loc[idx, 'Nama Produk']
+        
+        # Mapping variasi lama ke format baru
+        variasi_mapping = {
+            'A5 KORAN (MERAH)': 'A5 KORAN - Min 10 Eks',
+            'A5 KORAN (BIRU)': 'A5 KORAN - Min 10 Eks',
+            'A5 KORAN (HITAM)': 'A5 KORAN - Min 10 Eks',
+            'A5 KORAN (COKLAT)': 'A5 KORAN - Min 10 Eks',
+            'A5 KORAN (UNGU)': 'A5 KORAN - Min 10 Eks',
+            'A5 KORAN (RANDOM)': 'A5 KORAN - Min 10 Eks',
+            'A6 HVS (MERAH)': 'A6 HVS - Min 10 Eks',
+            'A6 HVS (BIRU)': 'A6 HVS - Min 10 Eks',
+            'A6 HVS (HITAM)': 'A6 HVS - Min 10 Eks',
+            'A6 HVS (COKLAT)': 'A6 HVS - Min 10 Eks',
+            'A6 HVS (UNGU)': 'A6 HVS - Min 10 Eks',
+            'A6 HVS (RANDOM)': 'A6 HVS - Min 10 Eks',
+            'A5 HVS-GOLD': 'A5 HVS - Min 10 Eks',
+            'A7 HVS-GOLD': 'A7 HVS - Min 10 Eks',
+            # Fallback: jika formatnya beda, coba deteksi pola
+        }
+        
+        # Cek mapping langsung
+        if variasi_ori in variasi_mapping:
+            variasi_baru = variasi_mapping[variasi_ori]
+        else:
+            # Deteksi pola jika tidak exact match
+            variasi_upper = variasi_ori.upper()
+            if 'A5' in variasi_upper and 'KORAN' in variasi_upper:
+                variasi_baru = 'A5 KORAN - Min 10 Eks'
+            elif 'A6' in variasi_upper and 'HVS' in variasi_upper:
+                variasi_baru = 'A6 HVS - Min 10 Eks'
+            elif 'A5' in variasi_upper and ('HVS' in variasi_upper or 'GOLD' in variasi_upper):
+                variasi_baru = 'A5 HVS - Min 10 Eks'
+            elif 'A7' in variasi_upper and ('HVS' in variasi_upper or 'GOLD' in variasi_upper):
+                variasi_baru = 'A7 HVS - Min 10 Eks'
+            else:
+                variasi_baru = variasi_ori  # Keep original if no match
+        
+        # Update kolom Nama Variasi
+        rekap_df.loc[idx, 'Nama Variasi'] = variasi_baru
+        
+        # Update Nama Produk dengan format yang diinginkan
+        rekap_df.loc[idx, 'Nama Produk'] = f"{nama_produk_asli} ({variasi_baru})"
+
     # # 1. Pastikan 'Total Penghasilan' (dari income_df) adalah numerik
     # rekap_df['Total Penghasilan'] = clean_and_convert_to_numeric(rekap_df['Total Penghasilan'])
     
