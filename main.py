@@ -3026,6 +3026,64 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         'Penjualan Per Hari': summary_df['Penjualan Per Hari'], 'Jumlah buku per pesanan': summary_df['Jumlah buku per pesanan']
     })
 
+    if store_choice == "DAMA.ID STORE":
+        mapping_dama_tiktok = {
+            # Al Quran - Al Aqeel series
+            "Al Quran Wakaf Al Aqeel A6 B5 Pastel Kertas HVS (BANDUNG)": "Al Aqeel A6 B5 Pastel HVS",
+            "AL QURAN MUSHAF AL ALEEM A6 SAKU KERTAS QPP (BANDUNG)": "Al Aleem A6 Saku QPP",
+            "AL QURAN TADJWID DAN TERJEMAHAN TAFSIR ASBABUNNUZUL WAQAF IBTIDA MUSHAF MUMTAAZ A5 KERTAS QPP (BANDUNG)": "Al Mumtaaz A5 QPP",
+            "Al QURAN TADJWID TANPA TERJEMAHAN MUSHAF SUBHAAN A5 KERTAS QPP (BANDUNG)": "Al Subhaan A5 QPP",
+            "AL QURAN MUSHAF AL FIKRAH A4 A5 HVS WAQAF IBTIDA TERJEMAHAN PERKATA (BANDUNG)": "Al Fikrah A4 A5 HVS",
+            "Al Quran Legend Gold Silver Al Aqeel A5 A7 Kertas HVS (BANDUNG)": "Al Aqeel Legend Gold Silver A5 A7 HVS",
+            "Al Quran Al Quddus Tanpa terjemahan uk A5 DAN A4 Kertas HVS (BANDUNG)": "Al Quddus A4 A5 HVS",
+            
+            # Juz'amma series
+            "Juz'amma A5 kertas KORAN Edisi Terbaru Lebih Lengkap Terjemahan Tajwid Asmaul Husnah (BANDUNG)": "Juz'amma A5 Koran",
+            "Juz'amma A5 kertas HVS Edisi Terbaru Lebih Lengkap Terjemahan Tajwid Asmaul Husnah (BANDUNG)": "Juz'amma A5 HVS",
+            
+            # Custom & Tahlilan
+            "AL QURAN CUSTOM NAMA FOTO DI COVER SISIPAN ACARA TASYAKUR TAHLIL YASIN (BANDUNG)": "Al Quran Custom Cover Sisipan",
+            "ALQURAN A6 HVS EDISI TAHLILAN TERBARU 30 Juz Lengkap Dengan Terjemahan Dilengkapi Dengan Tahlil Dan Doa Pendek (BANDUNG)": "Al Aqeel A6 Tahlilan HVS",
+            
+            # Full Color & Paket
+            "Al Quran Mushaf Al Aqeel Full Color A5 B5 Kertas HVS (BANDUNG)": "Al Aqeel Full Color A5 B5 HVS",
+            "PAKET MURAH AL AQEEL A5 KERTAS KORAN TANPA TERJEMAHAN ALQURAN WAKAF (BANDUNG)": "Paket Murah Al Aqeel A5 Koran",
+            "AL AQEEL A5 KERTAS KORAN TANPA TERJEMAHAN ALQURAN MUSHAF UNTUK WAKAF (BANDUNG)": "Al Aqeel A5 Koran Wakaf",
+            
+            # Al Quddus & Lainnya
+            "AL QURAN AL QUDDUS SAKU A7 KULIT RESLETING (BANDUNG)": "Al Quddus A7 Saku Kulit Resleting",
+            "AL QUR'AN MUSHAF AL AQEEL COVER METALIK TANPA TERJEMAHAN": "Al Aqeel Cover Metalik",
+            
+            # Buku & Hijab (tidak disingkat, sama seperti aslinya)
+            "BUKU CERTIA FABEL ANAK PAUD TK SD": "BUKU CERTIA FABEL ANAK PAUD TK SD",
+            "PASHMINA HODDIE BY DAMA CERUTY BABYDOLL": "PASHMINA HODDIE BY DAMA CERUTY BABYDOLL",
+            "HIJAB VOAL LASER CUT MOTIF": "HIJAB VOAL LASER CUT MOTIF",
+            "HIJAB SEGI EMPAT  BELLA SQUARE  HIJAB PREMIUM  POLLYCOTTON ANTI MELEYOT Kerudung": "HIJAB SEGI EMPAT BELLA SQUARE HIJAB PREMIUM POLLYCOTTON ANTI MELEYOT Kerudung",
+            "HIJAB BERGO JERSEY BY DAMA": "HIJAB BERGO JERSEY BY DAMA",
+        }
+        
+        def apply_shorten_dama_tiktok(nama_full):
+            if pd.isna(nama_full):
+                return nama_full
+            
+            nama_full_str = str(nama_full).strip()
+            
+            # Cek apakah ada variasi dalam kurung di akhir nama produk
+            match_variasi = re.search(r'(\s*\(.*\))$', nama_full_str)
+            variasi_part = match_variasi.group(1) if match_variasi else ""
+            nama_produk_saja = nama_full_str.replace(variasi_part, "").strip()
+            
+            # Cari di mapping
+            for original_name, short_name in mapping_dama_tiktok.items():
+                if original_name.lower() == nama_produk_saja.lower():
+                    return f"{short_name}{variasi_part}"
+            
+            # Jika tidak ditemukan di mapping, kembalikan nama asli
+            return nama_full_str
+        
+        # Terapkan mapping
+        summary_final['Nama Produk'] = summary_final['Nama Produk'].apply(apply_shorten_dama_tiktok)
+
     summary_final = summary_final.drop_duplicates(subset=['Nama Produk', 'Variasi'], keep='first').reset_index(drop=True)
     summary_final = summary_final.sort_values(by='Nama Produk', ascending=True).reset_index(drop=True)
     summary_final['No'] = range(1, len(summary_final) + 1)
