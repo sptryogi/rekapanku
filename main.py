@@ -3066,7 +3066,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
             if pd.isna(nama_full):
                 return nama_full
             
-            nama_full_str = str(nama_full).strip()
+            nama_full_str = re.sub(r'\s+', ' ', str(nama_full)).strip()
             
             # Cek apakah ada variasi dalam kurung di akhir nama produk
             match_variasi = re.search(r'(\s*\(.*\))$', nama_full_str)
@@ -3075,7 +3075,8 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
             
             # Cari di mapping
             for original_name, short_name in mapping_dama_tiktok.items():
-                if original_name.lower() == nama_produk_saja.lower():
+                if re.sub(r'\s+', ' ', original_name).strip().lower() == \
+                   re.sub(r'\s+', ' ', nama_produk_saja).strip().lower():
                     return f"{short_name}{variasi_part}"
             
             # Jika tidak ditemukan di mapping, kembalikan nama asli
