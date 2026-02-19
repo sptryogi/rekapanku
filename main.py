@@ -356,8 +356,6 @@ def process_rekap(order_df, income_df, seller_conv_df, store_choice=None):
     
     #    Bagi 1250 dengan jumlah produk tersebut
     # rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
-    rekap_df['Biaya Proses Pesanan Dibagi'] = np.where(is_raka, 0, 1250 / product_count_per_order)
-
     basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
     # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # Ambil tahun dari kolom Waktu Pesanan Dibuat
@@ -370,6 +368,9 @@ def process_rekap(order_df, income_df, seller_conv_df, store_choice=None):
     # rekap_df['Biaya Layanan 2%'] = 0
     # Kondisi khusus untuk Raka Bookstore: biaya tertentu di-nol-kan
     is_raka = (store_choice == 'Raka Bookstore')
+
+    rekap_df['Biaya Proses Pesanan Dibagi'] = np.where(is_raka, 0, 1250 / product_count_per_order)
+
     
     # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
     # Jika Raka Bookstore, Biaya Adm 8% = 0
