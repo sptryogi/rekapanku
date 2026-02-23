@@ -3435,8 +3435,8 @@ if marketplace_choice:
     # Konfigurasi file opsional per toko untuk TikTok
     OPTIONAL_FILES_TIKTOK = {
         'creator_order': ['Raka Bookstore', 'Toko Kaliba'],
-        'product_data': ['Raka Bookstore', 'Toko Kaliba'],
-        'pdf_resi': ['Raka Bookstore', 'Toko Kaliba']  # Jika juga ingin PDF opsional
+        'product_data': ['Raka Bookstore', 'Toko Kaliba', 'Human Store'],
+        'pdf_resi': ['Raka Bookstore', 'Toko Kaliba', 'Human Store']  # Jika juga ingin PDF opsional
     }
     
     def is_file_optional_tiktok(file_type, store):
