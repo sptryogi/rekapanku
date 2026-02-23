@@ -1525,7 +1525,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # dengan penjualan normal.
     biaya_layanan_col = 'Biaya Layanan 4,5%' if store_type == 'Pacific Bookstore' else 'Biaya Layanan 2%'
     summary_df = rekap_copy.groupby(['Nama Produk', 'Harga Satuan'], as_index=False).agg({
-        'Jumlah Terjual': 'sum', 
+        'Jumlah Terjual': 'sum',
+        'No. Pesanan': 'nunique',
         # 'Harga Satuan': 'first', <-- Dihapus karena sudah jadi bagian key
         'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
@@ -1567,7 +1568,10 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers",
         "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |",
         "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris",
-        "PAKET MURAH ALQURAN AL AQEEL MUSHAF NON TERJEMAHAN | SURABAYA | al quran Wakaf/Shodaqoh hadiah hampers islami"
+        "PAKET MURAH ALQURAN AL AQEEL MUSHAF NON TERJEMAHAN | SURABAYA | al quran Wakaf/Shodaqoh hadiah hampers islami",
+        "Alquran Wakaf Al Aqeel A5 Kertas Koran | Mushaf 18 Baris | Semarang", 
+        "Alquran Mini Al Aqeel A7 Gold HVS | Cover Metalik | Alquran Souvenir | Semarang",
+        "Alquran Edisi Tahlilan A6 | Alquran Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang"
     ]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus]
     
@@ -1691,7 +1695,10 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "PAKET MURAH ALQURAN AL AQEEL MUSHAF NON TERJEMAHAN | SURABAYA | al quran Wakaf/Shodaqoh hadiah hampers islami",
         "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA |",
         "Alquran Cover Emas Kertas HVS Al Aqeel A5 Gold Murah", 
-        "Alquran Cover Emas Kertas HVS Al Aqeel A7 Gold Murah"
+        "Alquran Cover Emas Kertas HVS Al Aqeel A7 Gold Murah",
+        "Alquran Wakaf Al Aqeel A5 Kertas Koran | Mushaf 18 Baris | Semarang", 
+        "Alquran Mini Al Aqeel A7 Gold HVS | Cover Metalik | Alquran Souvenir | Semarang",
+        "Alquran Edisi Tahlilan A6 | Alquran Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang"
     ]
     
     for p_biasa in produk_khusus_biasa:
@@ -1818,7 +1825,16 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     # ... (sisa fungsi `process_summary` Anda tetap sama persis dari sini sampai akhir) ...
     summary_df['Persentase'] = (summary_df.apply(lambda row: row['Margin'] / row['Total Harga Produk'] if row['Total Harga Produk'] != 0 else 0, axis=1))
-    summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
+    # summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
+    if store_type in ['Raka Bookstore', 'Toko Kaliba']:
+        # Jika toko Raka/Kaliba, ambil hasil hitungan unik No. Pesanan tadi
+        summary_df['Jumlah Pesanan'] = summary_df['No. Pesanan']
+    else:
+        # Jika toko lain, gunakan rumus bagi 1250
+        summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
+    
+    # Setelah itu, hapus kolom sementara No. Pesanan agar tidak muncul di excel
+    summary_df.drop(columns=['No. Pesanan'], inplace=True, errors='ignore')
     summary_df['Penjualan Per Hari'] = round(summary_df['Total Harga Produk'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = round(summary_df.apply(lambda row: row['Jumlah Eksemplar'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1), 1)
     
@@ -1947,7 +1963,13 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     total_margin = total_penjualan_netto - total_biaya_packing - total_biaya_ekspedisi - total_pembelian - total_iklan_klik
     total_row['Margin'] = total_margin
     total_row['Persentase'] = (total_margin / total_harga_produk) if total_harga_produk != 0 else 0
-    total_jumlah_pesanan = (total_biaya_proses_pesanan / 1250) if 1250 != 0 else 0
+    # total_jumlah_pesanan = (total_biaya_proses_pesanan / 1250) if 1250 != 0 else 0
+    if store_type in ['Raka Bookstore', 'Toko Kaliba']:
+        # Jumlahkan kolom Jumlah Pesanan yang sudah dihitung per baris
+        total_jumlah_pesanan = summary_final['Jumlah Pesanan'].sum()
+    else:
+        # Gunakan logika lama
+        total_jumlah_pesanan = (total_biaya_proses_pesanan / 1250) if 1250 != 0 else 0
     total_row['Jumlah Pesanan'] = total_jumlah_pesanan
     total_row['Penjualan Per Hari'] = round(total_harga_produk / 7, 1)
     total_row['Jumlah buku per pesanan'] = round(total_jumlah_eksemplar / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1) # <-- DIUBAH
