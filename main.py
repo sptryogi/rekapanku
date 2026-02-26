@@ -3833,8 +3833,8 @@ if marketplace_choice:
                             start_row_header = 2 # Header kolom sekarang mulai di baris ke-3 (index 2)
 
                         nama_kolom_row = 3
-                        for col_num, value in enumerate(df.columns.values):
-                            worksheet.write(start_row_header, col_num, value, header_format)
+                        # for col_num, value in enumerate(df.columns.values):
+                        #     worksheet.write(start_row_header, col_num, value, header_format)
                             
                         for col_num, value in enumerate(df.columns.values):
                             worksheet.merge_range(nama_kolom_row, col_num, nama_kolom_row + 1, col_num, 
