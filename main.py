@@ -1477,6 +1477,30 @@ def get_eksemplar_multiplier(nama_produk):
     if 'SATUAN' in nama_produk:
         return 1
     return 1
+
+def normalize_product_name_human_store(nama_produk):
+    """
+    Normalisasi nama produk Human Store:
+    - Tambahkan '| Jakarta' jika belum ada
+    - Standarisasi spasi
+    """
+    if pd.isna(nama_produk):
+        return nama_produk
+    
+    nama_clean = str(nama_produk).strip()
+    
+    # Cek apakah sudah ada '| Jakarta' (case insensitive)
+    if '| jakarta' not in nama_clean.lower():
+        # Tambahkan '| Jakarta' di akhir
+        nama_clean = f"{nama_clean} | Jakarta"
+    
+    # Standarisasi spasi ganda
+    nama_clean = re.sub(r'\s+', ' ', nama_clean).strip()
+    
+    # Standarisasi '| Jakarta' (pastikan huruf besar)
+    nama_clean = re.sub(r'\|\s*jakarta', '| Jakarta', nama_clean, flags=re.IGNORECASE)
+    
+    return nama_clean
     
 def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, store_type):
     """
@@ -1868,6 +1892,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # --- LOGIKA PERSINGKAT NAMA PRODUK (KHUSUS HUMAN STORE) ---
     mapping_singkatan = {}
     if store_type == "Human Store":
+        summary_df['Nama Produk'] = summary_df['Nama Produk'].apply(normalize_product_name_human_store)
         mapping_singkatan = {
             "AL-QUR'AN TERJEMAH HC AL ALEEM QPP A6 | Jakarta": "Al Aleem A6 QPP",
             "AL-QUR'AN TERJEMAH  HC AL ALEEM QPP A6 | Jakarta": "Al Aleem A6 QPP",
@@ -1897,7 +1922,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "Custom Al Quran Mengenang/Wafat 40/100/1000 Hari | Jakarta": "Alquran Custom",
             "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta": "A6 edisi Tahlilan",
             "Al-Qur'an Non Terjemah Al Aqeel HVS A5 | Jakarta": "Al Aqeel A5 HVS",
-            "Al Qur'an Terjemah Per Kata | Tajwid 2 Warna | Al Fikrah A5 Kertas HVS | Jakarta": "Al Fikrah A5 HVS"
+            "Al Qur'an Terjemah Per Kata | Tajwid 2 Warna | Al Fikrah A5 Kertas HVS | Jakarta": "Al Fikrah A5 HVS",
+            
         }
     elif store_type == "Pacific Bookstore":
         mapping_singkatan = {
