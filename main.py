@@ -2837,21 +2837,20 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     # 1. Tentukan kolom mana yang akan dijumlahkan dan mana yang akan diambil nilai pertamanya
     cols_to_sum = [
-        'Komisi Affiliate'        
+        'Komisi Affiliate',
+        'Jumlah Terjual',
+        'Total Harga Sebelum Diskon',
+        'Diskon Penjual'
     ]
     
     # Kolom yang nilainya sama untuk semua duplikat, jadi kita ambil yang pertama
     cols_to_first = [
         'Waktu Pesanan Dibuat',
         'Waktu Dana Dilepas',
-        'Jumlah Terjual',
-        'Total Harga Sebelum Diskon',
-        'Diskon Penjual',
         'Komisi Iklan Affiliate',
         'Biaya Pre-order',
         'Biaya Layanan Cashback Bonus 1,5%',
         'Biaya Layanan Voucher Xtra',
-        'Harga Satuan',
         'Biaya Proses Pesanan',
         'Sumber Pesanan'
     ]
@@ -2862,7 +2861,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     
     # 2. Lakukan grouping berdasarkan No. Pesanan, Nama Produk, dan Variasi
     #    'as_index=False' penting agar kolom grouping tidak menjadi index
-    rekap_final = rekap_final.groupby(['No. Pesanan', 'Nama Produk', 'Variasi'], as_index=False).agg(agg_rules_final)
+    rekap_final = rekap_final.groupby(['No. Pesanan', 'Nama Produk', 'Variasi', 'Harga Satuan'], as_index=False).agg(agg_rules_final)
     
     # 3. Hitung ulang kolom-kolom yang bergantung pada hasil agregasi
     
@@ -2905,7 +2904,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_df, product_data_df, store_choice):
     """Fungsi untuk memproses dan membuat sheet 'SUMMARY' untuk TikTok."""
     # Agregasi data dari REKAP berdasarkan Nama Produk dan Variasi (ini sudah mencegah duplikasi)
-    summary_df = rekap_df.groupby(['Nama Produk', 'Harga Satuan', 'Variasi']).agg({
+    summary_df = rekap_df.groupby(['Nama Produk', 'Variasi', 'Harga Satuan']).agg({
         'Jumlah Terjual': 'sum',
         'Diskon Penjual': 'sum',
         'Total Penjualan': 'sum',
@@ -3156,7 +3155,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         # Terapkan mapping
         summary_final['Nama Produk'] = summary_final['Nama Produk'].apply(apply_shorten_dama_tiktok)
 
-    summary_final = summary_final.drop_duplicates(subset=['Nama Produk', 'Variasi'], keep='first').reset_index(drop=True)
+    summary_final = summary_final.drop_duplicates(subset=['Nama Produk', 'Variasi', 'Harga Satuan'], keep='first').reset_index(drop=True)
     summary_final = summary_final.sort_values(by='Nama Produk', ascending=True).reset_index(drop=True)
     summary_final['No'] = range(1, len(summary_final) + 1)
 
