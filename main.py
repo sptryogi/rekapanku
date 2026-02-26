@@ -1759,8 +1759,12 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
+    # summary_df['Jumlah Eksemplar'] = summary_df.apply(
+    #     lambda row: (row['Nama Produk'], row['Jumlah Terjual']), 
+    #     axis=1
+    # )
     summary_df['Jumlah Eksemplar'] = summary_df.apply(
-        lambda row: (row['Nama Produk'], row['Jumlah Terjual']), 
+        lambda row: calculate_eksemplar(row['Nama Produk'], row['Jumlah Terjual']), 
         axis=1
     )
 
