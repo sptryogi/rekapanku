@@ -2905,7 +2905,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_df, product_data_df, store_choice):
     """Fungsi untuk memproses dan membuat sheet 'SUMMARY' untuk TikTok."""
     # Agregasi data dari REKAP berdasarkan Nama Produk dan Variasi (ini sudah mencegah duplikasi)
-    summary_df = rekap_df.groupby(['Nama Produk', 'Variasi', 'Harga Satuan']).agg({
+    summary_df = rekap_df.groupby(['Nama Produk', 'Harga Satuan']).agg({
         'Jumlah Terjual': 'sum',
         # 'Harga Satuan': 'first',
         'Diskon Penjual': 'sum',
@@ -3782,6 +3782,19 @@ if marketplace_choice:
                         'text_wrap': True       # Enable wrap text
                     })
 
+                    number_format_id = workbook.add_format({
+                        'num_format': '#,##0',  # Format ribuan dengan titik, tanpa desimal
+                        'border': 1,
+                        'align': 'right'
+                    })
+                    number_format_id_total = workbook.add_format({
+                        'num_format': '#,##0',
+                        'bold': True,
+                        'fg_color': '#FFFF00',
+                        'border': 1,
+                        'align': 'right'
+                    })
+
                     
                     # --- PERUBAHAN 2: Tambahkan format border untuk sel data ---
                     cell_border_format = workbook.add_format({'border': 1})
@@ -3852,6 +3865,27 @@ if marketplace_choice:
                                                          {'type': 'no_blanks', 'format': cell_border_format})
 
                         if sheet_name == 'SUMMARY':
+                            # Daftar kolom yang pakai format angka ribuan
+                            number_columns = [
+                                'Jumlah Terjual', 'Jumlah Eksemplar', 'Jumlah Pesanan',
+                                'Harga Satuan', 'Total Penjualan', 'Voucher Ditanggung Penjual',
+                                'Biaya Komisi AMS + PPN Shopee', 'Biaya Adm 8%', 'Biaya Layanan 2%',
+                                'Biaya Layanan Gratis Ongkir Xtra 4,5%', 'Biaya Proses Pesanan',
+                                'Penjualan Netto', 'Iklan Klik', 'Biaya Packing', 'Biaya Ekspedisi',
+                                'Harga Beli', 'Harga Custom TLJ', 'Total Pembelian', 'Margin'
+                            ]
+                            
+                            for col_name in number_columns:
+                                if col_name in df.columns:
+                                    col_idx = df.columns.get_loc(col_name)
+                                    # Terapkan ke semua baris data (kecuali baris Total)
+                                    for row_idx in range(len(df) - 1):  # -1 untuk skip baris Total
+                                        excel_row = start_row_data + row_idx
+                                        cell_value = df.iloc[row_idx, col_idx]
+                                        if pd.notna(cell_value):
+                                            worksheet.write(excel_row, col_idx, cell_value, number_format_id)
+                                            
+                        if sheet_name == 'SUMMARY':
                             persen_col = df.columns.get_loc('Persentase')
                             penjualan_hari_col = df.columns.get_loc('Penjualan Per Hari')
                             buku_pesanan_col = df.columns.get_loc('Jumlah buku per pesanan')
@@ -3879,6 +3913,11 @@ if marketplace_choice:
                                     current_fmt = total_fmt_percent
                                 elif col_num in [penjualan_hari_col, buku_pesanan_col]:
                                     current_fmt = total_fmt_decimal
+                                elif col_name in number_columns:
+                                    # Gunakan format angka ribuan untuk baris Total
+                                    current_fmt = number_format_id_total
+                                else:
+                                    current_fmt = total_fmt
                                 
                                 if pd.notna(cell_value):
                                     worksheet.write(last_row, col_num, cell_value, current_fmt)
