@@ -1595,7 +1595,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "PAKET MURAH ALQURAN AL AQEEL MUSHAF NON TERJEMAHAN | SURABAYA | al quran Wakaf/Shodaqoh hadiah hampers islami",
         "Alquran Wakaf Al Aqeel A5 Kertas Koran | Mushaf 18 Baris | Semarang", 
         "Alquran Mini Al Aqeel A7 Gold HVS | Cover Metalik | Alquran Souvenir | Semarang",
-        "Alquran Edisi Tahlilan A6 | Alquran Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang"
+        "Alquran Edisi Tahlilan A6 | Alquran Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang",
+        "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Semarang"
     ]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus]
     
@@ -1722,7 +1723,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Alquran Cover Emas Kertas HVS Al Aqeel A7 Gold Murah",
         "Alquran Wakaf Al Aqeel A5 Kertas Koran | Mushaf 18 Baris | Semarang", 
         "Alquran Mini Al Aqeel A7 Gold HVS | Cover Metalik | Alquran Souvenir | Semarang",
-        "Alquran Edisi Tahlilan A6 | Alquran Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang"
+        "Alquran Edisi Tahlilan A6 | Alquran Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang",
+        "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Semarang"
     ]
     
     for p_biasa in produk_khusus_biasa:
