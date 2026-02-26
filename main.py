@@ -1446,7 +1446,7 @@ def calculate_eksemplar(nama_produk, jumlah_terjual):
         paket_match = re.search(r'PAKET\s*ISI\s*(\d+)', nama_produk_upper)
         # Cari "SATUAN"
         satuan_match = 'SATUAN' in nama_produk_upper
-        paket_khusus = re.search(r'PAKET WAKAF MURAH 50 PCS', nama_produk_upper)
+        paket_khusus = re.search(r'PAKET.*WAKAF.*MURAH.*50.*PCS', nama_produk_upper)
         
         faktor = 1 # Default adalah 1
         
@@ -1760,7 +1760,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
     summary_df['Jumlah Eksemplar'] = summary_df.apply(
-        lambda row: calculate_eksemplar(row['Nama Produk'], row['Jumlah Terjual']), 
+        lambda row: (row['Nama Produk'], row['Jumlah Terjual']), 
         axis=1
     )
 
