@@ -3808,7 +3808,7 @@ if marketplace_choice:
                     # Format Baris Total (kuning, bold)
                     total_fmt = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'border': 1})
                     total_fmt_percent = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'num_format': '0.00%', 'border': 1})
-                    total_fmt_decimal = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'num_format': '0.0', 'border': 1})
+                    total_fmt_decimal = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'num_format': '#,##0', 'border': 1})
 
                     # --- PROSES SETIAP SHEET ---
                     for sheet_name, df in sheets.items():
