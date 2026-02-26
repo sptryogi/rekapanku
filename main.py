@@ -14,6 +14,7 @@ from rapidfuzz import fuzz
 import pdfplumber
 from openpyxl import load_workbook
 
+
 # --- FUNGSI-FUNGSI PEMROSESAN ---
 
 def get_pretty_date_range(start_date, end_date):
@@ -3780,6 +3781,7 @@ if marketplace_choice:
                         'valign': 'vcenter',
                         'text_wrap': True       # Enable wrap text
                     })
+
                     
                     # --- PERUBAHAN 2: Tambahkan format border untuk sel data ---
                     cell_border_format = workbook.add_format({'border': 1})
@@ -3798,7 +3800,7 @@ if marketplace_choice:
                     # --- PROSES SETIAP SHEET ---
                     for sheet_name, df in sheets.items():
                         # --- PERUBAHAN 3: Ubah startrow menjadi 3 untuk memberi ruang 2 baris header ---
-                        start_row_data = 5 if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN'] else 1
+                        start_row_data = 4 if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN'] else 1
                         
                         df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=start_row_data, header=False)
                         worksheet = writer.sheets[sheet_name]
@@ -3834,7 +3836,7 @@ if marketplace_choice:
                             worksheet.merge_range(0, 0, 1, len(df.columns) - 1, judul_sheet, title_format) # merge dari baris 0 hingga 1
                             start_row_header = 2 # Header kolom sekarang mulai di baris ke-3 (index 2)
 
-                        nama_kolom_row = 3
+                        nama_kolom_row = 2
                         # for col_num, value in enumerate(df.columns.values):
                         #     worksheet.write(start_row_header, col_num, value, header_format)
                             
