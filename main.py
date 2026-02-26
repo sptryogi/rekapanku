@@ -3739,6 +3739,15 @@ if marketplace_choice:
                     
                     # Format Header Kolom (biru muda, bold, border)
                     header_format = workbook.add_format({'bold': True, 'fg_color': '#DDEBF7', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
+
+                    header_name_format = workbook.add_format({
+                        'bold': True,
+                        'fg_color': '#DDEBF7',  # Warna sama dengan header
+                        'border': 1,
+                        'align': 'center',
+                        'valign': 'vcenter',
+                        'text_wrap': True       # Enable wrap text
+                    })
                     
                     # --- PERUBAHAN 2: Tambahkan format border untuk sel data ---
                     cell_border_format = workbook.add_format({'border': 1})
@@ -3757,7 +3766,7 @@ if marketplace_choice:
                     # --- PROSES SETIAP SHEET ---
                     for sheet_name, df in sheets.items():
                         # --- PERUBAHAN 3: Ubah startrow menjadi 3 untuk memberi ruang 2 baris header ---
-                        start_row_data = 3 if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN'] else 1
+                        start_row_data = 4 if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN'] else 1
                         
                         df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=start_row_data, header=False)
                         worksheet = writer.sheets[sheet_name]
@@ -3792,9 +3801,14 @@ if marketplace_choice:
                                 judul_sheet = f"{sheet_name} {store_choice.upper()} {marketplace_choice} {suffix_tgl}"
                             worksheet.merge_range(0, 0, 1, len(df.columns) - 1, judul_sheet, title_format) # merge dari baris 0 hingga 1
                             start_row_header = 2 # Header kolom sekarang mulai di baris ke-3 (index 2)
-                        
+
+                        nama_kolom_row = 3
                         for col_num, value in enumerate(df.columns.values):
                             worksheet.write(start_row_header, col_num, value, header_format)
+                            
+                        for col_num, value in enumerate(df.columns.values):
+                            worksheet.merge_range(nama_kolom_row, col_num, nama_kolom_row + 1, col_num, 
+                                                  value, header_name_format)
 
                         # Terapkan formatting KHUSUS untuk sheet SUMMARY, REKAP, dan IKLAN
                         if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN']:
@@ -3822,7 +3836,8 @@ if marketplace_choice:
                             worksheet.set_column(penjualan_hari_col, penjualan_hari_col, 18, one_decimal_format)
                             worksheet.set_column(buku_pesanan_col, buku_pesanan_col, 22, one_decimal_format)
                             
-                            last_row = len(df) + start_row_header
+                            # last_row = len(df) + start_row_header
+                            last_row = len(df) + start_row_data - 1
                             for col_num in range(len(df.columns)):
                                 cell_value = df.iloc[-1, col_num]
                                 current_fmt = total_fmt
