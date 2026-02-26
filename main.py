@@ -2838,15 +2838,16 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     # 1. Tentukan kolom mana yang akan dijumlahkan dan mana yang akan diambil nilai pertamanya
     cols_to_sum = [
         'Komisi Affiliate',
-        'Jumlah Terjual',
-        'Total Harga Sebelum Diskon',
-        'Diskon Penjual'
     ]
     
     # Kolom yang nilainya sama untuk semua duplikat, jadi kita ambil yang pertama
     cols_to_first = [
         'Waktu Pesanan Dibuat',
         'Waktu Dana Dilepas',
+        'Jumlah Terjual',
+        'Total Harga Sebelum Diskon',
+        'Diskon Penjual',
+        'Harga Satuan',
         'Komisi Iklan Affiliate',
         'Biaya Pre-order',
         'Biaya Layanan Cashback Bonus 1,5%',
@@ -2861,7 +2862,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     
     # 2. Lakukan grouping berdasarkan No. Pesanan, Nama Produk, dan Variasi
     #    'as_index=False' penting agar kolom grouping tidak menjadi index
-    rekap_final = rekap_final.groupby(['No. Pesanan', 'Nama Produk', 'Variasi', 'Harga Satuan'], as_index=False).agg(agg_rules_final)
+    rekap_final = rekap_final.groupby(['No. Pesanan', 'Nama Produk', 'Variasi'], as_index=False).agg(agg_rules_final)
     
     # 3. Hitung ulang kolom-kolom yang bergantung pada hasil agregasi
     
