@@ -2872,9 +2872,9 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_df, product_data_df, store_choice):
     """Fungsi untuk memproses dan membuat sheet 'SUMMARY' untuk TikTok."""
     # Agregasi data dari REKAP berdasarkan Nama Produk dan Variasi (ini sudah mencegah duplikasi)
-    summary_df = rekap_df.groupby(['Nama Produk', 'Variasi']).agg({
+    summary_df = rekap_df.groupby(['Nama Produk', 'Variasi', 'Harga Satuan']).agg({
         'Jumlah Terjual': 'sum',
-        'Harga Satuan': 'first',
+        # 'Harga Satuan': 'first',
         'Diskon Penjual': 'sum',
         'Total Penjualan': 'sum',
         'Komisi Affiliate': 'sum',
