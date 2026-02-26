@@ -3796,7 +3796,7 @@ if marketplace_choice:
                     # --- PROSES SETIAP SHEET ---
                     for sheet_name, df in sheets.items():
                         # --- PERUBAHAN 3: Ubah startrow menjadi 3 untuk memberi ruang 2 baris header ---
-                        start_row_data = 4 if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN'] else 1
+                        start_row_data = 5 if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN'] else 1
                         
                         df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=start_row_data, header=False)
                         worksheet = writer.sheets[sheet_name]
@@ -3867,7 +3867,7 @@ if marketplace_choice:
                             worksheet.set_column(buku_pesanan_col, buku_pesanan_col, 22, one_decimal_format)
                             
                             # last_row = len(df) + start_row_header
-                            last_row = len(df) + start_row_data - 1
+                            last_row = start_row_data + len(df) - 1
                             for col_num in range(len(df.columns)):
                                 cell_value = df.iloc[-1, col_num]
                                 current_fmt = total_fmt
@@ -3892,9 +3892,23 @@ if marketplace_choice:
                                     worksheet.write(start_row_data + last_row_idx, col_num, cell_value, total_fmt)
                         
                         # Atur lebar kolom otomatis untuk semua sheet
+                        # for i, col in enumerate(df.columns):
+                        #     column_len = max(df[col].astype(str).map(len).max(), len(col))
+                        #     worksheet.set_column(i, i, column_len + 2)
                         for i, col in enumerate(df.columns):
-                            column_len = max(df[col].astype(str).map(len).max(), len(col))
-                            worksheet.set_column(i, i, column_len + 2)
+                            # Hitung panjang rata-rata kata
+                            words = str(col).split()
+                            if len(words) >= 3:
+                                # Ambil 2 kata pertama untuk lebar dasar
+                                base_width = len(' '.join(words[:2])) + 2  # +2 untuk padding
+                            elif len(words) == 2:
+                                base_width = len(col) + 2
+                            else:
+                                base_width = len(col) + 3
+                            
+                            # Minimal 8, maksimal 15 (biar tidak terlalu lebar)
+                            final_width = max(8, min(base_width, 15))
+                            worksheet.set_column(i, i, final_width)
                 
                 output.seek(0)
                 progress_bar.progress(100, text="Proses Selesai!")
