@@ -123,7 +123,7 @@ def extract_paper_and_size_variation(var_str):
     
     return ' '.join(unique_parts) # Gabungkan bagian yang relevan
     
-def process_rekap(order_df, income_df, seller_conv_df, store_choice=None):
+def process_rekap(order_df, income_df, seller_conv_df):
     """
     Fungsi untuk memproses dan membuat sheet 'REKAP' dengan file 'income' sebagai data utama.
     """
@@ -359,32 +359,25 @@ def process_rekap(order_df, income_df, seller_conv_df, store_choice=None):
     # rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
     # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
-    # Ambil tahun dari kolom Waktu Pesanan Dibuat
-    tahun_pesanan = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat']).dt.year
-    
+    # Ambil tahun dari kolom Waktu Pesanan Dibuat    
     # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
     # rekap_df['Biaya Adm 8%'] = np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
     # # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     # rekap_df['Biaya Layanan 2%'] = 0
     # Kondisi khusus untuk Raka Bookstore: biaya tertentu di-nol-kan
-    is_raka = (store_choice == 'Raka Bookstore')
-
-    rekap_df['Biaya Proses Pesanan Dibagi'] = np.where(is_raka, 0, 1250 / product_count_per_order)
+    
+    rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
 
     
     # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
     # Jika Raka Bookstore, Biaya Adm 8% = 0
-    rekap_df['Biaya Adm 8%'] = np.where(
-        is_raka, 
-        0, 
-        np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
-    )
+    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.09
     
     rekap_df['Biaya Layanan 2%'] = 0
     
     # Jika Raka Bookstore, Biaya Layanan Gratis Ongkir Xtra 4,5% = 0
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(is_raka, 0, basis_biaya * 0.045)
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     # rekap_df = rekap_df.drop(columns=['BiayaLayananPromo_Clean'], errors='ignore')
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
@@ -1551,7 +1544,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     biaya_layanan_col = 'Biaya Layanan 4,5%' if store_type == 'Pacific Bookstore' else 'Biaya Layanan 2%'
     summary_df = rekap_copy.groupby(['Nama Produk', 'Harga Satuan'], as_index=False).agg({
         'Jumlah Terjual': 'sum',
-        'No. Pesanan': 'nunique',
+        # 'No. Pesanan': 'nunique',
         # 'Harga Satuan': 'first', <-- Dihapus karena sudah jadi bagian key
         'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
@@ -1856,16 +1849,16 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     # ... (sisa fungsi `process_summary` Anda tetap sama persis dari sini sampai akhir) ...
     summary_df['Persentase'] = (summary_df.apply(lambda row: row['Margin'] / row['Total Harga Produk'] if row['Total Harga Produk'] != 0 else 0, axis=1))
-    # summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
-    if store_type in ['Raka Bookstore', 'Toko Kaliba']:
-        # Jika toko Raka/Kaliba, ambil hasil hitungan unik No. Pesanan tadi
-        summary_df['Jumlah Pesanan'] = summary_df['No. Pesanan']
-    else:
-        # Jika toko lain, gunakan rumus bagi 1250
-        summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
+    summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
+    # if store_type in ['Raka Bookstore', 'Toko Kaliba']:
+    #     # Jika toko Raka/Kaliba, ambil hasil hitungan unik No. Pesanan tadi
+    #     summary_df['Jumlah Pesanan'] = summary_df['No. Pesanan']
+    # else:
+    #     # Jika toko lain, gunakan rumus bagi 1250
+    #     summary_df['Jumlah Pesanan'] = summary_df.apply(lambda row: row['Biaya Proses Pesanan'] / 1250 if 1250 != 0 else 0, axis=1)
     
-    # Setelah itu, hapus kolom sementara No. Pesanan agar tidak muncul di excel
-    summary_df.drop(columns=['No. Pesanan'], inplace=True, errors='ignore')
+    # # Setelah itu, hapus kolom sementara No. Pesanan agar tidak muncul di excel
+    # summary_df.drop(columns=['No. Pesanan'], inplace=True, errors='ignore')
     summary_df['Penjualan Per Hari'] = round(summary_df['Total Harga Produk'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = round(summary_df.apply(lambda row: row['Jumlah Eksemplar'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1), 1)
     
@@ -1942,6 +1935,14 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "Al Quran Saku Resleting Al Quddus A7 QPP Cover Kulit | SURABAYA | Untuk Santri Traveler Muslim": "Al Quddus A7 Cover Kulit Kertas QPP",
             "Al Quran Terjemah Al Aleem A5 Kertas HVS 15 Baris | SURABAYA | Alquran Untuk Majelis Taklim Kajian": "Al Aleem A5 Kertas HVS",
             "Al Quran Wakaf Ibtida Al Quddus A5 Kertas HVS | Alquran SURABAYA": "Al Quddus Ibtida A5 Kertas HVS"
+        }
+    elif store_type == "Toko Kaliba":
+        mapping_singkatan = {
+            "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Quran Al Aqeel A6 Pastel Kertas HVS",
+            "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Quran Al Aqeel A5 Kertas Koran",
+            "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers": "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS",
+            "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers": "Al Quran Al Aqeel A7 GOLD Kertas HVS",
+            "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan": "Al-Qur'an Al Aqeel Custom Foto Nama"
         }
 
         # def apply_shorten(nama_full):
@@ -3604,10 +3605,8 @@ if marketplace_choice:
                 
                     # --- LOGIKA PEMROSESAN BERDASARKAN TOKO ---
                     status_text.text("Menyusun sheet 'REKAP' (Shopee)...")
-                    if store_choice == "Human Store":
-                        rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, store_choice="Human Store")
-                    elif store_choice in ["Raka Bookstore", "Toko Kaliba"]:
-                        rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, store_choice="Raka Bookstore")
+                    if store_choice in ["Human Store", "Raka Bookstore", "Toko Kaliba"]:
+                        rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df)
                     elif store_choice == "Pacific Bookstore": # Hanya Pacific yang pakai logic ini
                         rekap_processed = process_rekap_pacific(order_all_df, income_dilepas_df, seller_conversion_df)
                     elif store_choice == "DAMA.ID STORE": # Panggil fungsi baru untuk DAMA
