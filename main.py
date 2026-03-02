@@ -1997,13 +1997,13 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     total_margin = total_penjualan_netto - total_biaya_packing - total_biaya_ekspedisi - total_pembelian - total_iklan_klik
     total_row['Margin'] = total_margin
     total_row['Persentase'] = (total_margin / total_harga_produk) if total_harga_produk != 0 else 0
-    # total_jumlah_pesanan = (total_biaya_proses_pesanan / 1250) if 1250 != 0 else 0
-    if store_type in ['Raka Bookstore', 'Toko Kaliba']:
-        # Jumlahkan kolom Jumlah Pesanan yang sudah dihitung per baris
-        total_jumlah_pesanan = summary_final['Jumlah Pesanan'].sum()
-    else:
-        # Gunakan logika lama
-        total_jumlah_pesanan = (total_biaya_proses_pesanan / 1250) if 1250 != 0 else 0
+    total_jumlah_pesanan = (total_biaya_proses_pesanan / 1250) if 1250 != 0 else 0
+    # if store_type in ['Raka Bookstore', 'Toko Kaliba']:
+    #     # Jumlahkan kolom Jumlah Pesanan yang sudah dihitung per baris
+    #     total_jumlah_pesanan = summary_final['Jumlah Pesanan'].sum()
+    # else:
+    #     # Gunakan logika lama
+    #     total_jumlah_pesanan = (total_biaya_proses_pesanan / 1250) if 1250 != 0 else 0
     total_row['Jumlah Pesanan'] = total_jumlah_pesanan
     total_row['Penjualan Per Hari'] = round(total_harga_produk / 7, 1)
     total_row['Jumlah buku per pesanan'] = round(total_jumlah_eksemplar / total_jumlah_pesanan if total_jumlah_pesanan != 0 else 0, 1) # <-- DIUBAH
