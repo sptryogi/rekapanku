@@ -219,6 +219,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         "AL-QURAN AL AQEEL SILVER TERMURAH", # <-- TAMBAHKAN INI
         "AL-QUR'AN TERJEMAH HC AL ALEEM A5",
         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan",
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta",
         "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
         "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris", 
         "Alquran Cover Emas Kertas HVS Al Aqeel A7 Gold Murah"
@@ -252,14 +253,15 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
                     "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
                     "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
                     "AL-QURAN AL AQEEL SILVER TERMURAH",
-                    "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris"
+                    "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris",
+                    "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris | Jakarta"
                 ]
                 if any(produk in nama_produk_clean for produk in produk_yang_ambil_full_variasi):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
                     part_to_append = var_str
                 # --- AKHIR LOGIKA KHUSUS ---
                 # 3. TAHLILAN (Ambil setelah koma)
-                elif "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan" in nama_produk_clean:
+                elif "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta" in nama_produk_clean:
                     if ',' in var_str:
                         part_to_append = var_str.split(',', 1)[-1].strip() # Ambil setelah koma
                     else:
