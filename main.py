@@ -123,7 +123,7 @@ def extract_paper_and_size_variation(var_str):
     
     return ' '.join(unique_parts) # Gabungkan bagian yang relevan
     
-def process_rekap(order_df, income_df, seller_conv_df):
+def process_rekap(order_df, income_df, seller_conv_df, store_type):
     """
     Fungsi untuk memproses dan membuat sheet 'REKAP' dengan file 'income' sebagai data utama.
     """
@@ -367,18 +367,47 @@ def process_rekap(order_df, income_df, seller_conv_df):
     # rekap_df['Biaya Layanan 2%'] = 0
     # Kondisi khusus untuk Raka Bookstore: biaya tertentu di-nol-kan
     
-    rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
+    # rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
 
     
     # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
     # Jika Raka Bookstore, Biaya Adm 8% = 0
-    rekap_df['Biaya Adm 8%'] = basis_biaya * 0.09
+    # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.09
     
-    rekap_df['Biaya Layanan 2%'] = 0
+    # rekap_df['Biaya Layanan 2%'] = 0
     
-    # Jika Raka Bookstore, Biaya Layanan Gratis Ongkir Xtra 4,5% = 0
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
-    # rekap_df = rekap_df.drop(columns=['BiayaLayananPromo_Clean'], errors='ignore')
+    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
+    if store_type in ['Raka Bookstore', 'Toko Kaliba']:
+        # Cek kondisi dari kolom income asli (sebelum dibagi)
+        # Biaya Adm 8%: hanya jika Biaya Administrasi di income ≠ 0
+        rekap_df['Biaya Adm 8%'] = np.where(
+            rekap_df['Biaya Administrasi'] != 0,
+            basis_biaya * 0.08,
+            0
+        )
+        
+        # Biaya Layanan 2% selalu 0 untuk toko ini
+        rekap_df['Biaya Layanan 2%'] = 0
+        
+        # Biaya Layanan Gratis Ongkir Xtra 4,5%: hanya jika Biaya Layanan di income ≠ 0
+        rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
+            rekap_df['Biaya Layanan'] != 0,
+            basis_biaya * 0.045,
+            0
+        )
+        
+        # Biaya Proses Pesanan Dibagi: hanya jika Biaya Proses Pesanan di income ≠ 0
+        rekap_df['Biaya Proses Pesanan Dibagi'] = np.where(
+            rekap_df['Biaya Proses Pesanan'] != 0,
+            1250 / product_count_per_order,
+            0
+        )
+    else:
+        # Rumus standar untuk toko lain (Human Store, Pacific, DAMA)
+        rekap_df['Biaya Adm 8%'] = basis_biaya * 0.09
+        rekap_df['Biaya Layanan 2%'] = 0
+        rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
+        rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
@@ -3635,7 +3664,7 @@ if marketplace_choice:
                     # --- LOGIKA PEMROSESAN BERDASARKAN TOKO ---
                     status_text.text("Menyusun sheet 'REKAP' (Shopee)...")
                     if store_choice in ["Human Store", "Raka Bookstore", "Toko Kaliba"]:
-                        rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df)
+                        rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, store_choice)
                     elif store_choice == "Pacific Bookstore": # Hanya Pacific yang pakai logic ini
                         rekap_processed = process_rekap_pacific(order_all_df, income_dilepas_df, seller_conversion_df)
                     elif store_choice == "DAMA.ID STORE": # Panggil fungsi baru untuk DAMA
