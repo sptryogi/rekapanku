@@ -382,7 +382,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         # Biaya Adm 8%: hanya jika Biaya Administrasi di income ≠ 0
         rekap_df['Biaya Adm 8%'] = np.where(
             rekap_df['Biaya Administrasi'] != 0,
-            basis_biaya * 0.08,
+            basis_biaya * 0.09,
             0
         )
         
