@@ -2822,37 +2822,54 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     # 4. MENGAMBIL KOMISI AFFILIATE
     # creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
-    if 'SKU' in creator_order_all_df.columns:
-        # Format lama: ekstrak variasi dari SKU
-        creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
-    else:
-        # Format baru: gunakan kolom VARIASI jika ada, atau kosongkan
-        if 'VARIASI' in creator_order_all_df.columns:
-            # Ekstrak A5, A6, A7, B5 dari kolom VARIASI
-            creator_order_all_df['Variasi_Clean'] = creator_order_all_df['VARIASI'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
-        else:
-            # Jika tidak ada kolom variasi sama sekali, kosongkan
-            creator_order_all_df['Variasi_Clean'] = ''
-    # Merge affiliate HANYA jika bukan DAMA.ID STORE
-    # if store_choice != "DAMA.ID STORE":
+
+    # if not creator_order_all_df.empty:
+    #     # Pastikan kolom SKU ada sebelum extract
+    #     if 'SKU' in creator_order_all_df.columns:
+    #         creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+    #     else:
+    #         creator_order_all_df['Variasi_Clean'] = ''
+
     #     rekap_df = pd.merge(
     #         rekap_df,
-    #         creator_order_all_df[['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL']],
+    #         creator_order_all_df[['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PERKIRAAN PEMBAYARAN KOMISI STANDAR']],
     #         left_on=['ORDER ID', 'PRODUCT NAME', 'Variasi'],
     #         right_on=['ID PESANAN', 'PRODUK', 'Variasi_Clean'],
     #         how='left'
     #     )
-    #     rekap_df.rename(columns={'PEMBAYARAN KOMISI AKTUAL': 'Komisi Affiliate'}, inplace=True)
-    #     rekap_df['Komisi Affiliate'] = pd.to_numeric(rekap_df['Komisi Affiliate'], errors='coerce').fillna(0).abs() # Pastikan numerik dan positif
+    #     rekap_df.rename(columns={'PERKIRAAN PEMBAYARAN KOMISI STANDAR': 'Komisi Affiliate'}, inplace=True)
+    #     rekap_df['Komisi Affiliate'] = pd.to_numeric(rekap_df['Komisi Affiliate'], errors='coerce').fillna(0).abs()
     #     rekap_df.drop(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean'], inplace=True, errors='ignore')
     # else:
-    #     # Jika DAMA.ID STORE, buat kolom Komisi Affiliate berisi 0
+    #     # Jika file tidak diupload (DataFrame kosong), isi 0
     #     rekap_df['Komisi Affiliate'] = 0
     if not creator_order_all_df.empty:
-        # Pastikan kolom SKU ada sebelum extract
+        # --- LOGIKA BARU: Cek format file creator order ---
         if 'SKU' in creator_order_all_df.columns:
+            # Format LAMA: Langsung ekstrak variasi dari kolom SKU
             creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+        elif 'ID SKU' in creator_order_all_df.columns:
+            # Format BARU: Gunakan ID SKU untuk lookup ke semua_pesanan_df
+            # Pastikan kolom SKU ID ada di semua_pesanan_df
+            if 'SKU ID' in semua_pesanan_df.columns and 'VARIATION' in semua_pesanan_df.columns:
+                # Buat mapping dictionary dari SKU ID -> VARIATION
+                sku_to_variation = semua_pesanan_df.set_index('SKU ID')['VARIATION'].to_dict()
+                
+                # Map ID SKU dari creator order ke VARIATION dari semua pesanan
+                creator_order_all_df['Variasi_Temp'] = creator_order_all_df['ID SKU'].map(sku_to_variation)
+                
+                # Ekstrak A5, A6, A7, B5 dari VARIATION yang didapat
+                creator_order_all_df['Variasi_Clean'] = creator_order_all_df['Variasi_Temp'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+                
+                # Hapus kolom temporary
+                creator_order_all_df.drop(columns=['Variasi_Temp'], inplace=True, errors='ignore')
+            else:
+                # Fallback jika kolom tidak ditemukan di semua_pesanan_df
+                st.warning("Kolom 'SKU ID' atau 'VARIATION' tidak ditemukan di file semua pesanan. Komisi affiliate mungkin tidak akurat.")
+                creator_order_all_df['Variasi_Clean'] = ''
         else:
+            # Tidak ada kolom SKU atau ID SKU
+            st.warning("Kolom 'SKU' atau 'ID SKU' tidak ditemukan di file creator order. Komisi affiliate mungkin tidak akurat.")
             creator_order_all_df['Variasi_Clean'] = ''
 
         rekap_df = pd.merge(
