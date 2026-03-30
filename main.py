@@ -2821,7 +2821,18 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     rekap_df['Biaya Proses Pesanan'] = 1250 / product_count
 
     # 4. MENGAMBIL KOMISI AFFILIATE
-    creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+    # creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+    if 'SKU' in creator_order_all_df.columns:
+        # Format lama: ekstrak variasi dari SKU
+        creator_order_all_df['Variasi_Clean'] = creator_order_all_df['SKU'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+    else:
+        # Format baru: gunakan kolom VARIASI jika ada, atau kosongkan
+        if 'VARIASI' in creator_order_all_df.columns:
+            # Ekstrak A5, A6, A7, B5 dari kolom VARIASI
+            creator_order_all_df['Variasi_Clean'] = creator_order_all_df['VARIASI'].str.extract(r'\b(A\d{1,2}|B\d{1,2})\b', expand=False).fillna('')
+        else:
+            # Jika tidak ada kolom variasi sama sekali, kosongkan
+            creator_order_all_df['Variasi_Clean'] = ''
     # Merge affiliate HANYA jika bukan DAMA.ID STORE
     # if store_choice != "DAMA.ID STORE":
     #     rekap_df = pd.merge(
@@ -3757,7 +3768,7 @@ if marketplace_choice:
                         creator_order_all_df.columns = [col.upper() for col in creator_order_all_df.columns]
                     else:
                         # Buat DataFrame kosong dengan kolom yang diperlukan
-                        creator_order_all_df = pd.DataFrame(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL', 'SKU'])
+                        creator_order_all_df = pd.DataFrame(columns=['ID PESANAN', 'PRODUK', 'Variasi_Clean', 'PEMBAYARAN KOMISI AKTUAL', 'PERKIRAAN PEMBAYARAN KOMISI STANDAR', 'SKU'])
                         if is_file_optional_tiktok('creator_order', store_choice):
                             st.info("File Creator Order tidak diupload (opsional untuk toko ini), menggunakan data kosong.")
                     progress_bar.progress(20, text="File Excel TikTok dimuat dan kolom dibersihkan.")
