@@ -2852,8 +2852,18 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
             # Format BARU: Gunakan ID SKU untuk lookup ke semua_pesanan_df
             # Pastikan kolom SKU ID ada di semua_pesanan_df
             if 'SKU ID' in semua_pesanan_df.columns and 'VARIATION' in semua_pesanan_df.columns:
+                
+                # --- KONVERSI TYPE DATA KE NUMERIC ---
+                # Pastikan ID SKU di creator order-all adalah numeric
+                creator_order_all_df['ID SKU'] = pd.to_numeric(creator_order_all_df['ID SKU'], errors='coerce')
+                
+                # Pastikan SKU ID di semua pesanan adalah numeric
+                semua_pesanan_df['SKU ID'] = pd.to_numeric(semua_pesanan_df['SKU ID'], errors='coerce')
+                
                 # Buat mapping dictionary dari SKU ID -> VARIATION
-                sku_to_variation = semua_pesanan_df.set_index('SKU ID')['VARIATION'].to_dict()
+                # Drop duplicates dan NaN agar mapping bersih
+                sku_mapping_df = semua_pesanan_df[['SKU ID', 'VARIATION']].drop_duplicates().dropna(subset=['SKU ID'])
+                sku_to_variation = sku_mapping_df.set_index('SKU ID')['VARIATION'].to_dict()
                 
                 # Map ID SKU dari creator order ke VARIATION dari semua pesanan
                 creator_order_all_df['Variasi_Temp'] = creator_order_all_df['ID SKU'].map(sku_to_variation)
@@ -2885,7 +2895,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     else:
         # Jika file tidak diupload (DataFrame kosong), isi 0
         rekap_df['Komisi Affiliate'] = 0
-
+        
     # 5. RUMUS BARU UNTUK TOTAL PENGHASILAN
     rekap_df['Total Penghasilan'] = (
         rekap_df['Total Penjualan'] -
