@@ -132,7 +132,8 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk','Nama Variasi']).agg({
         'Jumlah': 'sum',
         'Harga Setelah Diskon': 'first',
-        'Total Harga Produk': 'sum'
+        # 'Total Harga Produk': 'sum'
+        'Dibayar Pembeli': 'sum'
         #'Nama Variasi': 'first'
     }).reset_index()
     order_agg.rename(columns={'Jumlah': 'Jumlah Terjual'}, inplace=True)
@@ -320,7 +321,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
 
     # 1. Pastikan Total Harga Produk ada dan numerik
-    rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0)
+    rekap_df['Dibayar Pembeli'] = rekap_df.get('Dibayar Pembeli', 0).fillna(0)
     
     # 2. Hitung biaya baru berdasarkan Total Harga Produk (ini berlaku per-baris/per-produk)
     # rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
@@ -359,7 +360,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     
     #    Bagi 1250 dengan jumlah produk tersebut
     # rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
-    basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
+    basis_biaya = rekap_df['Dibayar Pembeli'] - rekap_df['Voucher dari Penjual Dibagi']
     # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # Ambil tahun dari kolom Waktu Pesanan Dibuat    
     # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
@@ -437,7 +438,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
 
     # Kalkulasi Penjualan Netto per baris produk
     rekap_df['Penjualan Netto'] = (
-        rekap_df.get('Total Harga Produk', 0) -
+        rekap_df.get('Dibayar Pembeli', 0) -
         rekap_df.get('Voucher dari Penjual Dibagi', 0) -     # <-- DIUBAH
         rekap_df.get('Pengeluaran(Rp)', 0) -
         rekap_df.get('Biaya Adm 8%', 0) -
@@ -538,7 +539,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         'Nama Produk': rekap_df['Nama Produk'],
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
         'Harga Satuan': rekap_df['Harga Setelah Diskon'],
-        'Total Harga Produk': rekap_df['Total Harga Produk'],
+        'Total Harga Produk': rekap_df['Dibayar Pembeli'],
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
         'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
@@ -565,7 +566,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk' ,'Nama Variasi']).agg({
         'Jumlah': 'sum',
         'Harga Setelah Diskon': 'first',
-        'Total Harga Produk': 'sum'
+        'Dibayar Pembeli': 'sum'
         #'Nama Variasi': 'first'
     }).reset_index()
     order_agg.rename(columns={'Jumlah': 'Jumlah Terjual'}, inplace=True)
@@ -810,7 +811,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
 
     # --- LOGIKA BARU UNTUK Pacifik Bookstore ---
     # 1. Pastikan Total Harga Produk ada dan numerik
-    rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0)
+    rekap_df['Dibayar Pembeli'] = rekap_df.get('Dibayar Pembeli', 0).fillna(0)
     
     # 2. Hitung biaya baru berdasarkan Total Harga Produk (ini berlaku per-baris/per-produk)
     # rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
@@ -836,7 +837,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     # rekap_df['Biaya Proses Pesanan Dibagi'] = 0
 
-    basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
+    basis_biaya = rekap_df['Dibayar Pembeli'] - rekap_df['Voucher dari Penjual Dibagi']
     # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # Ambil tahun dari kolom Waktu Pesanan Dibuat
     tahun_pesanan = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat']).dt.year
@@ -880,7 +881,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
 
     # Kalkulasi Penjualan Netto (sama seperti sebelumnya)
     rekap_df['Penjualan Netto'] = (
-        rekap_df.get('Total Harga Produk', 0) -
+        rekap_df.get('Dibayar Pembeli', 0) -
         rekap_df.get('Voucher dari Penjual Dibagi', 0) -     # <-- DIUBAH
         rekap_df.get('Pengeluaran(Rp)', 0) -
         rekap_df.get('Biaya Adm 8%', 0) -
@@ -979,7 +980,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         'Nama Produk': rekap_df['Nama Produk'],
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
         'Harga Satuan': rekap_df['Harga Setelah Diskon'],
-        'Total Harga Produk': rekap_df['Total Harga Produk'],
+        'Total Harga Produk': rekap_df['Dibayar Pembeli'],
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
         'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
@@ -1010,7 +1011,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     order_agg = order_df.groupby(['No. Pesanan', 'Nama Produk', 'Nama Variasi']).agg({
         'Jumlah': 'sum',
         'Harga Setelah Diskon': 'first',
-        'Total Harga Produk': 'sum'
+        'Dibayar Pembeli': 'sum'
         #'Nama Variasi': 'first'
     }).reset_index()
     order_agg.rename(columns={'Jumlah': 'Jumlah Terjual'}, inplace=True)
@@ -1179,7 +1180,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     #     )
 
     # --- LOGIKA PERHITUNGAN BIAYA UNTUK DAMA.ID STORE ---
-    rekap_df['Total Harga Produk'] = rekap_df.get('Total Harga Produk', 0).fillna(0) 
+    rekap_df['Dibayar Pembeli'] = rekap_df.get('Dibayar Pembeli', 0).fillna(0) 
     
     # Hitung Biaya Proses Pesanan yang dibagi rata
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
@@ -1202,7 +1203,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
 
     # Hitung biaya berdasarkan (Total Harga Produk - Voucher Dibagi)
-    basis_biaya = rekap_df['Total Harga Produk'] - rekap_df['Voucher dari Penjual Dibagi']
+    basis_biaya = rekap_df['Dibayar Pembeli'] - rekap_df['Voucher dari Penjual Dibagi']
     # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # Ambil tahun dari kolom Waktu Pesanan Dibuat
     tahun_pesanan = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat']).dt.year
@@ -1241,7 +1242,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
 
     # Kalkulasi Penjualan Netto
     rekap_df['Penjualan Netto'] = (
-        rekap_df.get('Total Harga Produk', 0) -
+        rekap_df.get('Dibayar Pembeli', 0) -
         rekap_df.get('Voucher dari Penjual Dibagi', 0) -     # <-- DIUBAH
         rekap_df.get('Pengeluaran(Rp)', 0) -
         rekap_df.get('Biaya Adm 8%', 0) -
@@ -1341,7 +1342,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
         'Nama Variasi': rekap_df['Nama Variasi'],
         'Jumlah Terjual': rekap_df['Jumlah Terjual'],
         'Harga Satuan': rekap_df['Harga Setelah Diskon'],
-        'Total Harga Produk': rekap_df['Total Harga Produk'],
+        'Total Harga Produk': rekap_df['Dibayar Pembeli'],
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
         'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
@@ -2349,7 +2350,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         'Nama Produk Display': 'first',
         # 'Cleaned Variation': 'first', 
         'Jumlah Terjual': 'sum', 
-        'Total Harga Produk': 'sum',
+        'Dibayar Pembeli': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
         'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
@@ -3607,7 +3608,7 @@ if marketplace_choice:
                 if marketplace_choice == "Shopee":
                     # --- ALUR PROSES SHOPEE (KODE LAMA ANDA) ---
                     status_text.text("Membaca file Shopee...")
-                    order_all_df = pd.read_excel(uploaded_order, dtype={'Harga Setelah Diskon': str, 'Total Harga Produk': str})
+                    order_all_df = pd.read_excel(uploaded_order, dtype={'Harga Setelah Diskon': str, 'Dibayar Pembeli': str})
                     income_dilepas_df = pd.read_excel(uploaded_income, sheet_name='Income', skiprows=5)
                     # if store_choice == "Human Store":
                     #     service_fee_df = pd.read_excel(uploaded_income, sheet_name='Service Fee Details', skiprows=1)
@@ -3635,7 +3636,7 @@ if marketplace_choice:
 
                     # ... (Kode pembersihan data keuangan Anda tetap di sini) ...
                     # --- Langkah 1: Bersihkan file order-all secara khusus ---
-                    cols_to_clean_order = ['Harga Setelah Diskon', 'Total Harga Produk']
+                    cols_to_clean_order = ['Harga Setelah Diskon', 'Dibayar Pembeli']
                     for col in cols_to_clean_order:
                       if col in order_all_df.columns:
                           # Gunakan fungsi baru yang spesifik
