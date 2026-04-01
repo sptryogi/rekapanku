@@ -135,15 +135,15 @@ def extract_paper_and_size_variation(var_str):
 def parse_offline_sales_image(image_file):
     """
     Mengekstrak data penjualan offline dari gambar WhatsApp menggunakan EasyOCR.
-    Returns: dict dengan keys: nama_produk, eksemplar, pesanan, harga_satuan
+    BISA MENGEMBALIKAN LIST JIKA MULTIPLE PRODUK TERDETEKSI.
+    Returns: list of dict dengan keys: nama_produk, eksemplar, pesanan, harga_satuan
     """
     if not OCR_AVAILABLE:
         st.error("OCR tidak tersedia. Install dengan: pip install easyocr pillow numpy")
-        return None
+        return []
     
     try:
-        # Inisialisasi reader (bahasa Indonesia + English)
-        # Pindahkan ini ke level modul/global agar tidak load berkali-kali jika perlu
+        # Inisialisasi reader (singleton pattern)
         if not hasattr(parse_offline_sales_image, 'reader'):
             parse_offline_sales_image.reader = easyocr.Reader(['id', 'en'], gpu=False)
         
@@ -151,51 +151,65 @@ def parse_offline_sales_image(image_file):
         image = Image.open(image_file)
         image_np = np.array(image)
         
-        # OCR
-        results = parse_offline_sales_image.reader.readtext(image_np, detail=0, paragraph=True)
+        # OCR dengan bounding box untuk deteksi posisi
+        results = parse_offline_sales_image.reader.readtext(image_np, detail=1, paragraph=False)
         
-        # Gabungkan semua text
-        full_text = ' '.join(results)
+        # Gabungkan text dengan posisi
+        texts_with_bbox = [(r[1], r[0]) for r in results]  # (text, bbox)
+        full_text = ' '.join([t[0] for t in texts_with_bbox])
         
-        # Parsing dengan regex (sama seperti sebelumnya)
-        result = {}
+        # Cari pattern multiple produk (bisa by "Pembelian offline" atau bubble terpisah)
+        # Split by keywords yang menandai awal produk baru
+        produk_sections = re.split(r'(?=[Pp]embelian\s+[Oo]ffline|[Nn]ama\s+[Pp]roduk\s*:)', full_text)
+        produk_sections = [s.strip() for s in produk_sections if s.strip()]
         
-        # Cari Nama Produk
-        nama_match = re.search(r'[Nn]ama\s*[Pp]roduk\s*[:：]\s*(.+?)(?=[Ee]ksemplar|$)', full_text, re.DOTALL)
-        if nama_match:
-            result['nama_produk'] = nama_match.group(1).strip().replace('\n', ' ')
-        else:
-            result['nama_produk'] = "Penjualan Offline"
+        all_products = []
         
-        # Cari Eksemplar
-        eksemplar_match = re.search(r'[Ee]ksemplar\s*[:：]\s*(\d+)', full_text)
-        result['eksemplar'] = int(eksemplar_match.group(1)) if eksemplar_match else 0
+        for section in produk_sections:
+            # Skip jika bukan section produk valid
+            if not re.search(r'[Nn]ama\s*[Pp]roduk', section):
+                continue
+            
+            result = {}
+            
+            # Cari Nama Produk
+            nama_match = re.search(r'[Nn]ama\s*[Pp]roduk\s*[:：]\s*(.+?)(?=[Ee]ksemplar|[Pp]esanan|$)', section, re.DOTALL)
+            if nama_match:
+                result['nama_produk'] = nama_match.group(1).strip().replace('\n', ' ')
+            else:
+                continue  # Skip jika tidak ada nama produk
+            
+            # Cari Eksemplar
+            eksemplar_match = re.search(r'[Ee]ksemplar\s*[:：]\s*(\d+)', section)
+            result['eksemplar'] = int(eksemplar_match.group(1)) if eksemplar_match else 0
+            
+            # Cari Pesanan
+            pesanan_match = re.search(r'[Pp]esanan\s*[:：]\s*(\d+)', section)
+            result['pesanan'] = int(pesanan_match.group(1)) if pesanan_match else 1
+            
+            # Cari Harga Satuan
+            harga_match = re.search(r'[Hh]arga\s*[Ss]atuan\s*[:：]\s*(\d+(?:[.,]\d+)*)', section)
+            if harga_match:
+                harga_str = harga_match.group(1).replace('.', '').replace(',', '')
+                result['harga_satuan'] = int(harga_str)
+            else:
+                result['harga_satuan'] = 0
+            
+            # Hitung derived values
+            result['jumlah_terjual'] = result['eksemplar']
+            result['total_penjualan'] = result['jumlah_terjual'] * result['harga_satuan']
+            
+            all_products.append(result)
         
-        # Cari Pesanan
-        pesanan_match = re.search(r'[Pp]esanan\s*[:：]\s*(\d+)', full_text)
-        result['pesanan'] = int(pesanan_match.group(1)) if pesanan_match else 1
-        
-        # Cari Harga Satuan
-        harga_match = re.search(r'[Hh]arga\s*[Ss]atuan\s*[:：]\s*(\d+(?:[.,]\d+)*)', full_text)
-        if harga_match:
-            harga_str = harga_match.group(1).replace('.', '').replace(',', '')
-            result['harga_satuan'] = int(harga_str)
-        else:
-            result['harga_satuan'] = 0
-        
-        # Hitung derived values
-        result['jumlah_terjual'] = result['eksemplar']
-        result['total_penjualan'] = result['jumlah_terjual'] * result['harga_satuan']
-        
-        return result
+        return all_products  # <-- RETURN LIST
         
     except Exception as e:
-        st.error(f"Gagal memproses gambar: {e}")
+        st.error(f"Gagal memproses gambar {image_file.name}: {e}")
         import traceback
         st.error(traceback.format_exc())
-        return None
+        return []
 
-def create_offline_summary_row(offline_data, store_type, katalog_df, harga_custom_tlj_df):
+def create_offline_summary_row(offline_data, store_type, katalog_df, harga_custom_tlj_df, nomor_urut):
     """
     Membuat baris summary untuk penjualan offline.
     Mengisi kolom yang relevan, kolom lain diisi 0.
@@ -230,7 +244,7 @@ def create_offline_summary_row(offline_data, store_type, katalog_df, harga_custo
     
     # Buat dictionary sesuai kolom SUMMARY
     row = {
-        'No': None,  # Akan diisi nanti
+        'No': nomor_urut,  # Akan diisi nanti
         'Nama Produk': f"[OFFLINE] {offline_data['nama_produk']}",
         'Jumlah Terjual': offline_data['jumlah_terjual'],
         'Jumlah Eksemplar': offline_data['eksemplar'],
@@ -243,7 +257,6 @@ def create_offline_summary_row(offline_data, store_type, katalog_df, harga_custo
         'Biaya Layanan 2%': 0,
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 0,
         'Biaya Proses Pesanan': 0,
-        'Gratis Ongkir dari Penjual': 0,
         'Penjualan Netto': penjualan_netto,
         'Iklan Klik': 0,
         'Biaya Packing': biaya_packing,
@@ -492,12 +505,12 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
 
     # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
     rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher disponsor oleh Penjual'])
-    rekap_df['Promo Gratis Ongkir dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Promo Gratis Ongkir dari Penjual'])
+    rekap_df['Promo Gratis Ongkir dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Promo '])
     # Pastikan kolom ongkir retur dibersihkan TANPA abs()
 
     # Buat kolom 'Dibagi' untuk alokasi per produk
     rekap_df['Voucher dari Penjual Dibagi'] = (rekap_df['Voucher dari Penjual'] / product_count_per_order).fillna(0).abs()
-    rekap_df['Gratis Ongkir dari Penjual Dibagi'] = (rekap_df['Promo Gratis Ongkir dari Penjual'] / product_count_per_order).fillna(0).abs()
+    rekap_df[' Dibagi'] = (rekap_df['Promo '] / product_count_per_order).fillna(0).abs()
     
     #    Bagi 1250 dengan jumlah produk tersebut
     # rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
@@ -601,7 +614,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     #         'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
     #         'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
     #         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
-    #         'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
+    #         'Biaya Proses Pesanan Dibagi', ' Dibagi'
     #         # 'Penjualan Netto' dihapus dari daftar ini
     #     ]
     #     # Pastikan kolom ada sebelum mencoba meng-nol-kan
@@ -617,7 +630,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         # 'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
         'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
-        'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
+        'Biaya Proses Pesanan Dibagi', ' Dibagi'
     ]
     valid_cols_to_zero = [col for col in cols_to_zero_out if col in rekap_df.columns]
     
@@ -687,7 +700,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
         'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan Dibagi', 0),
-        'Gratis Ongkir dari Penjual': rekap_df.get('Gratis Ongkir dari Penjual Dibagi', 0), # <-- DITAMBAH
+        '': rekap_df.get(' Dibagi', 0), # <-- DITAMBAH
         'Total Penghasilan': rekap_df['Penjualan Netto'],
         'Metode Pembayaran': rekap_df.get('Metode pembayaran pembeli', '')
     })
@@ -968,11 +981,11 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
 
     # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
     rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher disponsor oleh Penjual'])
-    rekap_df['Promo Gratis Ongkir dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Promo Gratis Ongkir dari Penjual'])
+    rekap_df['Promo '] = clean_and_convert_to_numeric(rekap_df['Promo '])
 
     # Buat kolom 'Dibagi' untuk alokasi per produk
     rekap_df['Voucher dari Penjual Dibagi'] = (rekap_df['Voucher dari Penjual'] / product_count_per_order).fillna(0).abs()
-    rekap_df['Gratis Ongkir dari Penjual Dibagi'] = (rekap_df['Promo Gratis Ongkir dari Penjual'] / product_count_per_order).fillna(0).abs()
+    rekap_df[' Dibagi'] = (rekap_df['Promo '] / product_count_per_order).fillna(0).abs()
     
     #    Bagi 1250 dengan jumlah produk tersebut
     rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
@@ -1029,7 +1042,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         rekap_df.get('Biaya Layanan 2%', 0) -
         rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
         rekap_df.get('Biaya Proses Pesanan Dibagi', 0) -
-        rekap_df.get('Gratis Ongkir dari Penjual Dibagi', 0) # <-- DITAMBAH
+        rekap_df.get(' Dibagi', 0) # <-- DITAMBAH
     )
 
     # Urutkan berdasarkan No. Pesanan untuk memastikan produk dalam pesanan yang sama berkelompok
@@ -2184,11 +2197,14 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_final = summary_final.sort_values(by='Nama Produk', ascending=True).reset_index(drop=True)
     summary_final['No'] = range(1, len(summary_final) + 1)
 
-    if offline_row:
+    if offline_rows:
         # Konversi offline_row ke DataFrame
-        offline_df = pd.DataFrame([offline_row])
+        offline_df = pd.DataFrame(offline_rows)
         # Gabungkan sebelum total
         summary_final = pd.concat([summary_final, offline_df], ignore_index=True)
+        
+        # RE-INDEX nomor urut setelah gabung
+        summary_final['No'] = range(1, len(summary_final) + 1)
     
     total_row = pd.DataFrame(summary_final.sum(numeric_only=True)).T
     total_row['Nama Produk'] = 'Total'
@@ -2753,12 +2769,15 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     if 'Nama Produk Original' in summary_final.columns:
          summary_final = summary_final.drop(columns=['Nama Produk Original'])
 
-    if offline_row:
+    if offline_rows:
         # Konversi offline_row ke DataFrame
-        offline_df = pd.DataFrame([offline_row])
+        offline_df = pd.DataFrame(offline_rows)
         # Gabungkan sebelum total
         summary_final = pd.concat([summary_final, offline_df], ignore_index=True)
-
+        
+        # RE-INDEX nomor urut setelah gabung
+        summary_final['No'] = range(1, len(summary_final) + 1)
+        
     total_row = pd.DataFrame(summary_final.sum(numeric_only=True)).T
     total_row['Nama Produk'] = 'Total'
     total_penjualan_netto = total_row['Penjualan Netto'].iloc[0]
@@ -3668,10 +3687,11 @@ if marketplace_choice:
 
         st.markdown("---")
         st.subheader("📱 Input Penjualan Offline (Opsional)")
-        uploaded_offline_image = st.file_uploader(
-            "Upload screenshot WhatsApp penjualan offline (PNG/JPG/JPEG)", 
+        uploaded_offline_images = st.file_uploader(
+            "Upload screenshot WhatsApp penjualan offline (bisa multiple gambar)", 
             type=["png", "jpg", "jpeg"],
-            help="Format: Nama produk: [nama], Eksemplar: [angka], Pesanan: [angka], Harga satuan: [angka]"
+            accept_multiple_files=True,  # <-- TAMBAHKAN INI
+            help="Bisa 1 gambar dengan multiple produk, atau multiple gambar dengan 1 produk each. Format: Nama produk: [nama], Eksemplar: [angka], Pesanan: [angka], Harga satuan: [angka]"
         )
     
         # Inisialisasi variabel lain agar tidak error
@@ -3798,18 +3818,31 @@ if marketplace_choice:
         show_tiktok_button = False
 
     if show_shopee_button or show_tiktok_button:
-        offline_row = None
-        if marketplace_choice == "Shopee" and uploaded_offline_image:
-            st.info("Memproses gambar penjualan offline...")
-            offline_data = parse_offline_sales_image(uploaded_offline_image)
-            if offline_data:
-                offline_row = create_offline_summary_row(
-                    offline_data, 
-                    store_choice, 
-                    katalog_df, 
-                    harga_custom_tlj_df
-                )
-                st.success(f"✅ Terdeteksi: {offline_data['nama_produk']}, {offline_data['eksemplar']} eksemplar, Rp{offline_data['harga_satuan']:,}")
+        offline_rows = []  # <-- GANTI jadi LIST
+        if marketplace_choice == "Shopee" and uploaded_offline_images:
+            st.info(f"Memproses {len(uploaded_offline_images)} gambar penjualan offline...")
+            
+            for img_file in uploaded_offline_images:
+                offline_data_list = parse_offline_sales_image(img_file)
+                
+                for offline_data in offline_data_list:
+                    # Generate nomor urut sementara (akan di-reindex nanti)
+                    nomor_sementara = len(offline_rows) + 1
+                    
+                    offline_row = create_offline_summary_row(
+                        offline_data, 
+                        store_choice, 
+                        katalog_df, 
+                        harga_custom_tlj_df,
+                        nomor_urut=nomor_sementara  # <-- PASS NOMOR
+                    )
+                    
+                    if offline_row:
+                        offline_rows.append(offline_row)
+                        st.success(f"✅ Terdeteksi: {offline_data['nama_produk']}, {offline_data['eksemplar']} eksemplar, Rp{offline_data['harga_satuan']:,}")
+            
+            if offline_rows:
+                st.success(f"Total {len(offline_rows)} produk offline terdeteksi")
         button_label = f"🚀 Mulai Proses untuk {marketplace_choice} - {store_choice}"
         if st.button(button_label):
             progress_bar = st.progress(0, text="Mempersiapkan proses...")
@@ -4107,14 +4140,65 @@ if marketplace_choice:
                         'align': 'right'
                     })
 
+                    # Format untuk baris penjualan offline (pink peach)
+                    offline_row_format = workbook.add_format({
+                        'fg_color': '#FFD1DC',  # Pink peach lembut
+                        'border': 1,
+                        'align': 'left'
+                    })
+                    
+                    # Format angka untuk baris offline (pink peach + align right)
+                    offline_number_format = workbook.add_format({
+                        'fg_color': '#FFD1DC',  # Pink peach lembut
+                        'num_format': '#,##0',
+                        'border': 1,
+                        'align': 'right'
+                    })
+                    
+                    # Format persen untuk baris offline
+                    offline_percent_format = workbook.add_format({
+                        'fg_color': '#FFD1DC',
+                        'num_format': '0.00%',
+                        'border': 1,
+                        'align': 'right'
+                    })
+
                     # --- PROSES SETIAP SHEET ---
                     for sheet_name, df in sheets.items():
                         # --- PERUBAHAN 3: Ubah startrow menjadi 3 untuk memberi ruang 2 baris header ---
                         start_row_data = 4 if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN'] else 1
                         
                         df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=start_row_data, header=False)
-                        worksheet = writer.sheets[sheet_name]
                         
+                        offline_mask = df['Nama Produk'].astype(str).str.startswith('[OFFLINE]')
+                        # Terapkan format pink untuk baris offline (kecuali baris total)
+                        for row_idx in range(len(df)):
+                            excel_row = start_row_data + row_idx
+                            
+                            # Skip jika ini baris total
+                            if row_idx == len(df) - 1 and df.iloc[row_idx]['Nama Produk'] == 'Total':
+                                continue
+                            
+                            # Jika baris offline, terapkan format pink
+                            if offline_mask.iloc[row_idx]:
+                                for col_num in range(len(df.columns)):
+                                    col_name = df.columns[col_num]
+                                    cell_value = df.iloc[row_idx, col_num]
+                                    
+                                    # Pilih format sesuai tipe kolom
+                                    if col_name == 'Persentase':
+                                        fmt = offline_percent_format
+                                    elif col_name in number_columns:
+                                        fmt = offline_number_format
+                                    else:
+                                        fmt = offline_row_format
+                                    
+                                    if pd.notna(cell_value):
+                                        worksheet.write(excel_row, col_num, cell_value, fmt)
+                                    else:
+                                        worksheet.write_blank(excel_row, col_num, None, fmt)
+                        
+                        worksheet = writer.sheets[sheet_name]
                         start_row_header = 0
                         if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN']:
                             # --- PERUBAHAN 4: Buat judul dinamis dan merge 2 baris ---
