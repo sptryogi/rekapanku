@@ -5,3 +5,4 @@ numpy
 xlsxwriter
 rapidfuzz
 pdfplumber
+easyocr
