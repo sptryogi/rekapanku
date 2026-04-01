@@ -3512,6 +3512,15 @@ if marketplace_choice:
         with col2:
             uploaded_iklan = st.file_uploader("3. Import file iklan produk", type="csv")
             uploaded_seller = st.file_uploader("4. Import file seller conversion", type="csv")
+
+        st.markdown("---")
+        st.subheader("📱 Input Penjualan Offline (Opsional)")
+        uploaded_offline_image = st.file_uploader(
+            "Upload screenshot WhatsApp penjualan offline (PNG/JPG/JPEG)", 
+            type=["png", "jpg", "jpeg"],
+            help="Format: Nama produk: [nama], Eksemplar: [angka], Pesanan: [angka], Harga satuan: [angka]"
+        )
+    
         # Inisialisasi variabel lain agar tidak error
         uploaded_income_tiktok = None
         uploaded_semua_pesanan = None
@@ -3924,6 +3933,15 @@ if marketplace_choice:
                         'align': 'right'
                     })
 
+                    red_format_total_margin = workbook.add_format({
+                        'bold': True,
+                        'fg_color': '#FFFF00',      # Kuning tetap
+                        'font_color': '#FF0000',    # Merah untuk angka
+                        'num_format': '#,##0',       # Tanpa tanda minus
+                        'border': 1,
+                        'align': 'right'
+                    })
+
                     # --- PROSES SETIAP SHEET ---
                     for sheet_name, df in sheets.items():
                         # --- PERUBAHAN 3: Ubah startrow menjadi 3 untuk memberi ruang 2 baris header ---
@@ -4024,8 +4042,10 @@ if marketplace_choice:
                             for col_num in range(len(df.columns)):
                                 cell_value = df.iloc[-1, col_num]
                                 current_fmt = total_fmt
-                                if col_name == margin_col and pd.notna(cell_value) and cell_value < 0:
-                                    current_fmt = red_format  # Format kuning + merah untuk baris total
+                                col_name = df.columns[col_num]
+                                if col_name == 'Margin' and pd.notna(cell_value) and cell_value < 0:
+                                    current_fmt = red_format_total_margin
+                                    cell_value = abs(cell_value)
                                 elif col_num == persen_col:
                                     current_fmt = total_fmt_percent
                                 elif col_num in [penjualan_hari_col, buku_pesanan_col]:
