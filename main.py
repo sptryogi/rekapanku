@@ -510,7 +510,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
 
     # Buat kolom 'Dibagi' untuk alokasi per produk
     rekap_df['Voucher dari Penjual Dibagi'] = (rekap_df['Voucher dari Penjual'] / product_count_per_order).fillna(0).abs()
-    rekap_df[' Dibagi'] = (rekap_df['Promo '] / product_count_per_order).fillna(0).abs()
+    rekap_df['Gratis Ongkir dari Penjual Dibagi'] = (rekap_df['Promo Gratis Ongkir dari Penjual'] / product_count_per_order).fillna(0).abs()
     
     #    Bagi 1250 dengan jumlah produk tersebut
     # rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
