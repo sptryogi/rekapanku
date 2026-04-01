@@ -3907,6 +3907,23 @@ if marketplace_choice:
                     total_fmt_percent = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'num_format': '0.00%', 'border': 1})
                     total_fmt_decimal = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'num_format': '#,##0', 'border': 1})
 
+                    red_format = workbook.add_format({
+                        'bold': True, 
+                        'fg_color': '#FFFF00',  # Kuning tetap untuk baris total
+                        'font_color': '#FF0000',  # Merah untuk angka negatif
+                        'num_format': '#,##0',
+                        'border': 1,
+                        'align': 'right'
+                    })
+                    
+                    # Format untuk Margin negatif di baris biasa (bukan total)
+                    red_format_normal = workbook.add_format({
+                        'font_color': '#FF0000',  # Merah saja
+                        'num_format': '#,##0',
+                        'border': 1,
+                        'align': 'right'
+                    })
+
                     # --- PROSES SETIAP SHEET ---
                     for sheet_name, df in sheets.items():
                         # --- PERUBAHAN 3: Ubah startrow menjadi 3 untuk memberi ruang 2 baris header ---
@@ -3986,6 +4003,7 @@ if marketplace_choice:
                             persen_col = df.columns.get_loc('Persentase')
                             penjualan_hari_col = df.columns.get_loc('Penjualan Per Hari')
                             buku_pesanan_col = df.columns.get_loc('Jumlah buku per pesanan')
+                            margin_col = df.columns.get_loc('Margin')
                             
                             # --- PERUBAHAN 6: Terapkan format persen ke seluruh kolom, bukan hanya baris total ---
                             # Terapkan format mulai dari baris data pertama hingga baris sebelum total
@@ -4006,7 +4024,9 @@ if marketplace_choice:
                             for col_num in range(len(df.columns)):
                                 cell_value = df.iloc[-1, col_num]
                                 current_fmt = total_fmt
-                                if col_num == persen_col:
+                                if col_name == margin_col and pd.notna(cell_value) and cell_value < 0:
+                                    current_fmt = red_format  # Format kuning + merah untuk baris total
+                                elif col_num == persen_col:
                                     current_fmt = total_fmt_percent
                                 elif col_num in [penjualan_hari_col, buku_pesanan_col]:
                                     current_fmt = total_fmt_decimal
@@ -4021,6 +4041,13 @@ if marketplace_choice:
                                 else:
                                     worksheet.write_blank(last_row, col_num, None, current_fmt)
 
+                            margin_col_idx = df.columns.get_loc('Margin')
+                            for row_idx in range(len(df) - 1):  # Exclude baris total
+                                excel_row = start_row_data + row_idx
+                                cell_value = df.iloc[row_idx, margin_col_idx]
+                                if pd.notna(cell_value) and cell_value < 0:
+                                    worksheet.write(excel_row, margin_col_idx, abs(cell_value), red_format_normal)
+        
                         # TAMBAHKAN BLOK BARU INI
                         if sheet_name == 'IKLAN':
                             # Cek jika baris terakhir adalah baris TOTAL
