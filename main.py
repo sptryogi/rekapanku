@@ -14,6 +14,15 @@ from rapidfuzz import fuzz
 import pdfplumber
 from openpyxl import load_workbook
 
+try:
+    import easyocr
+    from PIL import Image
+    import numpy as np
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+    st.warning("Library OCR tidak terinstall. Fitur penjualan offline membutuhkan: pip install easyocr pillow numpy")
+    
 
 # --- FUNGSI-FUNGSI PEMROSESAN ---
 
@@ -122,6 +131,138 @@ def extract_paper_and_size_variation(var_str):
     unique_parts = sorted(list(set(relevant_parts_found)))
     
     return ' '.join(unique_parts) # Gabungkan bagian yang relevan
+
+def parse_offline_sales_image(image_file):
+    """
+    Mengekstrak data penjualan offline dari gambar WhatsApp menggunakan EasyOCR.
+    Returns: dict dengan keys: nama_produk, eksemplar, pesanan, harga_satuan
+    """
+    if not OCR_AVAILABLE:
+        st.error("OCR tidak tersedia. Install dengan: pip install easyocr pillow numpy")
+        return None
+    
+    try:
+        # Inisialisasi reader (bahasa Indonesia + English)
+        # Pindahkan ini ke level modul/global agar tidak load berkali-kali jika perlu
+        if not hasattr(parse_offline_sales_image, 'reader'):
+            parse_offline_sales_image.reader = easyocr.Reader(['id', 'en'], gpu=False)
+        
+        # Buka gambar dan convert ke numpy array
+        image = Image.open(image_file)
+        image_np = np.array(image)
+        
+        # OCR
+        results = parse_offline_sales_image.reader.readtext(image_np, detail=0, paragraph=True)
+        
+        # Gabungkan semua text
+        full_text = ' '.join(results)
+        
+        # Parsing dengan regex (sama seperti sebelumnya)
+        result = {}
+        
+        # Cari Nama Produk
+        nama_match = re.search(r'[Nn]ama\s*[Pp]roduk\s*[:：]\s*(.+?)(?=[Ee]ksemplar|$)', full_text, re.DOTALL)
+        if nama_match:
+            result['nama_produk'] = nama_match.group(1).strip().replace('\n', ' ')
+        else:
+            result['nama_produk'] = "Penjualan Offline"
+        
+        # Cari Eksemplar
+        eksemplar_match = re.search(r'[Ee]ksemplar\s*[:：]\s*(\d+)', full_text)
+        result['eksemplar'] = int(eksemplar_match.group(1)) if eksemplar_match else 0
+        
+        # Cari Pesanan
+        pesanan_match = re.search(r'[Pp]esanan\s*[:：]\s*(\d+)', full_text)
+        result['pesanan'] = int(pesanan_match.group(1)) if pesanan_match else 1
+        
+        # Cari Harga Satuan
+        harga_match = re.search(r'[Hh]arga\s*[Ss]atuan\s*[:：]\s*(\d+(?:[.,]\d+)*)', full_text)
+        if harga_match:
+            harga_str = harga_match.group(1).replace('.', '').replace(',', '')
+            result['harga_satuan'] = int(harga_str)
+        else:
+            result['harga_satuan'] = 0
+        
+        # Hitung derived values
+        result['jumlah_terjual'] = result['eksemplar']
+        result['total_penjualan'] = result['jumlah_terjual'] * result['harga_satuan']
+        
+        return result
+        
+    except Exception as e:
+        st.error(f"Gagal memproses gambar: {e}")
+        import traceback
+        st.error(traceback.format_exc())
+        return None
+
+def create_offline_summary_row(offline_data, store_type, katalog_df, harga_custom_tlj_df):
+    """
+    Membuat baris summary untuk penjualan offline.
+    Mengisi kolom yang relevan, kolom lain diisi 0.
+    """
+    if not offline_data:
+        return None
+    
+    # Hitung Harga Beli dengan fuzzy matching
+    harga_beli = get_harga_beli_fuzzy(offline_data['nama_produk'], katalog_df)
+    
+    # Hitung Total Pembelian
+    total_pembelian = offline_data['jumlah_terjual'] * harga_beli
+    
+    # Biaya Packing
+    biaya_packing = offline_data['jumlah_terjual'] * 200
+    
+    # Biaya lainnya = 0 (karena offline)
+    # Penjualan Netto = Total Penjualan (tidak ada potongan)
+    penjualan_netto = offline_data['total_penjualan']
+    
+    # Margin
+    margin = penjualan_netto - biaya_packing - total_pembelian
+    
+    # Persentase
+    persentase = (margin / offline_data['total_penjualan']) if offline_data['total_penjualan'] != 0 else 0
+    
+    # Penjualan Per Hari (asumsi 7 hari)
+    penjualan_per_hari = round(offline_data['total_penjualan'] / 7, 1)
+    
+    # Jumlah buku per pesanan
+    jumlah_buku_per_pesanan = round(offline_data['eksemplar'] / offline_data['pesanan'], 1) if offline_data['pesanan'] != 0 else 0
+    
+    # Buat dictionary sesuai kolom SUMMARY
+    row = {
+        'No': None,  # Akan diisi nanti
+        'Nama Produk': f"[OFFLINE] {offline_data['nama_produk']}",
+        'Jumlah Terjual': offline_data['jumlah_terjual'],
+        'Jumlah Eksemplar': offline_data['eksemplar'],
+        'Jumlah Pesanan': offline_data['pesanan'],
+        'Harga Satuan': offline_data['harga_satuan'],
+        'Total Penjualan': offline_data['total_penjualan'],
+        'Voucher Ditanggung Penjual': 0,
+        'Biaya Komisi AMS + PPN Shopee': 0,
+        'Biaya Adm 8%': 0,
+        'Biaya Layanan 2%': 0,
+        'Biaya Layanan Gratis Ongkir Xtra 4,5%': 0,
+        'Biaya Proses Pesanan': 0,
+        'Gratis Ongkir dari Penjual': 0,
+        'Penjualan Netto': penjualan_netto,
+        'Iklan Klik': 0,
+        'Biaya Packing': biaya_packing,
+        'Biaya Ekspedisi': 0,  # atau Biaya Kirim ke Sby untuk Pacific
+        'Harga Beli': harga_beli,
+        'Harga Custom TLJ': 0,
+        'Total Pembelian': total_pembelian,
+        'Margin': margin,
+        'Persentase': persentase,
+        'Penjualan Per Hari': penjualan_per_hari,
+        'Jumlah buku per pesanan': jumlah_buku_per_pesanan
+    }
+    
+    # Handle kolom khusus Pacific Bookstore
+    if store_type == 'Pacific Bookstore':
+        row['Biaya Layanan 4,5%'] = 0
+        del row['Biaya Layanan 2%']  # Pacific pakai 4,5%
+    
+    return row
     
 def process_rekap(order_df, income_df, seller_conv_df, store_type):
     """
@@ -1528,7 +1669,7 @@ def normalize_product_name_human_store(nama_produk):
     
     return nama_clean
     
-def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, store_type):
+def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, store_type, offline_row=None):
     """
     Fungsi untuk memproses sheet 'SUMMARY'.
     - Menggabungkan produk dari REKAP dan IKLAN.
@@ -2042,6 +2183,12 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         
     summary_final = summary_final.sort_values(by='Nama Produk', ascending=True).reset_index(drop=True)
     summary_final['No'] = range(1, len(summary_final) + 1)
+
+    if offline_row:
+        # Konversi offline_row ke DataFrame
+        offline_df = pd.DataFrame([offline_row])
+        # Gabungkan sebelum total
+        summary_final = pd.concat([summary_final, offline_df], ignore_index=True)
     
     total_row = pd.DataFrame(summary_final.sum(numeric_only=True)).T
     total_row['Nama Produk'] = 'Total'
@@ -2274,7 +2421,7 @@ def get_eksemplar_multiplier_dama(nama_produk):
     return 1
     
 # --- TAMBAHKAN FUNGSI BARU INI ---
-def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom_tlj_df): # Tambah katalog_dama_df
+def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom_tlj_df, offline_row=None): # Tambah katalog_dama_df
     """
     Fungsi untuk memproses sheet 'SUMMARY' KHUSUS untuk DAMA.ID STORE (Shopee).
     Menggabungkan Nama Produk + Variasi Relevan (tanpa warna kecuali Hijab).
@@ -2605,6 +2752,12 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
 
     if 'Nama Produk Original' in summary_final.columns:
          summary_final = summary_final.drop(columns=['Nama Produk Original'])
+
+    if offline_row:
+        # Konversi offline_row ke DataFrame
+        offline_df = pd.DataFrame([offline_row])
+        # Gabungkan sebelum total
+        summary_final = pd.concat([summary_final, offline_df], ignore_index=True)
 
     total_row = pd.DataFrame(summary_final.sum(numeric_only=True)).T
     total_row['Nama Produk'] = 'Total'
@@ -3645,6 +3798,18 @@ if marketplace_choice:
         show_tiktok_button = False
 
     if show_shopee_button or show_tiktok_button:
+        offline_row = None
+        if marketplace_choice == "Shopee" and uploaded_offline_image:
+            st.info("Memproses gambar penjualan offline...")
+            offline_data = parse_offline_sales_image(uploaded_offline_image)
+            if offline_data:
+                offline_row = create_offline_summary_row(
+                    offline_data, 
+                    store_choice, 
+                    katalog_df, 
+                    harga_custom_tlj_df
+                )
+                st.success(f"✅ Terdeteksi: {offline_data['nama_produk']}, {offline_data['eksemplar']} eksemplar, Rp{offline_data['harga_satuan']:,}")
         button_label = f"🚀 Mulai Proses untuk {marketplace_choice} - {store_choice}"
         if st.button(button_label):
             progress_bar = st.progress(0, text="Mempersiapkan proses...")
@@ -3730,9 +3895,9 @@ if marketplace_choice:
     
                     status_text.text("Menyusun sheet 'SUMMARY' (Shopee)...")
                     if store_choice == "DAMA.ID STORE":
-                        summary_processed = process_summary_dama(rekap_processed, iklan_processed, katalog_dama_df, harga_custom_tlj_df)
+                        summary_processed = process_summary_dama(rekap_processed, iklan_processed, katalog_dama_df, harga_custom_tlj_df, offline_row=offline_row)
                     else: # Human Store atau Pacific Bookstore
-                        summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df, harga_custom_tlj_df, store_type=store_choice)
+                        summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df, harga_custom_tlj_df, store_type=store_choice, offline_row=offline_row)
                     progress_bar.progress(80, text="Sheet 'SUMMARY' selesai.")
 
                     suffix_tgl = f" {date_range_str}" if date_range_str else ""
