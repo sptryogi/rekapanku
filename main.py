@@ -4144,6 +4144,13 @@ if marketplace_choice:
                     offline_row_format = workbook.add_format({
                         'fg_color': '#FFD1DC',  # Pink peach lembut
                         'border': 1,
+                        'align': 'right'
+                    })
+
+                    # Format untuk baris penjualan offline (pink peach)
+                    offline_names_format = workbook.add_format({
+                        'fg_color': '#FFD1DC',  # Pink peach lembut
+                        'border': 1,
                         'align': 'left'
                     })
                     
@@ -4236,34 +4243,6 @@ if marketplace_choice:
                                         cell_value = df.iloc[row_idx, col_idx]
                                         if pd.notna(cell_value):
                                             worksheet.write(excel_row, col_idx, cell_value, number_format_id)
-
-                            offline_mask = df['Nama Produk'].astype(str).str.startswith('[OFFLINE]')
-                            # Terapkan format pink untuk baris offline (kecuali baris total)
-                            for row_idx in range(len(df)):
-                                excel_row = start_row_data + row_idx
-                                
-                                # Skip jika ini baris total
-                                if row_idx == len(df) - 1 and df.iloc[row_idx]['Nama Produk'] == 'Total':
-                                    continue
-                                
-                                # Jika baris offline, terapkan format pink
-                                if offline_mask.iloc[row_idx]:
-                                    for col_num in range(len(df.columns)):
-                                        col_name = df.columns[col_num]
-                                        cell_value = df.iloc[row_idx, col_num]
-                                        
-                                        # Pilih format sesuai tipe kolom
-                                        if col_name == 'Persentase':
-                                            fmt = offline_percent_format
-                                        elif col_name in number_columns:
-                                            fmt = offline_number_format
-                                        else:
-                                            fmt = offline_row_format
-                                        
-                                        if pd.notna(cell_value):
-                                            worksheet.write(excel_row, col_num, cell_value, fmt)
-                                        else:
-                                            worksheet.write_blank(excel_row, col_num, None, fmt)
                                             
                         if sheet_name == 'SUMMARY':
                             persen_col = df.columns.get_loc('Persentase')
@@ -4315,7 +4294,37 @@ if marketplace_choice:
                                 cell_value = df.iloc[row_idx, margin_col_idx]
                                 if pd.notna(cell_value) and cell_value < 0:
                                     worksheet.write(excel_row, margin_col_idx, abs(cell_value), red_format_normal)
-        
+
+                            offline_mask = df['Nama Produk'].astype(str).str.startswith('[OFFLINE]')
+                            # Terapkan format pink untuk baris offline (kecuali baris total)
+                            for row_idx in range(len(df)):
+                                excel_row = start_row_data + row_idx
+                                
+                                # Skip jika ini baris total
+                                if row_idx == len(df) - 1 and df.iloc[row_idx]['Nama Produk'] == 'Total':
+                                    continue
+                                
+                                # Jika baris offline, terapkan format pink
+                                if offline_mask.iloc[row_idx]:
+                                    for col_num in range(len(df.columns)):
+                                        col_name = df.columns[col_num]
+                                        cell_value = df.iloc[row_idx, col_num]
+                                        
+                                        # Pilih format sesuai tipe kolom
+                                        if col_name == 'Persentase':
+                                            fmt = offline_percent_format
+                                        elif col_name in number_columns:
+                                            fmt = offline_number_format
+                                        elif col_name == 'Nama Produk':
+                                            fmt = offline_names_format
+                                        else:
+                                            fmt = offline_row_format
+                                        
+                                        if pd.notna(cell_value):
+                                            worksheet.write(excel_row, col_num, cell_value, fmt)
+                                        else:
+                                            worksheet.write_blank(excel_row, col_num, None, fmt)
+                                            
                         # TAMBAHKAN BLOK BARU INI
                         if sheet_name == 'IKLAN':
                             # Cek jika baris terakhir adalah baris TOTAL
