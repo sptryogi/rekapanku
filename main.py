@@ -1682,7 +1682,7 @@ def normalize_product_name_human_store(nama_produk):
     
     return nama_clean
     
-def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, store_type, offline_row=None):
+def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, store_type, offline_rows=None):
     """
     Fungsi untuk memproses sheet 'SUMMARY'.
     - Menggabungkan produk dari REKAP dan IKLAN.
@@ -2437,7 +2437,7 @@ def get_eksemplar_multiplier_dama(nama_produk):
     return 1
     
 # --- TAMBAHKAN FUNGSI BARU INI ---
-def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom_tlj_df, offline_row=None): # Tambah katalog_dama_df
+def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom_tlj_df, offline_rows=None): # Tambah katalog_dama_df
     """
     Fungsi untuk memproses sheet 'SUMMARY' KHUSUS untuk DAMA.ID STORE (Shopee).
     Menggabungkan Nama Produk + Variasi Relevan (tanpa warna kecuali Hijab).
@@ -3829,7 +3829,7 @@ if marketplace_choice:
                     # Generate nomor urut sementara (akan di-reindex nanti)
                     nomor_sementara = len(offline_rows) + 1
                     
-                    offline_row = create_offline_summary_row(
+                    offline_rows = create_offline_summary_row(
                         offline_data, 
                         store_choice, 
                         katalog_df, 
@@ -3837,8 +3837,8 @@ if marketplace_choice:
                         nomor_urut=nomor_sementara  # <-- PASS NOMOR
                     )
                     
-                    if offline_row:
-                        offline_rows.append(offline_row)
+                    if offline_rows:
+                        offline_rows.append(offline_rows)
                         st.success(f"✅ Terdeteksi: {offline_data['nama_produk']}, {offline_data['eksemplar']} eksemplar, Rp{offline_data['harga_satuan']:,}")
             
             if offline_rows:
@@ -3928,9 +3928,9 @@ if marketplace_choice:
     
                     status_text.text("Menyusun sheet 'SUMMARY' (Shopee)...")
                     if store_choice == "DAMA.ID STORE":
-                        summary_processed = process_summary_dama(rekap_processed, iklan_processed, katalog_dama_df, harga_custom_tlj_df, offline_row=offline_row)
+                        summary_processed = process_summary_dama(rekap_processed, iklan_processed, katalog_dama_df, harga_custom_tlj_df, offline_rows=offline_rows)
                     else: # Human Store atau Pacific Bookstore
-                        summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df, harga_custom_tlj_df, store_type=store_choice, offline_row=offline_row)
+                        summary_processed = process_summary(rekap_processed, iklan_processed, katalog_df, harga_custom_tlj_df, store_type=store_choice, offline_rows=offline_rows)
                     progress_bar.progress(80, text="Sheet 'SUMMARY' selesai.")
 
                     suffix_tgl = f" {date_range_str}" if date_range_str else ""
