@@ -1937,50 +1937,6 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(p_biasa, case=False, na=False, regex=False)]
     
     # 2. Proses Produk Normal (yang tersisa di iklan_data)
-    if store_type == "Toko Kaliba":
-        # Bersihkan Nama Iklan (hapus [9], [11], dll)
-        iklan_data['Nama Iklan Clean'] = iklan_data['Nama Iklan'].str.replace(r'\s*\[\d+\]$', '', regex=True).str.strip()
-        
-        # Untuk setiap iklan, cari produk yang paling mirip
-        for idx_iklan, row_iklan in iklan_data.iterrows():
-            nama_iklan_clean = row_iklan['Nama Iklan Clean']
-            biaya_iklan = row_iklan['Biaya']
-            
-            # Cari produk dengan fuzzy match
-            best_match = None
-            best_score = 0
-            
-            for idx_prod, row_prod in summary_df.iterrows():
-                nama_produk = str(row_prod['Nama Produk'])
-                
-                # Score berdasarkan: berapa banyak kata dari iklan yang ada di produk
-                # atau gunakan simple containment
-                score = fuzz.token_set_ratio(nama_iklan_clean, nama_produk)
-                
-                if score > best_score and score >= 70:  # Threshold 70%
-                    best_score = score
-                    best_match = idx_prod
-            
-            # Jika ketemu match, alokasikan biaya
-            if best_match is not None:
-                # Hitung berapa banyak produk yang match dengan iklan ini (untuk pembagian)
-                matching_products = []
-                for idx_prod, row_prod in summary_df.iterrows():
-                    nama_produk = str(row_prod['Nama Produk'])
-                    if fuzz.token_set_ratio(nama_iklan_clean, nama_produk) >= 70:
-                        matching_products.append(idx_prod)
-                
-                # Bagi biaya ke semua produk yang match
-                if matching_products:
-                    biaya_per_produk = biaya_iklan / len(matching_products)
-                    for idx_match in matching_products:
-                        summary_df.at[idx_match, 'Iklan Klik'] += biaya_per_produk
-                
-                # Hapus iklan ini dari iklan_data agar tidak diproses lagi
-                iklan_data = iklan_data.drop(idx_iklan)
-        
-        # Hapus kolom temporary
-        iklan_data = iklan_data.drop(columns=['Nama Iklan Clean'], errors='ignore')
     # Gunakan merge untuk produk yang namanya cocok persis
     summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk', right_on='Nama Iklan', how='left')
     
@@ -2207,14 +2163,14 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "Al Quran Terjemah Al Aleem A5 Kertas HVS 15 Baris | SURABAYA | Alquran Untuk Majelis Taklim Kajian": "Al Aleem A5 Kertas HVS",
             "Al Quran Wakaf Ibtida Al Quddus A5 Kertas HVS | Alquran SURABAYA": "Al Quddus Ibtida A5 Kertas HVS"
         }
-    elif store_type == "Toko Kaliba":
-        mapping_singkatan = {
-            "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Quran Al Aqeel A6 Pastel Kertas HVS",
-            "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Quran Al Aqeel A5 Kertas Koran",
-            "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers": "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS",
-            "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers": "Al Quran Al Aqeel A7 GOLD Kertas HVS",
-            "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan": "Al-Qur'an Al Aqeel Custom Foto Nama"
-        }
+    # elif store_type == "Toko Kaliba":
+    #     mapping_singkatan = {
+    #         "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Quran Al Aqeel A6 Pastel Kertas HVS",
+    #         "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Quran Al Aqeel A5 Kertas Koran",
+    #         "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers": "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS",
+    #         "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers": "Al Quran Al Aqeel A7 GOLD Kertas HVS",
+    #         "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan": "Al-Qur'an Al Aqeel Custom Foto Nama"
+    #     }
 
         # def apply_shorten(nama_full):
         #     if pd.isna(nama_full): return nama_full
