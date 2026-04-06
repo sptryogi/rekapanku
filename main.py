@@ -377,7 +377,11 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta",
         "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
         "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris", 
-        "Alquran Cover Emas Kertas HVS Al Aqeel A7 Gold Murah"
+        "Alquran Cover Emas Kertas HVS Al Aqeel A7 Gold Murah",
+        "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
+        "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
+        "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers",
+        "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers"
         
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
@@ -981,11 +985,11 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
 
     # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
     rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher disponsor oleh Penjual'])
-    rekap_df['Promo '] = clean_and_convert_to_numeric(rekap_df['Promo '])
+    rekap_df['Promo Gratis Ongkir dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Promo Gratis Ongkir dari Penjual'])
 
     # Buat kolom 'Dibagi' untuk alokasi per produk
     rekap_df['Voucher dari Penjual Dibagi'] = (rekap_df['Voucher dari Penjual'] / product_count_per_order).fillna(0).abs()
-    rekap_df[' Dibagi'] = (rekap_df['Promo '] / product_count_per_order).fillna(0).abs()
+    rekap_df['Gratis Ongkir dari Penjual Dibagi'] = (rekap_df['Promo Gratis Ongkir dari Penjual'] / product_count_per_order).fillna(0).abs()
     
     #    Bagi 1250 dengan jumlah produk tersebut
     rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
@@ -1933,6 +1937,50 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(p_biasa, case=False, na=False, regex=False)]
     
     # 2. Proses Produk Normal (yang tersisa di iklan_data)
+    if store_type == "Toko Kaliba":
+        # Bersihkan Nama Iklan (hapus [9], [11], dll)
+        iklan_data['Nama Iklan Clean'] = iklan_data['Nama Iklan'].str.replace(r'\s*\[\d+\]$', '', regex=True).str.strip()
+        
+        # Untuk setiap iklan, cari produk yang paling mirip
+        for idx_iklan, row_iklan in iklan_data.iterrows():
+            nama_iklan_clean = row_iklan['Nama Iklan Clean']
+            biaya_iklan = row_iklan['Biaya']
+            
+            # Cari produk dengan fuzzy match
+            best_match = None
+            best_score = 0
+            
+            for idx_prod, row_prod in summary_df.iterrows():
+                nama_produk = str(row_prod['Nama Produk'])
+                
+                # Score berdasarkan: berapa banyak kata dari iklan yang ada di produk
+                # atau gunakan simple containment
+                score = fuzz.token_set_ratio(nama_iklan_clean, nama_produk)
+                
+                if score > best_score and score >= 70:  # Threshold 70%
+                    best_score = score
+                    best_match = idx_prod
+            
+            # Jika ketemu match, alokasikan biaya
+            if best_match is not None:
+                # Hitung berapa banyak produk yang match dengan iklan ini (untuk pembagian)
+                matching_products = []
+                for idx_prod, row_prod in summary_df.iterrows():
+                    nama_produk = str(row_prod['Nama Produk'])
+                    if fuzz.token_set_ratio(nama_iklan_clean, nama_produk) >= 70:
+                        matching_products.append(idx_prod)
+                
+                # Bagi biaya ke semua produk yang match
+                if matching_products:
+                    biaya_per_produk = biaya_iklan / len(matching_products)
+                    for idx_match in matching_products:
+                        summary_df.at[idx_match, 'Iklan Klik'] += biaya_per_produk
+                
+                # Hapus iklan ini dari iklan_data agar tidak diproses lagi
+                iklan_data = iklan_data.drop(idx_iklan)
+        
+        # Hapus kolom temporary
+        iklan_data = iklan_data.drop(columns=['Nama Iklan Clean'], errors='ignore')
     # Gunakan merge untuk produk yang namanya cocok persis
     summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk', right_on='Nama Iklan', how='left')
     
