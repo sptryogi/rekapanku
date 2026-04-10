@@ -1798,7 +1798,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang",
         "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Semarang",
         "Al-Qur'an Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang",
-        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta"
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta", 
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta
     ]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus]
     
@@ -1943,7 +1944,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang",
         "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang",
         "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Semarang",
-        "Al-Qur'an Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang"
+        "Al-Qur'an Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang", 
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta"
     ]
     
     for p_biasa in produk_khusus_biasa:
