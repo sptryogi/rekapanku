@@ -381,7 +381,8 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
         "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
         "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers",
-        "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers"
+        "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers",
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta"
         
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
@@ -1784,7 +1785,20 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
         "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
         "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers",
-        "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers"
+        "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers",
+        "Al-Qur'an Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
+        "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers",
+        "Al-Qur'an Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers Tebal dan Jelas",
+        "Al-Qur'an Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers Tulisan Besar",
+        "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas",
+        "Alquran Cover Emas Kertas HVS Al Aqeel A5 Gold Murah | Jakarta",
+        "Al-Qur'an Mini Al Aqeel A7 Gold HVS | Cover Metalik | Alquran Souvenir | Semarang",
+        "Al-Qur'an Wakaf Al Aqeel A5 Kertas Koran | Mushaf 18 Baris | Semarang",
+        "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang",
+        "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang",
+        "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Semarang",
+        "Al-Qur'an Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang",
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta"
     ]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus]
     
@@ -1901,6 +1915,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     produk_khusus_biasa = [
         "Paket Alquran Khusus Wakaf Al Aqeel A5 Kertas Koran",
         "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta"
         "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa",
         "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers",
         "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers",
@@ -1916,7 +1931,19 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
         "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
         "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers",
-        "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers"
+        "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers",
+        "Al-Qur'an Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
+        "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers",
+        "Al-Qur'an Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers Tebal dan Jelas",
+        "Al-Qur'an Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers Tulisan Besar",
+        "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas",
+        "Alquran Cover Emas Kertas HVS Al Aqeel A5 Gold Murah | Jakarta",
+        "Al-Qur'an Mini Al Aqeel A7 Gold HVS | Cover Metalik | Alquran Souvenir | Semarang",
+        "Al-Qur'an Wakaf Al Aqeel A5 Kertas Koran | Mushaf 18 Baris | Semarang",
+        "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang",
+        "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang",
+        "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Semarang",
+        "Al-Qur'an Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang"
     ]
     
     for p_biasa in produk_khusus_biasa:
@@ -2146,6 +2173,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta": "A6 edisi Tahlilan",
             "Al-Qur'an Non Terjemah Al Aqeel HVS A5 | Jakarta": "Al Aqeel A5 HVS",
             "Al Qur'an Terjemah Per Kata | Tajwid 2 Warna | Al Fikrah A5 Kertas HVS | Jakarta": "Al Fikrah A5 HVS",
+            "Alquran Cover Emas Kertas HVS Al Aqeel A5 Gold Murah | Jakarta": "Al Aqeel A5 Gold"
             
         }
     elif store_type == "Pacific Bookstore":
@@ -2163,14 +2191,29 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "Al Quran Terjemah Al Aleem A5 Kertas HVS 15 Baris | SURABAYA | Alquran Untuk Majelis Taklim Kajian": "Al Aleem A5 Kertas HVS",
             "Al Quran Wakaf Ibtida Al Quddus A5 Kertas HVS | Alquran SURABAYA": "Al Quddus Ibtida A5 Kertas HVS"
         }
-    # elif store_type == "Toko Kaliba":
-    #     mapping_singkatan = {
-    #         "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Quran Al Aqeel A6 Pastel Kertas HVS",
-    #         "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Quran Al Aqeel A5 Kertas Koran",
-    #         "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers": "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS",
-    #         "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers": "Al Quran Al Aqeel A7 GOLD Kertas HVS",
-    #         "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan": "Al-Qur'an Al Aqeel Custom Foto Nama"
-    #     }
+    elif store_type == "Toko Kaliba":
+        mapping_singkatan = {
+            "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Quran Al Aqeel A6 Pastel Kertas HVS",
+            "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Quran Al Aqeel A5 Kertas Koran",
+            "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers": "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS",
+            "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers": "Al Quran Al Aqeel A7 GOLD Kertas HVS",
+            "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan": "Al-Qur'an Al Aqeel Custom Foto Nama",
+            "Al-Qur'an Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Aqeel A6 Pastel",
+            "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers": "Al Aqeel A6 Edisi Tahlilan",
+            "Al-Qur'an Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers Tebal dan Jelas": "Al Aqeel A5 Kertas Koran",
+            "Al-Qur'an Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers Tulisan Besar": "Al Aqeel A7 GOLD",
+            "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas": "Al-Qur'an Custom"
+        }
+        
+    elif store_type == "Raka Bookstore":
+        mapping_singkatan = {
+            "Al-Qur'an Mini Al Aqeel A7 Gold HVS | Cover Metalik | Alquran Souvenir | Semarang": "Al Aqeel A7 Gold",
+            "Al-Qur'an Wakaf Al Aqeel A5 Kertas Koran | Mushaf 18 Baris | Semarang": "Al Aqeel A5 Kertas Koran",
+            "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang": "Al-Qur'an A6 Edisi Tahlilan Custom",
+            "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang": "Custom Al-Qur'an Mengenang Wafat",
+            "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Semarang": "Paket Wakaf Hemat Isi 50",
+            "Al-Qur'an Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang": "Al Aqeel A6 Pastel"
+        }
 
         # def apply_shorten(nama_full):
         #     if pd.isna(nama_full): return nama_full
