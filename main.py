@@ -1756,7 +1756,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             }
         
         # Terapkan normalisasi: ganti nama lama dengan nama baru
-        summary_df['Nama Produk'] = summary_df['Nama Produk'].replace(normalisasi_mapping)
+        # summary_df['Nama Produk'] = summary_df['Nama Produk'].replace(normalisasi_mapping)
+        rekap_copy['Nama Produk'] = rekap_copy['Nama Produk'].replace(normalisasi_mapping)
         
     biaya_layanan_col = 'Biaya Layanan 4,5%' if store_type == 'Pacific Bookstore' else 'Biaya Layanan 2%'
     summary_df = rekap_copy.groupby(['Nama Produk', 'Harga Satuan'], as_index=False).agg({
