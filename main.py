@@ -1783,7 +1783,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum',
             'Biaya Proses Pesanan': 'sum',
             'Total Penghasilan': 'sum',
-            'Harga Satuan': 'first'  # Ambil harga satuan pertama yang ditemukan
+            'Harga Satuan': 'unique' 
         }
         
         summary_df = summary_df.groupby(['Nama Produk'], as_index=False).agg(agg_dict)
