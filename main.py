@@ -1745,6 +1745,48 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     })
 
     summary_df = summary_df[summary_df['Total Penghasilan'] != 0].copy()
+    if store_type in ['Raka Bookstore', 'Toko Kaliba']:
+        # Mapping: Nama Produk Lama -> Nama Produk Baru (standar)
+        if store_type == 'Raka Bookstore':
+            normalisasi_mapping = {
+                "Alquran Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang": 
+                    "Al-Qur'an Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang",
+                "Alquran Mini Al Aqeel A7 Gold HVS | Cover Metalik | Alquran Souvenir | Semarang": 
+                    "Al-Qur'an Mini Al Aqeel A7 Gold HVS | Cover Metalik | Alquran Souvenir | Semarang",
+                "Alquran Wakaf Al Aqeel A5 Kertas Koran | Mushaf 18 Baris | Semarang": 
+                    "Al-Qur'an Wakaf Al Aqeel A5 Kertas Koran | Mushaf 18 Baris | Semarang"
+            }
+        else:  # Toko Kaliba
+            normalisasi_mapping = {
+                "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": 
+                    "Al-Qur'an Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers Tebal dan Jelas",
+                "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": 
+                    "Al-Qur'an Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
+                "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers": 
+                    "Al-Qur'an Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers Tulisan Besar",
+                "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers": 
+                    "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers"
+            }
+        
+        # Terapkan normalisasi: ganti nama lama dengan nama baru
+        summary_df['Nama Produk'] = summary_df['Nama Produk'].replace(normalisasi_mapping)
+
+        biaya_layanan_col = 'Biaya Layanan 4,5%' if store_type == 'Pacific Bookstore' else 'Biaya Layanan 2%'
+        
+        agg_dict = {
+            'Jumlah Terjual': 'sum',
+            'Total Harga Produk': 'sum',
+            'Voucher Ditanggung Penjual': 'sum',
+            'Biaya Komisi AMS + PPN Shopee': 'sum',
+            'Biaya Adm 8%': 'sum',
+            biaya_layanan_col: 'sum',
+            'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum',
+            'Biaya Proses Pesanan': 'sum',
+            'Total Penghasilan': 'sum',
+            'Harga Satuan': 'first'  # Ambil harga satuan pertama yang ditemukan
+        }
+        
+        summary_df = summary_df.groupby(['Nama Produk'], as_index=False).agg(agg_dict)
 
     # --- LOGIKA BARU: Tambahkan Produk dari IKLAN yang tidak ada di REKAP ---
     # Siapkan kolom 'Iklan Klik' dengan nilai default 0
