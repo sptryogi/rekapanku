@@ -1773,7 +1773,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
 
         biaya_layanan_col = 'Biaya Layanan 4,5%' if store_type == 'Pacific Bookstore' else 'Biaya Layanan 2%'
         
-        agg_dict = {
+        # Kolom untuk di-sum (kecuali Harga Satuan)
+        sum_cols = {
             'Jumlah Terjual': 'sum',
             'Total Harga Produk': 'sum',
             'Voucher Ditanggung Penjual': 'sum',
@@ -1782,11 +1783,19 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             biaya_layanan_col: 'sum',
             'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum',
             'Biaya Proses Pesanan': 'sum',
-            'Total Penghasilan': 'sum',
-            'Harga Satuan': 'unique' 
+            'Total Penghasilan': 'sum'
         }
         
-        summary_df = summary_df.groupby(['Nama Produk'], as_index=False).agg(agg_dict)
+        # Agregasi sum dulu
+        summary_df_sum = summary_df.groupby(['Nama Produk'], as_index=False).agg(sum_cols)
+        
+        # Ambil Harga Satuan unik per Nama Produk (ambil yang pertama jika ada multiple)
+        harga_unik = summary_df.groupby('Nama Produk')['Harga Satuan'].apply(
+            lambda x: x.drop_duplicates().iloc[0] if len(x.drop_duplicates()) > 0 else 0
+        ).reset_index()
+        
+        # Merge kembali
+        summary_df = pd.merge(summary_df_sum, harga_unik, on='Nama Produk', how='left')
 
     # --- LOGIKA BARU: Tambahkan Produk dari IKLAN yang tidak ada di REKAP ---
     # Siapkan kolom 'Iklan Klik' dengan nilai default 0
