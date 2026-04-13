@@ -1732,19 +1732,6 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # Agregasi data utama dari REKAP
     # Sekarang groupby ini akan menggabungkan retur (yang Harga Satuannya sudah "diperbaiki")
     # dengan penjualan normal.
-    biaya_layanan_col = 'Biaya Layanan 4,5%' if store_type == 'Pacific Bookstore' else 'Biaya Layanan 2%'
-    summary_df = rekap_copy.groupby(['Nama Produk', 'Harga Satuan'], as_index=False).agg({
-        'Jumlah Terjual': 'sum',
-        # 'No. Pesanan': 'nunique',
-        # 'Harga Satuan': 'first', <-- Dihapus karena sudah jadi bagian key
-        'Total Harga Produk': 'sum',
-        'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
-        'Biaya Adm 8%': 'sum', biaya_layanan_col: 'sum',
-        'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
-        'Total Penghasilan': 'sum' # Ini akan menjumlahkan (Penjualan Positif + Penjualan Negatif)
-    })
-
-    summary_df = summary_df[summary_df['Total Penghasilan'] != 0].copy()
     if store_type in ['Raka Bookstore', 'Toko Kaliba']:
         # Mapping: Nama Produk Lama -> Nama Produk Baru (standar)
         if store_type == 'Raka Bookstore':
@@ -1770,32 +1757,20 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         
         # Terapkan normalisasi: ganti nama lama dengan nama baru
         summary_df['Nama Produk'] = summary_df['Nama Produk'].replace(normalisasi_mapping)
+        
+    biaya_layanan_col = 'Biaya Layanan 4,5%' if store_type == 'Pacific Bookstore' else 'Biaya Layanan 2%'
+    summary_df = rekap_copy.groupby(['Nama Produk', 'Harga Satuan'], as_index=False).agg({
+        'Jumlah Terjual': 'sum',
+        # 'No. Pesanan': 'nunique',
+        # 'Harga Satuan': 'first', <-- Dihapus karena sudah jadi bagian key
+        'Total Harga Produk': 'sum',
+        'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
+        'Biaya Adm 8%': 'sum', biaya_layanan_col: 'sum',
+        'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
+        'Total Penghasilan': 'sum' # Ini akan menjumlahkan (Penjualan Positif + Penjualan Negatif)
+    })
 
-        biaya_layanan_col = 'Biaya Layanan 4,5%' if store_type == 'Pacific Bookstore' else 'Biaya Layanan 2%'
-        
-        # Kolom untuk di-sum (kecuali Harga Satuan)
-        sum_cols = {
-            'Jumlah Terjual': 'sum',
-            'Total Harga Produk': 'sum',
-            'Voucher Ditanggung Penjual': 'sum',
-            'Biaya Komisi AMS + PPN Shopee': 'sum',
-            'Biaya Adm 8%': 'sum',
-            biaya_layanan_col: 'sum',
-            'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum',
-            'Biaya Proses Pesanan': 'sum',
-            'Total Penghasilan': 'sum'
-        }
-        
-        # Agregasi sum dulu
-        summary_df_sum = summary_df.groupby(['Nama Produk'], as_index=False).agg(sum_cols)
-        
-        # Ambil Harga Satuan unik per Nama Produk (ambil yang pertama jika ada multiple)
-        harga_unik = summary_df.groupby('Nama Produk')['Harga Satuan'].apply(
-            lambda x: x.drop_duplicates().iloc[0] if len(x.drop_duplicates()) > 0 else 0
-        ).reset_index()
-        
-        # Merge kembali
-        summary_df = pd.merge(summary_df_sum, harga_unik, on='Nama Produk', how='left')
+    summary_df = summary_df[summary_df['Total Penghasilan'] != 0].copy()
 
     # --- LOGIKA BARU: Tambahkan Produk dari IKLAN yang tidak ada di REKAP ---
     # Siapkan kolom 'Iklan Klik' dengan nilai default 0
