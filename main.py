@@ -300,6 +300,35 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     # Gabungkan income_df dengan order_agg. Ini akan membuat duplikasi baris income untuk setiap produk.
     rekap_df = pd.merge(income_df, order_agg, on='No. Pesanan', how='left')
 
+    if store_type in ['Raka Bookstore', 'Toko Kaliba']:
+        # Mapping: Nama Produk Lama -> Nama Produk Baru (standar)
+        if store_type == 'Raka Bookstore':
+            normalisasi_mapping = {
+                "Alquran Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang": 
+                    "Al-Qur'an Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang",
+                "Alquran Mini Al Aqeel A7 Gold HVS | Cover Metalik | Alquran Souvenir | Semarang": 
+                    "Al-Qur'an Mini Al Aqeel A7 Gold HVS | Cover Metalik | Alquran Souvenir | Semarang",
+                "Alquran Wakaf Al Aqeel A5 Kertas Koran | Mushaf 18 Baris | Semarang": 
+                    "Al-Qur'an Wakaf Al Aqeel A5 Kertas Koran | Mushaf 18 Baris | Semarang"
+            }
+        else:  # Toko Kaliba
+            normalisasi_mapping = {
+                "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": 
+                    "Al-Qur'an Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers Tebal dan Jelas",
+                "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers":
+                    "Al-Qur'an Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers Tebal dan Jelas",
+                "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": 
+                    "Al-Qur'an Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
+                "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers":
+                    "Al-Qur'an Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
+                "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers": 
+                    "Al-Qur'an Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers Tulisan Besar",
+                "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers": 
+                    "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers"
+            }
+        
+        rekap_df['Nama Produk'] = rekap_df['Nama Produk'].replace(normalisasi_mapping)
+
     # # 1. Pastikan 'Total Penghasilan' (dari income_df) adalah numerik
     # rekap_df['Total Penghasilan'] = clean_and_convert_to_numeric(rekap_df['Total Penghasilan'])
     
@@ -1747,7 +1776,11 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             normalisasi_mapping = {
                 "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": 
                     "Al-Qur'an Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers Tebal dan Jelas",
+                "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers":
+                    "Al-Qur'an Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers Tebal dan Jelas",
                 "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": 
+                    "Al-Qur'an Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
+                "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers":
                     "Al-Qur'an Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
                 "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers": 
                     "Al-Qur'an Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers Tulisan Besar",
