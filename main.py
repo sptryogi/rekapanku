@@ -573,7 +573,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         # Biaya Adm 8%: hanya jika Biaya Administrasi di income ≠ 0
         rekap_df['Biaya Adm 8%'] = np.where(
             rekap_df['Biaya Administrasi'] != 0,
-            basis_biaya * 0.09,
+            basis_biaya * 0.10,
             0
         )
         
@@ -2160,13 +2160,18 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # summary_df.drop(columns=['No. Pesanan'], inplace=True, errors='ignore')
     summary_df['Penjualan Per Hari'] = round(summary_df['Total Harga Produk'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = round(summary_df.apply(lambda row: row['Jumlah Eksemplar'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1), 1)
-    
+
+    if store_type in ['Raka Bookstore', 'Toko Kaliba']:
+        label_biaya_adm = 'Biaya Adm 10%'
+    else:
+        label_biaya_adm = 'Biaya Adm 8%'
+        
     summary_final_data = {
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'],
         'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Eksemplar': summary_df['Jumlah Eksemplar'], 
         'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Penjualan': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
-        'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
+        'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], label_biaya_adm: summary_df['Biaya Adm 8%'],
         biaya_layanan_col: summary_df[biaya_layanan_col], 'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
         'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan Klik': summary_df['Iklan Klik'], 'Biaya Packing': summary_df['Biaya Packing'],
@@ -4354,10 +4359,15 @@ if marketplace_choice:
 
                         if sheet_name == 'SUMMARY':
                             # Daftar kolom yang pakai format angka ribuan
+                            if store_choice in ['Raka Bookstore', 'Toko Kaliba']:
+                                label_adm_format = 'Biaya Adm 10%'
+                            else:
+                                label_adm_format = 'Biaya Adm 8%'
+                                
                             number_columns = [
                                 'Jumlah Terjual', 'Jumlah Eksemplar', 'Jumlah Pesanan',
                                 'Harga Satuan', 'Total Penjualan', 'Voucher Ditanggung Penjual',
-                                'Biaya Komisi AMS + PPN Shopee', 'Biaya Adm 8%', 'Biaya Layanan 2%',
+                                'Biaya Komisi AMS + PPN Shopee', label_adm_format, 'Biaya Layanan 2%',
                                 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 'Biaya Proses Pesanan',
                                 'Penjualan Netto', 'Iklan Klik', 'Biaya Packing', 'Biaya Ekspedisi',
                                 'Harga Beli', 'Harga Custom TLJ', 'Total Pembelian', 'Margin'
