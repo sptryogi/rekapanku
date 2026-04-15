@@ -2848,71 +2848,119 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     summary_final = pd.DataFrame(summary_final_data)
 
     # --- LOGIKA PERSINGKAT NAMA PRODUK DAMA.ID STORE ---
-    mapping_dama = {
-        "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida": "Al Aqeel A5 Kertas Koran",
-        "AL QUR'AN CUSTOM NAMA FOTO DI COVER SISIPAN ACARA TASYAKUR TAHLIL YASIN": "AL QUR'AN CUSTOM COVER SISIPAN",
-        "PAKET MURAH Alquran Al-Aqeel Tanpa Terjemahan | BANDUNG | Alquran Wakaf Hadiah Hampers Islami": "PAKET MURAH Al-Aqeel Tanpa Terjemahan",
-        "Al Quran Gold Silver Al Aqeel Besar Sedang Kecil": "Al Aqeel Gold Silver",
-        "ALQURAN A6 HVS EDISI TAHLIL TERBARU": "al aqeel A6 edisi tahlilan",
-        "Al Quran Wakaf Saku A6 Al Aqeel HVS Paket Wakaf": "Al Aqeel A6 HVS",
-        "AL QURAN LATIN TERJEMAHAN DAN TADJWID MUSHAF AL FIKRAH KERTAS HVS": "AL FIKRAH A5 HVS",
-        "Al Quran Mushaf Al Aqeel Full Color A5 HVS": "Al Aqeel A5 HVS",
-        "AL QURAN AL QUDDUS SAKU A7 KULIT RESLETING": "AL QUDDUS SAKU A7 KULIT",
-        "BELLA SQUARE PREMIUM | HIJAB SEGIEMPAT | VARIASI WARNA | MURAH FASHION MUSLIM": "HIJAB SEGIEMPAT BELLA SQUARE",
-        "Mushaf Al-Qur'an Al Quddus Tanpa terjemahan uk A5 DAN A4": "Al Quddus Tanpa terjemahan uk A5 DAN A4",
-        "Juz'amma Edisi Terbaru Lebih Lengkap Terjemahan Tadjwid Asmaul Husna Soft Cover Kertas Koran": "Juz'amma Kertas Koran",
-        "HIJAB PASMINA KAOS RAYON COOL TECH BY DAMA": "PASMINA KAOS RAYON",
-        "PASHMINA OVAL CERUTY BABYDOLL PREMIUM": "PASHMINA OVAL CERUTY BABYDOLL",
-        "BUKU CERITA ANAK SERI BUDI PEKERTI KOBER TK SD": "BUKU CERITA SERI BUDI PEKERTI TK SD",
-        "AL QUR'AN TERJEMAHAN AL ALEEM WAQAF IBTIDA": "AL ALEEM WAQAF IBTIDA",
-        "AlQuran Mushaf Al Aqeel B5": "Al Aqeel B5 HVS",
-        "SERI DONGENG BINATANG | DONGENG FABEL | DONGENG BINATANG MENARIK": "SERI DONGENG BINATANG",
-        "Buku Cerita Seri Terladan Nabi Seri 6 Untuk Anak Anak": "Buku Cerita Seri Teladan Nabi",
-        "BUKU CERITA SERI CERITA RAKYAT | NUSANTARA": "BUKU CERITA SERI CERITA RAKYAT",
-        "AL QUR'AN TADJWID DAN TERJEMAHAN TAFSIR ASBABUNNUZUL WAQAF IBTIDA MUSHAF MUMTAAZ": "AL QUR'AN TADJWID DAN TERJEMAHAN MUMTAAZ WAQAF IBTIDA",
-        "Juz'amma Edisi Terbaru Lebih Lengkap Terjemahan Tajwid Asmaul Husnah kertas HVS": "Juz'amma kertas HVS",
-        "Kamus Bergambar Bilingual TK SD PAUD": "Kamus Bergambar TK SD PAUD",
-        "AL QURAN MUSHAF AL ALEEM A6 SAKU": "AL ALEEM A6 SAKU",
-        "HIJAB PAYET CANTIK | PARIS JEPANG | hijab kekinian": "HIJAB PAYET PARIS JEPANG",
-        "TERBARU KOMIK SERI PAHLAWAN INDONESIA | BUKU PAHLAWAN": "KOMIK SERI PAHLAWAN INDONESIA",
-        "HARMONI NUSANTARA | LAGU NASIONAL DAN LAGU DAERAH INDONESIA": "LAGU NASIONAL DAN LAGU DAERAH INDONESIA",
-        "HIJAB BERGO JERSEY BY DAMA | KERUDUNG INSTAN": "HIJAB BERGO JERSEY",
-        "HIJAB VOAL MOTIF LASER CUT PREMIUM": "HIJAB VOAL MOTIF LASER CUT",
-        "Al QURAN TADJWID TANPA TERJEMAHAN MUSHAF SUBHAAN": "SUBHAAN TADJWID TANPA TERJEMAHAN",
-        "Al Quran Mushaf Al Aqeel Full Color A5 B5 Kertas HVS (BANDUNG)": "Al Aqeel A5 B5 HVS",
-        "Al Quran Wakaf Saku A6 Al Aqeel Kertas HVS (BANDUNG)": "Al Aqeel A6 HVS",
-        "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)": "Al Aqeel A5 Kertas Koran",
-        "Al Quran Legend Gold Silver Al Aqeel A5 A7 Kertas HVS (BANDUNG)": "Al Aqeel Gold Silver",
-        "PAKET MURAH Alquran Al-Aqeel Tanpa Terjemahan (BANDUNG) Alquran Untuk Wakaf Hadiah Hampers": "PAKET MURAH Al-Aqeel Tanpa Terjemahan",
-        "Paket Hemat Grosir Wakaf Al Quran Al Aqeel A5 Kertas koran Non Terjemah (BANDUNG)": "Paket Hemat Grosir Al Aqeel A5 Kertas Koran",
-        "Paket Hemat Grosir Wakaf Al Quran Al Aqeel A5 Kertas koran Non Terjemah (BANDUNG)": "Paket Hemat Grosir Al Aqeel A5 Kertas Koran",
-        "Paket Hemat Paket Grosir Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah": "Paket Hemat Grosir Al Aqeel A5 Kertas Koran",
-        "AL QURAN AL AQEEL A6 KERTAS HVS EDISI TAHLILAN (BANDUNG)": "Al Aqeel A6 edisi tahlilan",
-        "AL QURAN AL QUDDUS SAKU A7 KULIT RESLETING (BANDUNG)": "AL QUDDUS SAKU A7 KULIT",
-        "AL QURAN CUSTOM NAMA FOTO DI COVER SISIPAN ACARA TASYAKUR TAHLIL YASIN (BANDUNG)": "AL QUR'AN CUSTOM COVER SISIPAN",
-        "Al Quran Al Quddus Tanpa terjemahan uk A5 DAN A4 Kertas HVS (BANDUNG)": "Al Quddus Tanpa terjemahan A4 A5 HVS",
-        "Al Quran Al Aqeel B5 Pastel Kertas HVS (BANDUNG)": "Al Aqeel B5 Pastel HVS",
-        "AL QURAN TERJEMAHAN AL ALEEM A5 KERTAS HVS WAQAF IBTIDA (BANDUNG)": "AL ALEEM WAQAF IBTIDA A5 HVS",
-        "AL QURAN TADJWID DAN TERJEMAHAN TAFSIR ASBABUNNUZUL WAQAF IBTIDA MUSHAF MUMTAAZ A5 KERTAS QPP (BANDUNG)": "AL QUR'AN TERJEMAHAN MUMTAAZ WAQAF IBTIDA A5 QPP",
-        "Juz'amma A5 kertas HVS Edisi Terbaru Lebih Lengkap Terjemahan Tajwid Asmaul Husnah (BANDUNG)": "Juz'amma kertas A5 HVS",
-        "AL QURAN MUSHAF AL ALEEM A6 SAKU KERTAS QPP (BANDUNG)": "AL ALEEM A6 SAKU",
-        "Al QURAN TADJWID TANPA TERJEMAHAN MUSHAF SUBHAAN A5 KERTAS QPP (BANDUNG)": "SUBHAAN TADJWID TANPA TERJEMAHAN A5 QPP"
-    }
+    if store_choice == "DAMA.ID STORE":
+        mapping_dama = {
+            "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida": "Al Aqeel A5 Kertas Koran",
+            "AL QUR'AN CUSTOM NAMA FOTO DI COVER SISIPAN ACARA TASYAKUR TAHLIL YASIN": "AL QUR'AN CUSTOM COVER SISIPAN",
+            "PAKET MURAH Alquran Al-Aqeel Tanpa Terjemahan | BANDUNG | Alquran Wakaf Hadiah Hampers Islami": "PAKET MURAH Al-Aqeel Tanpa Terjemahan",
+            "Al Quran Gold Silver Al Aqeel Besar Sedang Kecil": "Al Aqeel Gold Silver",
+            "ALQURAN A6 HVS EDISI TAHLIL TERBARU": "al aqeel A6 edisi tahlilan",
+            "Al Quran Wakaf Saku A6 Al Aqeel HVS Paket Wakaf": "Al Aqeel A6 HVS",
+            "AL QURAN LATIN TERJEMAHAN DAN TADJWID MUSHAF AL FIKRAH KERTAS HVS": "AL FIKRAH A5 HVS",
+            "Al Quran Mushaf Al Aqeel Full Color A5 HVS": "Al Aqeel A5 HVS",
+            "AL QURAN AL QUDDUS SAKU A7 KULIT RESLETING": "AL QUDDUS SAKU A7 KULIT",
+            "BELLA SQUARE PREMIUM | HIJAB SEGIEMPAT | VARIASI WARNA | MURAH FASHION MUSLIM": "HIJAB SEGIEMPAT BELLA SQUARE",
+            "Mushaf Al-Qur'an Al Quddus Tanpa terjemahan uk A5 DAN A4": "Al Quddus Tanpa terjemahan uk A5 DAN A4",
+            "Juz'amma Edisi Terbaru Lebih Lengkap Terjemahan Tadjwid Asmaul Husna Soft Cover Kertas Koran": "Juz'amma Kertas Koran",
+            "HIJAB PASMINA KAOS RAYON COOL TECH BY DAMA": "PASMINA KAOS RAYON",
+            "PASHMINA OVAL CERUTY BABYDOLL PREMIUM": "PASHMINA OVAL CERUTY BABYDOLL",
+            "BUKU CERITA ANAK SERI BUDI PEKERTI KOBER TK SD": "BUKU CERITA SERI BUDI PEKERTI TK SD",
+            "AL QUR'AN TERJEMAHAN AL ALEEM WAQAF IBTIDA": "AL ALEEM WAQAF IBTIDA",
+            "AlQuran Mushaf Al Aqeel B5": "Al Aqeel B5 HVS",
+            "SERI DONGENG BINATANG | DONGENG FABEL | DONGENG BINATANG MENARIK": "SERI DONGENG BINATANG",
+            "Buku Cerita Seri Terladan Nabi Seri 6 Untuk Anak Anak": "Buku Cerita Seri Teladan Nabi",
+            "BUKU CERITA SERI CERITA RAKYAT | NUSANTARA": "BUKU CERITA SERI CERITA RAKYAT",
+            "AL QUR'AN TADJWID DAN TERJEMAHAN TAFSIR ASBABUNNUZUL WAQAF IBTIDA MUSHAF MUMTAAZ": "AL QUR'AN TADJWID DAN TERJEMAHAN MUMTAAZ WAQAF IBTIDA",
+            "Juz'amma Edisi Terbaru Lebih Lengkap Terjemahan Tajwid Asmaul Husnah kertas HVS": "Juz'amma kertas HVS",
+            "Kamus Bergambar Bilingual TK SD PAUD": "Kamus Bergambar TK SD PAUD",
+            "AL QURAN MUSHAF AL ALEEM A6 SAKU": "AL ALEEM A6 SAKU",
+            "HIJAB PAYET CANTIK | PARIS JEPANG | hijab kekinian": "HIJAB PAYET PARIS JEPANG",
+            "TERBARU KOMIK SERI PAHLAWAN INDONESIA | BUKU PAHLAWAN": "KOMIK SERI PAHLAWAN INDONESIA",
+            "HARMONI NUSANTARA | LAGU NASIONAL DAN LAGU DAERAH INDONESIA": "LAGU NASIONAL DAN LAGU DAERAH INDONESIA",
+            "HIJAB BERGO JERSEY BY DAMA | KERUDUNG INSTAN": "HIJAB BERGO JERSEY",
+            "HIJAB VOAL MOTIF LASER CUT PREMIUM": "HIJAB VOAL MOTIF LASER CUT",
+            "Al QURAN TADJWID TANPA TERJEMAHAN MUSHAF SUBHAAN": "SUBHAAN TADJWID TANPA TERJEMAHAN",
+            "Al Quran Mushaf Al Aqeel Full Color A5 B5 Kertas HVS (BANDUNG)": "Al Aqeel A5 B5 HVS",
+            "Al Quran Wakaf Saku A6 Al Aqeel Kertas HVS (BANDUNG)": "Al Aqeel A6 HVS",
+            "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)": "Al Aqeel A5 Kertas Koran",
+            "Al Quran Legend Gold Silver Al Aqeel A5 A7 Kertas HVS (BANDUNG)": "Al Aqeel Gold Silver",
+            "PAKET MURAH Alquran Al-Aqeel Tanpa Terjemahan (BANDUNG) Alquran Untuk Wakaf Hadiah Hampers": "PAKET MURAH Al-Aqeel Tanpa Terjemahan",
+            "Paket Hemat Grosir Wakaf Al Quran Al Aqeel A5 Kertas koran Non Terjemah (BANDUNG)": "Paket Hemat Grosir Al Aqeel A5 Kertas Koran",
+            "Paket Hemat Grosir Wakaf Al Quran Al Aqeel A5 Kertas koran Non Terjemah (BANDUNG)": "Paket Hemat Grosir Al Aqeel A5 Kertas Koran",
+            "Paket Hemat Paket Grosir Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah": "Paket Hemat Grosir Al Aqeel A5 Kertas Koran",
+            "AL QURAN AL AQEEL A6 KERTAS HVS EDISI TAHLILAN (BANDUNG)": "Al Aqeel A6 edisi tahlilan",
+            "AL QURAN AL QUDDUS SAKU A7 KULIT RESLETING (BANDUNG)": "AL QUDDUS SAKU A7 KULIT",
+            "AL QURAN CUSTOM NAMA FOTO DI COVER SISIPAN ACARA TASYAKUR TAHLIL YASIN (BANDUNG)": "AL QUR'AN CUSTOM COVER SISIPAN",
+            "Al Quran Al Quddus Tanpa terjemahan uk A5 DAN A4 Kertas HVS (BANDUNG)": "Al Quddus Tanpa terjemahan A4 A5 HVS",
+            "Al Quran Al Aqeel B5 Pastel Kertas HVS (BANDUNG)": "Al Aqeel B5 Pastel HVS",
+            "AL QURAN TERJEMAHAN AL ALEEM A5 KERTAS HVS WAQAF IBTIDA (BANDUNG)": "AL ALEEM WAQAF IBTIDA A5 HVS",
+            "AL QURAN TADJWID DAN TERJEMAHAN TAFSIR ASBABUNNUZUL WAQAF IBTIDA MUSHAF MUMTAAZ A5 KERTAS QPP (BANDUNG)": "AL QUR'AN TERJEMAHAN MUMTAAZ WAQAF IBTIDA A5 QPP",
+            "Juz'amma A5 kertas HVS Edisi Terbaru Lebih Lengkap Terjemahan Tajwid Asmaul Husnah (BANDUNG)": "Juz'amma kertas A5 HVS",
+            "AL QURAN MUSHAF AL ALEEM A6 SAKU KERTAS QPP (BANDUNG)": "AL ALEEM A6 SAKU",
+            "Al QURAN TADJWID TANPA TERJEMAHAN MUSHAF SUBHAAN A5 KERTAS QPP (BANDUNG)": "SUBHAAN TADJWID TANPA TERJEMAHAN A5 QPP"
+        }
+    
+        def apply_shorten_dama(nama_full):
+            if pd.isna(nama_full): return nama_full
+            nama_full_str = str(nama_full)
+            # Ambil variasi dalam kurung jika ada
+            match_variasi = re.search(r'(\s*\(.*\))$', nama_full_str)
+            variasi_part = match_variasi.group(1) if match_variasi else ""
+            nama_produk_saja = nama_full_str.replace(variasi_part, "").strip()
+    
+            for original_name, short_name in mapping_dama.items():
+                if original_name.lower() in nama_produk_saja.lower():
+                    return f"{short_name}{variasi_part}"
+            return nama_full_str
+    
+        summary_final['Nama Produk'] = summary_final['Nama Produk'].apply(apply_shorten_dama)
 
-    def apply_shorten_dama(nama_full):
-        if pd.isna(nama_full): return nama_full
-        nama_full_str = str(nama_full)
-        # Ambil variasi dalam kurung jika ada
-        match_variasi = re.search(r'(\s*\(.*\))$', nama_full_str)
-        variasi_part = match_variasi.group(1) if match_variasi else ""
-        nama_produk_saja = nama_full_str.replace(variasi_part, "").strip()
+    elif store_choice == "Toko Kaliba":
+        mapping_kaliba_tiktok = {
+            "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers": "Al Aqeel A6 Edisi Tahlilan",
+            "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers": "Al Aqeel A7 GOLD",
+            "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Aqeel A6 Pastel",
+            "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers": "Al Aqeel A5 Kertas Koran"
+        }
+        
+        def apply_shorten_kaliba_tiktok(nama_full):
+            if pd.isna(nama_full):
+                return nama_full
+            nama_clean = str(nama_full).strip()
+            # Cek exact match dulu
+            if nama_clean in mapping_kaliba_tiktok:
+                return mapping_kaliba_tiktok[nama_clean]
+            # Cek partial match (contains)
+            for original_name, short_name in mapping_kaliba_tiktok.items():
+                if original_name.lower() in nama_clean.lower():
+                    return short_name
+            return nama_clean
+        
+        summary_final['Nama Produk'] = summary_final['Nama Produk'].apply(apply_shorten_kaliba_tiktok)
 
-        for original_name, short_name in mapping_dama.items():
-            if original_name.lower() in nama_produk_saja.lower():
-                return f"{short_name}{variasi_part}"
-        return nama_full_str
-
-    summary_final['Nama Produk'] = summary_final['Nama Produk'].apply(apply_shorten_dama)
+    elif store_choice == "Raka Bookstore":
+        mapping_raka_tiktok = {
+            "Alquran Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang": "Al Aqeel A6 Pastel",
+            "Alquran Mini Al Aqeel A7 Gold HVS | Cover Metalik | Alquran Souvenir | Semarang": "Al Aqeel A7 Gold",
+            "Alquran 30 Juz Edisi Tahlilan | A6 HVS Custom Pengganti Yasin Dengan Terjemah | Semarang": "Al-Qur'an A6 Edisi Tahlilan Custom",
+            "Alquran Wakaf Al Aqeel A5 Kertas Koran | Mushaf 18 Baris | Semarang": "Al Aqeel A5 Kertas Koran",
+            "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Semarang": "Paket Wakaf Hemat Isi 50"
+        }
+        
+        def apply_shorten_raka_tiktok(nama_full):
+            if pd.isna(nama_full):
+                return nama_full
+            nama_clean = str(nama_full).strip()
+            # Cek exact match dulu
+            if nama_clean in mapping_raka_tiktok:
+                return mapping_raka_tiktok[nama_clean]
+            # Cek partial match (contains)
+            for original_name, short_name in mapping_raka_tiktok.items():
+                if original_name.lower() in nama_clean.lower():
+                    return short_name
+            return nama_clean
+        
+        summary_final['Nama Produk'] = summary_final['Nama Produk'].apply(apply_shorten_raka_tiktok)
     # --- AKHIR LOGIKA PERSINGKAT ---
     
     # Pastikan semua data di kolom Nama Produk menjadi teks agar bisa diurutkan
