@@ -411,7 +411,11 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
         "Alquran Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers",
         "Al Quran Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers",
-        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta"
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta",
+        "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers",
+        "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas",
+        "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang",
+        "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang"
         
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
@@ -443,7 +447,9 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
                     "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
                     "AL-QURAN AL AQEEL SILVER TERMURAH",
                     "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris",
-                    "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris | Jakarta"
+                    "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris | Jakarta",
+                    "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas",
+                    "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang"
                 ]
                 if any(produk in nama_produk_clean for produk in produk_yang_ambil_full_variasi):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
@@ -451,6 +457,18 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
                 # --- AKHIR LOGIKA KHUSUS ---
                 # 3. TAHLILAN (Ambil setelah koma)
                 elif "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta" in nama_produk_clean:
+                    if ',' in var_str:
+                        part_to_append = var_str.split(',', 1)[-1].strip() # Ambil setelah koma
+                    else:
+                        part_to_append = var_str # Fallback jika tidak ada koma (misal "Tidak custom")
+
+                elif "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers" in nama_produk_clean:
+                    if ',' in var_str:
+                        part_to_append = var_str.split(',', 1)[-1].strip() # Ambil setelah koma
+                    else:
+                        part_to_append = var_str # Fallback jika tidak ada koma (misal "Tidak custom")
+
+                elif "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang" in nama_produk_clean:
                     if ',' in var_str:
                         part_to_append = var_str.split(',', 1)[-1].strip() # Ambil setelah koma
                     else:
