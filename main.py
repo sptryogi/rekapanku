@@ -4022,31 +4022,57 @@ if marketplace_choice:
         show_tiktok_button = False
 
     if show_shopee_button or show_tiktok_button:
-        offline_rows = []  # <-- GANTI jadi LIST
+        offline_rows = []  # <-- List untuk menyimpan semua baris
         if marketplace_choice == "Shopee" and uploaded_offline_images:
             st.info(f"Memproses {len(uploaded_offline_images)} gambar penjualan offline...")
-            
             for img_file in uploaded_offline_images:
                 offline_data_list = parse_offline_sales_image(img_file)
                 
                 for offline_data in offline_data_list:
-                    # Generate nomor urut sementara (akan di-reindex nanti)
+                    # Generate nomor urut sementara
                     nomor_sementara = len(offline_rows) + 1
                     
-                    offline_rows = create_offline_summary_row(
+                    # ❌ JANGAN gunakan nama 'offline_rows' lagi di sini
+                    # ✅ Gunakan nama berbeda, misalnya 'new_offline_row'
+                    new_offline_row = create_offline_summary_row(
                         offline_data, 
                         store_choice, 
                         katalog_df, 
                         harga_custom_tlj_df,
-                        nomor_urut=nomor_sementara  # <-- PASS NOMOR
+                        nomor_urut=nomor_sementara
                     )
                     
-                    if offline_rows:
-                        offline_rows.append(offline_rows)
+                    if new_offline_row:  # ✅ Cek dictionary hasil
+                        offline_rows.append(new_offline_row)  # ✅ Append ke list
                         st.success(f"✅ Terdeteksi: {offline_data['nama_produk']}, {offline_data['eksemplar']} eksemplar, Rp{offline_data['harga_satuan']:,}")
             
             if offline_rows:
                 st.success(f"Total {len(offline_rows)} produk offline terdeteksi")
+        # offline_rows = []  # <-- GANTI jadi LIST
+        # if marketplace_choice == "Shopee" and uploaded_offline_images:
+        #     st.info(f"Memproses {len(uploaded_offline_images)} gambar penjualan offline...")
+            
+        #     for img_file in uploaded_offline_images:
+        #         offline_data_list = parse_offline_sales_image(img_file)
+                
+        #         for offline_data in offline_data_list:
+        #             # Generate nomor urut sementara (akan di-reindex nanti)
+        #             nomor_sementara = len(offline_rows) + 1
+                    
+        #             offline_rows = create_offline_summary_row(
+        #                 offline_data, 
+        #                 store_choice, 
+        #                 katalog_df, 
+        #                 harga_custom_tlj_df,
+        #                 nomor_urut=nomor_sementara  # <-- PASS NOMOR
+        #             )
+                    
+        #             if offline_rows:
+        #                 offline_rows.append(offline_rows)
+        #                 st.success(f"✅ Terdeteksi: {offline_data['nama_produk']}, {offline_data['eksemplar']} eksemplar, Rp{offline_data['harga_satuan']:,}")
+            
+            # if offline_rows:
+            #     st.success(f"Total {len(offline_rows)} produk offline terdeteksi")
         button_label = f"🚀 Mulai Proses untuk {marketplace_choice} - {store_choice}"
         if st.button(button_label):
             progress_bar = st.progress(0, text="Mempersiapkan proses...")
