@@ -2336,6 +2336,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     if mapping_singkatan:
         def apply_shorten(nama_full):
             if pd.isna(nama_full): return nama_full
+            if not isinstance(nama_full, str): 
+                nama_full = str(nama_full)
             # Deteksi variasi di dalam kurung terakhir
             match_variasi = re.search(r'(\s*\(.*\))$', nama_full)
             variasi_part = match_variasi.group(1) if match_variasi else ""
