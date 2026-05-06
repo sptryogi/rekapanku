@@ -4319,8 +4319,20 @@ if marketplace_choice:
                         'text_wrap': True       # Enable wrap text
                     })
 
+                    # number_format_id = workbook.add_format({
+                    #     'num_format': '#,##0',  # Format ribuan dengan titik, tanpa desimal
+                    #     'border': 1,
+                    #     'align': 'right'
+                    # })
+                    # number_format_id_total = workbook.add_format({
+                    #     'num_format': '#,##0',
+                    #     'bold': True,
+                    #     'fg_color': '#FFFF00',
+                    #     'border': 1,
+                    #     'align': 'right'
+                    # })
                     number_format_id = workbook.add_format({
-                        'num_format': '#,##0',  # Format ribuan dengan titik, tanpa desimal
+                        'num_format': '#,##0',  # Ribuan pakai koma, desimal pakai titik
                         'border': 1,
                         'align': 'right'
                     })
@@ -4337,10 +4349,16 @@ if marketplace_choice:
                     cell_border_format = workbook.add_format({'border': 1})
                     
                     # Format Persen (0.00%) DENGAN BORDER
-                    percent_format = workbook.add_format({'num_format': '0.00%', 'border': 1})
+                    # percent_format = workbook.add_format({'num_format': '0.00%', 'border': 1})
+                    percent_format = workbook.add_format({
+                        'num_format': '0.0%',  # 1 angka desimal belakang
+                        'border': 1
+                    })
                     
                     # Format 1 Angka Desimal (0.0) DENGAN BORDER
-                    one_decimal_format = workbook.add_format({'num_format': '0.0', 'border': 1})
+                    # one_decimal_format = workbook.add_format({'num_format': '0.0', 'border': 1})
+                    one_decimal_format = workbook.add_format({'num_format': '#,##0.0', 'border': 1})  # Tambah format ribuan
+
                     
                     # Format Baris Total (kuning, bold)
                     total_fmt = workbook.add_format({'bold': True, 'fg_color': '#FFFF00', 'border': 1})
@@ -4364,11 +4382,60 @@ if marketplace_choice:
                         'align': 'right'
                     })
 
+                    red_number_format = workbook.add_format({
+                        'font_color': '#FF0000',
+                        'num_format': '#,##0;-#,##0',  # Format positif;negatif (dengan minus)
+                        'border': 1,
+                        'align': 'right'
+                    })
+                    
+                    red_percent_format = workbook.add_format({
+                        'font_color': '#FF0000',
+                        'num_format': '0.0%;-0.0%',  # Persen dengan minus
+                        'border': 1,
+                        'align': 'right'
+                    })
+                    
+                    red_decimal_format = workbook.add_format({
+                        'font_color': '#FF0000',
+                        'num_format': '#,##0.0;-#,##0.0',  # Desimal dengan minus
+                        'border': 1,
+                        'align': 'right'
+                    })
+
+                    # red_format_total_margin = workbook.add_format({
+                    #     'bold': True,
+                    #     'fg_color': '#FFFF00',      # Kuning tetap
+                    #     'font_color': '#FF0000',    # Merah untuk angka
+                    #     'num_format': '#,##0',       # Tanpa tanda minus
+                    #     'border': 1,
+                    #     'align': 'right'
+                    # })
                     red_format_total_margin = workbook.add_format({
                         'bold': True,
-                        'fg_color': '#FFFF00',      # Kuning tetap
-                        'font_color': '#FF0000',    # Merah untuk angka
-                        'num_format': '#,##0',       # Tanpa tanda minus
+                        'fg_color': '#FFFF00',
+                        'font_color': '#FF0000',
+                        'num_format': '#,##0;-#,##0',  # TETAP PAKAI TANDA MINUS
+                        'border': 1,
+                        'align': 'right'
+                    })
+                    
+                    # Tambahkan ini juga untuk total persen negatif
+                    red_total_percent = workbook.add_format({
+                        'bold': True,
+                        'fg_color': '#FFFF00',
+                        'font_color': '#FF0000',
+                        'num_format': '0.0%;-0.0%',
+                        'border': 1,
+                        'align': 'right'
+                    })
+                    
+                    # Tambahkan ini untuk total desimal negatif
+                    red_total_decimal = workbook.add_format({
+                        'bold': True,
+                        'fg_color': '#FFFF00',
+                        'font_color': '#FF0000',
+                        'num_format': '#,##0.0;-#,##0.0',
                         'border': 1,
                         'align': 'right'
                     })
@@ -4398,7 +4465,7 @@ if marketplace_choice:
                     # Format persen untuk baris offline
                     offline_percent_format = workbook.add_format({
                         'fg_color': '#FFD1DC',
-                        'num_format': '0.00%',
+                        'num_format': '0.0%',
                         'border': 1,
                         'align': 'right'
                     })
@@ -4475,12 +4542,15 @@ if marketplace_choice:
                             for col_name in number_columns:
                                 if col_name in df.columns:
                                     col_idx = df.columns.get_loc(col_name)
-                                    # Terapkan ke semua baris data (kecuali baris Total)
-                                    for row_idx in range(len(df) - 1):  # -1 untuk skip baris Total
+                                    for row_idx in range(len(df) - 1):
                                         excel_row = start_row_data + row_idx
                                         cell_value = df.iloc[row_idx, col_idx]
                                         if pd.notna(cell_value):
-                                            worksheet.write(excel_row, col_idx, cell_value, number_format_id)
+                                            # Cek jika nilai negatif
+                                            if isinstance(cell_value, (int, float)) and cell_value < 0:
+                                                worksheet.write(excel_row, col_idx, cell_value, red_number_format)
+                                            else:
+                                                worksheet.write(excel_row, col_idx, cell_value, number_format_id)
                                             
                         if sheet_name == 'SUMMARY':
                             persen_col = df.columns.get_loc('Persentase')
@@ -4492,15 +4562,41 @@ if marketplace_choice:
                             # Terapkan format mulai dari baris data pertama hingga baris sebelum total
                             # (worksheet.set_column(col_start, col_end, width, format))
                             # worksheet.set_column(persen_col, persen_col, 12, percent_format) # Format ini sudah termasuk border
-                            for row_idx in range(len(df) - 1): # -1 agar tidak menyentuh baris 'Total'
+                            # for row_idx in range(len(df) - 1): # -1 agar tidak menyentuh baris 'Total'
+                            #     excel_row = start_row_data + row_idx
+                            #     cell_value = df.iloc[row_idx, persen_col]
+                            #     worksheet.write(excel_row, persen_col, cell_value, percent_format)
+                            for row_idx in range(len(df) - 1):
                                 excel_row = start_row_data + row_idx
                                 cell_value = df.iloc[row_idx, persen_col]
-                                worksheet.write(excel_row, persen_col, cell_value, percent_format)
+                                if pd.notna(cell_value) and isinstance(cell_value, (int, float)) and cell_value < 0:
+                                    worksheet.write(excel_row, persen_col, cell_value, red_percent_format)
+                                else:
+                                    worksheet.write(excel_row, persen_col, cell_value, percent_format)
                             
                             # Atur lebar kolomnya secara terpisah
                             worksheet.set_column(persen_col, persen_col, 12)
-                            worksheet.set_column(penjualan_hari_col, penjualan_hari_col, 18, one_decimal_format)
-                            worksheet.set_column(buku_pesanan_col, buku_pesanan_col, 22, one_decimal_format)
+                            for row_idx in range(len(df) - 1):
+                                excel_row = start_row_data + row_idx
+                                
+                                # Penjualan Per Hari
+                                cell_val_hari = df.iloc[row_idx, penjualan_hari_col]
+                                if pd.notna(cell_val_hari):
+                                    if isinstance(cell_val_hari, (int, float)) and cell_val_hari < 0:
+                                        worksheet.write(excel_row, penjualan_hari_col, cell_val_hari, red_decimal_format)
+                                    else:
+                                        worksheet.write(excel_row, penjualan_hari_col, cell_val_hari, one_decimal_format)
+                                
+                                # Jumlah buku per pesanan
+                                cell_val_buku = df.iloc[row_idx, buku_pesanan_col]
+                                if pd.notna(cell_val_buku):
+                                    if isinstance(cell_val_buku, (int, float)) and cell_val_buku < 0:
+                                        worksheet.write(excel_row, buku_pesanan_col, cell_val_buku, red_decimal_format)
+                                    else:
+                                        worksheet.write(excel_row, buku_pesanan_col, cell_val_buku, one_decimal_format)
+                            
+                            worksheet.set_column(penjualan_hari_col, penjualan_hari_col, 18)
+                            worksheet.set_column(buku_pesanan_col, buku_pesanan_col, 22)
                             
                             # last_row = len(df) + start_row_header
                             last_row = start_row_data + len(df) - 1
@@ -4508,18 +4604,28 @@ if marketplace_choice:
                                 cell_value = df.iloc[-1, col_num]
                                 current_fmt = total_fmt
                                 col_name = df.columns[col_num]
-                                if col_name == 'Margin' and pd.notna(cell_value) and cell_value < 0:
-                                    current_fmt = red_format_total_margin
-                                    cell_value = abs(cell_value)
-                                elif col_num == persen_col:
-                                    current_fmt = total_fmt_percent
-                                elif col_num in [penjualan_hari_col, buku_pesanan_col]:
-                                    current_fmt = total_fmt_decimal
-                                elif col_name in number_columns:
-                                    # Gunakan format angka ribuan untuk baris Total
-                                    current_fmt = number_format_id_total
+                                
+                                # Cek negatif untuk setiap kolom
+                                is_negative = pd.notna(cell_value) and isinstance(cell_value, (int, float)) and cell_value < 0
+                                
+                                if is_negative:
+                                    if col_num == persen_col:
+                                        current_fmt = red_total_percent
+                                    elif col_num in [penjualan_hari_col, buku_pesanan_col]:
+                                        current_fmt = red_total_decimal
+                                    elif col_name in number_columns:
+                                        current_fmt = red_format_total_margin
+                                    else:
+                                        current_fmt = total_fmt  # fallback
                                 else:
-                                    current_fmt = total_fmt
+                                    if col_num == persen_col:
+                                        current_fmt = total_fmt_percent
+                                    elif col_num in [penjualan_hari_col, buku_pesanan_col]:
+                                        current_fmt = total_fmt_decimal
+                                    elif col_name in number_columns:
+                                        current_fmt = number_format_id_total
+                                    else:
+                                        current_fmt = total_fmt
                                 
                                 if pd.notna(cell_value):
                                     worksheet.write(last_row, col_num, cell_value, current_fmt)
@@ -4527,11 +4633,11 @@ if marketplace_choice:
                                     worksheet.write_blank(last_row, col_num, None, current_fmt)
 
                             margin_col_idx = df.columns.get_loc('Margin')
-                            for row_idx in range(len(df) - 1):  # Exclude baris total
+                            for row_idx in range(len(df) - 1):
                                 excel_row = start_row_data + row_idx
                                 cell_value = df.iloc[row_idx, margin_col_idx]
                                 if pd.notna(cell_value) and cell_value < 0:
-                                    worksheet.write(excel_row, margin_col_idx, abs(cell_value), red_format_normal)
+                                    worksheet.write(excel_row, margin_col_idx, cell_value, red_number_format)  # Tidak pakai abs()
 
                             offline_mask = df['Nama Produk'].astype(str).str.startswith('[OFFLINE]')
                             # Terapkan format pink untuk baris offline (kecuali baris total)
@@ -4543,20 +4649,53 @@ if marketplace_choice:
                                     continue
                                 
                                 # Jika baris offline, terapkan format pink
+                                # if offline_mask.iloc[row_idx]:
+                                #     for col_num in range(len(df.columns)):
+                                #         col_name = df.columns[col_num]
+                                #         cell_value = df.iloc[row_idx, col_num]
+                                        
+                                #         # Pilih format sesuai tipe kolom
+                                #         if col_name == 'Persentase':
+                                #             fmt = offline_percent_format
+                                #         elif col_name in number_columns:
+                                #             fmt = offline_number_format
+                                #         elif col_name == 'Nama Produk':
+                                #             fmt = offline_names_format
+                                #         else:
+                                #             fmt = offline_row_format
+                                        
+                                #         if pd.notna(cell_value):
+                                #             worksheet.write(excel_row, col_num, cell_value, fmt)
+                                #         else:
+                                #             worksheet.write_blank(excel_row, col_num, None, fmt)
                                 if offline_mask.iloc[row_idx]:
                                     for col_num in range(len(df.columns)):
                                         col_name = df.columns[col_num]
                                         cell_value = df.iloc[row_idx, col_num]
                                         
-                                        # Pilih format sesuai tipe kolom
-                                        if col_name == 'Persentase':
-                                            fmt = offline_percent_format
-                                        elif col_name in number_columns:
-                                            fmt = offline_number_format
-                                        elif col_name == 'Nama Produk':
-                                            fmt = offline_names_format
+                                        # Cek negatif
+                                        is_neg = pd.notna(cell_value) and isinstance(cell_value, (int, float)) and cell_value < 0
+                                        
+                                        if is_neg:
+                                            if col_name == 'Persentase':
+                                                fmt = red_percent_format
+                                            elif col_name in [penjualan_hari_col_name, buku_pesanan_col_name]:  # tambahkan cek nama kolom
+                                                fmt = red_decimal_format
+                                            elif col_name in number_columns:
+                                                fmt = red_number_format
+                                            elif col_name == 'Nama Produk':
+                                                fmt = offline_names_format
+                                            else:
+                                                fmt = offline_row_format
                                         else:
-                                            fmt = offline_row_format
+                                            if col_name == 'Persentase':
+                                                fmt = offline_percent_format
+                                            elif col_name in number_columns:
+                                                fmt = offline_number_format
+                                            elif col_name == 'Nama Produk':
+                                                fmt = offline_names_format
+                                            else:
+                                                fmt = offline_row_format
                                         
                                         if pd.notna(cell_value):
                                             worksheet.write(excel_row, col_num, cell_value, fmt)
