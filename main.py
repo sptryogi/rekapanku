@@ -591,7 +591,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         # Biaya Adm 8%: hanya jika Biaya Administrasi di income ≠ 0
         rekap_df['Biaya Adm 8%'] = np.where(
             rekap_df['Biaya Administrasi'] != 0,
-            basis_biaya * 0.10,
+            basis_biaya * 0.09,
             0
         )
         
@@ -2184,7 +2184,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_df['Jumlah buku per pesanan'] = round(summary_df.apply(lambda row: row['Jumlah Eksemplar'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1), 1)
 
     if store_type in ['Raka Bookstore', 'Toko Kaliba']:
-        label_biaya_adm = 'Biaya Adm 10%'
+        label_biaya_adm = 'Biaya Adm 9%'
     else:
         label_biaya_adm = 'Biaya Adm 8%'
         
@@ -3805,7 +3805,7 @@ elif marketplace_choice == "TikTok":
         ("Human Store", "DAMA.ID STORE", "Pacific Bookstore", "Raka Bookstore", "Toko Kaliba"), # Hanya toko yang relevan untuk TikTok
         key='tiktok_store'
     )
-    st.info("Marketplace TikTok saat ini hanya tersedia untuk Human Store, DAMA.ID STORE, Raka Bookstore dan Pacific Bookstore.")
+    st.info("Marketplace TikTok saat ini hanya tersedia untuk Human Store, DAMA.ID STORE, Raka Bookstore, Toko Kaliba, dan Pacific Bookstore.")
 
 # Hanya tampilkan uploader jika marketplace sudah dipilih
 if marketplace_choice:
