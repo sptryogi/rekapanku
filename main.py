@@ -415,7 +415,8 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers",
         "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas",
         "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang",
-        "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang"
+        "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang",
+        "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Semarang"
         
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
@@ -449,7 +450,8 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
                     "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris",
                     "Paket Wakaf Murah 50 pcs Alquran Al Aqeel | Alquran 18 Baris | Jakarta",
                     "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas",
-                    "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang"
+                    "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang",
+                    "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Semarang"
                 ]
                 if any(produk in nama_produk_clean for produk in produk_yang_ambil_full_variasi):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
@@ -1678,7 +1680,7 @@ def calculate_eksemplar(nama_produk, jumlah_terjual):
         paket_match = re.search(r'PAKET\s*ISI\s*(\d+)', nama_produk_upper)
         # Cari "SATUAN"
         satuan_match = 'SATUAN' in nama_produk_upper
-        paket_khusus = re.search(r'PAKET.*WAKAF.*MURAH.*50.*PCS', nama_produk_upper)
+        paket_khusus = re.search(r'PAKET.*WAKAF.*HEMAT.*MURAH.*ISI.*50.*PCS', nama_produk_upper)
         
         faktor = 1 # Default adalah 1
         
