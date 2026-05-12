@@ -4474,20 +4474,21 @@ if marketplace_choice:
 
                     # --- PROSES SETIAP SHEET ---
                     for sheet_name, df in sheets.items():
-                        # --- PERUBAHAN 3: Ubah startrow menjadi 3 untuk memberi ruang 2 baris header ---
-                        start_row_data = 4 if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN'] else 1
-                        
-                        df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=start_row_data, header=False)
-                        worksheet = writer.sheets[sheet_name]
-                        start_row_header = 0
+                    
                         if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN']:
-                            # --- PERUBAHAN 4: Buat judul dinamis dan merge 2 baris ---
+                            # ==========================================
+                            # SHEET HASIL PROSESING: Judul + Header merge 2 baris
+                            # ==========================================
+                            start_row_data = 4
+                            df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=start_row_data, header=False)
+                            worksheet = writer.sheets[sheet_name]
+                            
+                            # --- Judul di baris 0-1 (merge) ---
                             if marketplace_choice == "Shopee":
                                 try:
-                                    # Baca mentah sheet Summary untuk ambil cell B7 dan B8
                                     df_date_raw = pd.read_excel(uploaded_income, sheet_name='Summary', header=None, nrows=10, usecols="B")
-                                    tgl_awal = df_date_raw.iloc[6, 0] # B7
-                                    tgl_akhir = df_date_raw.iloc[7, 0] # B8
+                                    tgl_awal = df_date_raw.iloc[6, 0]
+                                    tgl_akhir = df_date_raw.iloc[7, 0]
                                     date_range_str = get_pretty_date_range(tgl_awal, tgl_akhir)
                                 except:
                                     date_range_str = ""
@@ -4495,10 +4496,8 @@ if marketplace_choice:
                                 judul_sheet = f"{sheet_name} {store_choice.upper()} {marketplace_choice} {suffix_tgl}"
                             else:
                                 try:
-                                    # Baca mentah sheet Reports cell F2
                                     df_date_raw = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=None, nrows=5)
-                                    raw_val = str(df_date_raw.iloc[1, 5]) # F2
-                                    # Format biasanya '2026/01/19-2026/01/25'
+                                    raw_val = str(df_date_raw.iloc[1, 5])
                                     split_tgl = raw_val.split('-')
                                     tgl_awal = split_tgl[0].replace('/', '-')
                                     tgl_akhir = split_tgl[1].replace('/', '-')
@@ -4507,16 +4506,24 @@ if marketplace_choice:
                                     date_range_str = ""
                                 suffix_tgl = f" {date_range_str}" if date_range_str else ""
                                 judul_sheet = f"{sheet_name} {store_choice.upper()} {marketplace_choice} {suffix_tgl}"
-                            worksheet.merge_range(0, 0, 1, len(df.columns) - 1, judul_sheet, title_format) # merge dari baris 0 hingga 1
-                            start_row_header = 2 # Header kolom sekarang mulai di baris ke-3 (index 2)
-
-                        nama_kolom_row = 2
-                        # for col_num, value in enumerate(df.columns.values):
-                        #     worksheet.write(start_row_header, col_num, value, header_format)
                             
-                        for col_num, value in enumerate(df.columns.values):
-                            worksheet.merge_range(nama_kolom_row, col_num, nama_kolom_row + 1, col_num, 
-                                                  value, header_name_format)
+                            worksheet.merge_range(0, 0, 1, len(df.columns) - 1, judul_sheet, title_format)
+                            
+                            # --- Header kolom di baris 2-3 (merge 2 baris) ---
+                            for col_num, value in enumerate(df.columns.values):
+                                worksheet.merge_range(2, col_num, 3, col_num, value, header_name_format)
+                                
+                        else:
+                            # ==========================================
+                            # SHEET RAW DATA: Header di baris 0, data mulai baris 1
+                            # ==========================================
+                            start_row_data = 1
+                            df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=start_row_data, header=False)
+                            worksheet = writer.sheets[sheet_name]
+                            
+                            # --- Header kolom di baris 0 (satu baris, tidak merge) ---
+                            for col_num, value in enumerate(df.columns.values):
+                                worksheet.write(0, col_num, value, header_format)
 
                         # Terapkan formatting KHUSUS untuk sheet SUMMARY, REKAP, dan IKLAN
                         if sheet_name in ['SUMMARY', 'REKAP', 'IKLAN']:
