@@ -2688,7 +2688,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
 
     # --- LOGIKA IKLAN (Tetap sama) ---
     summary_df['Iklan Klik'] = 0.0
-    produk_khusus_raw = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)", "Paket Hemat Paket Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida"]
+    produk_khusus_raw = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)", "Paket Hemat Paket Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida"]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
     # Konfigurasi Produk Khusus Dama
