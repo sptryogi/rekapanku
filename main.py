@@ -4202,7 +4202,7 @@ if marketplace_choice:
                     #     product_data_df = pd.DataFrame()
                     #     if is_file_optional_tiktok('product_data', store_choice):
                     #         st.info("File Product Data tidak diupload (opsional untuk toko ini), menggunakan data kosong.")
-                    if product_data_files:
+                    if product_data_file:
                         all_product_data = []
                         for prod_file in product_data_files:
                             df_temp = pd.read_excel(prod_file)
