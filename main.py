@@ -2688,15 +2688,15 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
 
     # --- LOGIKA IKLAN (Tetap sama) ---
     summary_df['Iklan Klik'] = 0.0
-    produk_khusus_raw = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)", "Paket Hemat Paket Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida"]
+    produk_khusus_raw = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)", "Paket Hemat Paket Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida"]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
     # Konfigurasi Produk Khusus Dama
     force_config_dama = {
-        # "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida": {
-        #     "variasi": ["A5 SATUAN", "B5 (Bigbos)", "A5 PAKET3", "A5 PAKET 5", "A5 PAKET 7"],
-        #     "denom": 17
-        # },
+        "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)": {
+            "variasi": ["A5 SATUAN", "B5 (Bigbos)", "A5 PAKET3", "A5 PAKET 5", "A5 PAKET 7"],
+            "denom": 17
+        },
         "Al Quran Wakaf Saku A6 Al Aqeel HVS Paket Wakaf": {
             "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
             "denom": 16
@@ -3913,7 +3913,7 @@ if marketplace_choice:
         with col1:
             uploaded_income_tiktok = st.file_uploader("1. Import file Income (Order details & Reports)", type="xlsx")
             uploaded_semua_pesanan = st.file_uploader("2. Import file semua pesanan.xlsx", type="xlsx")
-            product_data_file = st.file_uploader("3. Import file Product Data.xlsx", type="xlsx")
+            product_data_file = st.file_uploader("3. Import file Product Data.xlsx", type="xlsx", accept_multiple_files=True)
         with col2:
             # --- TAMBAHKAN KONDISI DI SINI ---
             # Hanya tampilkan uploader creator order jika BUKAN DAMA.ID STORE
@@ -4195,9 +4195,47 @@ if marketplace_choice:
                     #     product_data_df.columns = [col.upper().strip() for col in product_data_df.columns]
                     # else:
                     #     product_data_df = pd.DataFrame()
-                    if product_data_file:
-                        product_data_df = pd.read_excel(product_data_file)
-                        product_data_df.columns = [col.upper().strip() for col in product_data_df.columns]
+                    # if product_data_file:
+                    #     product_data_df = pd.read_excel(product_data_file)
+                    #     product_data_df.columns = [col.upper().strip() for col in product_data_df.columns]
+                    # else:
+                    #     product_data_df = pd.DataFrame()
+                    #     if is_file_optional_tiktok('product_data', store_choice):
+                    #         st.info("File Product Data tidak diupload (opsional untuk toko ini), menggunakan data kosong.")
+                    if product_data_files:
+                        all_product_data = []
+                        for prod_file in product_data_files:
+                            df_temp = pd.read_excel(prod_file)
+                            df_temp.columns = [str(col).strip().upper() for col in df_temp.columns]
+                            all_product_data.append(df_temp)
+                        
+                        # Gabungkan semua file
+                        product_data_df = pd.concat(all_product_data, ignore_index=True)
+                        
+                        # Hapus baris duplikat header (jika ada)
+                        # Cek jika ada baris yang isinya sama persis dengan nama kolom
+                        header_mask = True
+                        for col in product_data_df.columns:
+                            header_mask = header_mask & (product_data_df[col].astype(str) == col)
+                        product_data_df = product_data_df[~header_mask].reset_index(drop=True)
+                        
+                        # Konversi kolom numerik
+                        numeric_cols = ['PESANAN SKU', 'PENDAPATAN KOTOR', 'BIAYA', 'BIAYA PER PESANAN']
+                        for col in numeric_cols:
+                            if col in product_data_df.columns:
+                                product_data_df[col] = pd.to_numeric(product_data_df[col], errors='coerce').fillna(0)
+                        
+                        # --- AGREGASI: Gabungkan baris dengan ID PRODUK yang sama ---
+                        if 'ID PRODUK' in product_data_df.columns:
+                            # Kolom yang akan di-sum
+                            sum_cols = ['PESANAN SKU', 'PENDAPATAN KOTOR', 'BIAYA', 'BIAYA PER PESANAN']
+                            # Kolom yang di-ambil first (untuk kolom non-numerik)
+                            first_cols = [c for c in product_data_df.columns if c not in sum_cols and c != 'ID PRODUK']
+                            
+                            agg_dict = {col: 'sum' for col in sum_cols if col in product_data_df.columns}
+                            agg_dict.update({col: 'first' for col in first_cols if col in product_data_df.columns})
+                            
+                            product_data_df = product_data_df.groupby('ID PRODUK', as_index=False).agg(agg_dict)
                     else:
                         product_data_df = pd.DataFrame()
                         if is_file_optional_tiktok('product_data', store_choice):
