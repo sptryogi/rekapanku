@@ -4204,7 +4204,7 @@ if marketplace_choice:
                     #         st.info("File Product Data tidak diupload (opsional untuk toko ini), menggunakan data kosong.")
                     if product_data_file:
                         all_product_data = []
-                        for prod_file in product_data_files:
+                        for prod_file in product_data_file:
                             df_temp = pd.read_excel(prod_file)
                             df_temp.columns = [str(col).strip().upper() for col in df_temp.columns]
                             all_product_data.append(df_temp)
