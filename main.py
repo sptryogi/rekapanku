@@ -3963,8 +3963,9 @@ if marketplace_choice:
         with col1:
             uploaded_income_tiktok = st.file_uploader("1. Import file Income (Order details & Reports)", type="xlsx")
             uploaded_semua_pesanan = st.file_uploader("2. Import file semua pesanan.xlsx", type="xlsx")
-            product_data_file = st.file_uploader("3. Import file Product Data.xlsx", type="xlsx", accept_multiple_files=True)
+            # product_data_file = st.file_uploader("3. Import file Product Data.xlsx", type="xlsx", accept_multiple_files=True)
         with col2:
+            product_data_file = st.file_uploader("3. Import file Product Data.xlsx", type="xlsx", accept_multiple_files=True)
             # --- TAMBAHKAN KONDISI DI SINI ---
             # Hanya tampilkan uploader creator order jika BUKAN DAMA.ID STORE
             # if store_choice != "DAMA.ID STORE":
@@ -3973,7 +3974,7 @@ if marketplace_choice:
             #     # Jika DAMA.ID STORE, pastikan variabelnya ada tapi None
             #     uploaded_creator_order = None
             #     st.info("File 'creator order-all.xlsx' tidak diperlukan untuk DAMA.ID STORE.") # Opsional: beri info
-            label_creator = "3. Import file creator order-all.xlsx"
+            label_creator = "4. Import file creator order-all.xlsx"
             if store_choice == "DAMA.ID STORE":
                 label_creator += " (Opsional)"
                 
