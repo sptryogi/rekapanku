@@ -2894,7 +2894,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
             "Paket Hemat Paket Grosir Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah": "Paket Hemat Grosir Al Aqeel A5 Kertas Koran",
             "AL QURAN AL AQEEL A6 KERTAS HVS EDISI TAHLILAN (BANDUNG)": "Al Aqeel A6 edisi tahlilan",
             "AL QURAN AL QUDDUS SAKU A7 KULIT RESLETING (BANDUNG)": "AL QUDDUS SAKU A7 KULIT",
-            "AL QURAN CUSTOM NAMA FOTO DI COVER SISIPAN ACARA TASYAKUR TAHLIL YASIN (BANDUNG)": "AL QUR'AN CUSTOM COVER SISIPAN",
+            "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG)": "AL QUR'AN CUSTOM COVER SISIPAN",
             "Al Quran Al Quddus Tanpa terjemahan uk A5 DAN A4 Kertas HVS (BANDUNG)": "Al Quddus Tanpa terjemahan A4 A5 HVS",
             "Al Quran Al Aqeel B5 Pastel Kertas HVS (BANDUNG)": "Al Aqeel B5 Pastel HVS",
             "AL QURAN TERJEMAHAN AL ALEEM A5 KERTAS HVS WAQAF IBTIDA (BANDUNG)": "AL ALEEM WAQAF IBTIDA A5 HVS",
