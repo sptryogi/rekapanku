@@ -2635,18 +2635,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     rekap_copy['No. Pesanan'] = rekap_copy['No. Pesanan'].replace('', np.nan).ffill()
 
     # --- ▼▼▼ BLOK PERBAIKAN RETUR SUMMARY (DAMA) ▼▼▼ ---
-    # 1. Identifikasi baris retur (Harga Satuan == 0 DAN Total Penghasilan != 0)
-    #    Logika retur Dama/Pacific juga meng-nol-kan Harga Satuan, jadi ini aman.
-    # kondisi_retur = (rekap_copy['Harga Satuan'] == 0) & (rekap_copy['Total Penghasilan'] != 0)
     
-    # # 2. Buat Peta (Map) dari Nama Produk ke Harga Satuan Asli (non-nol)
-    # #    PENTING: Gunakan 'Nama Produk' (yang masih original) untuk membuat peta
-    # harga_asli_map = rekap_copy[~kondisi_retur].drop_duplicates(subset=['Nama Produk']) \
-    #                                           .set_index('Nama Produk')['Harga Satuan']
-    
-    # # 3. Terapkan (map) harga asli ini ke kolom 'Harga Satuan' PADA BARIS RETUR
-    # rekap_copy.loc[kondisi_retur, 'Harga Satuan'] = rekap_copy['Nama Produk'].map(harga_asli_map)
-    # rekap_copy['Harga Satuan'] = rekap_copy['Harga Satuan'].fillna(0)
     kondisi_retur_summary = rekap_copy['Total Penghasilan'] <= 0
     
     # Set 'Jumlah Terjual' ke 0 HANYA untuk baris retur
@@ -2716,7 +2705,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
 
     # --- LOGIKA IKLAN (Tetap sama) ---
     summary_df['Iklan Klik'] = 0.0
-    produk_khusus_raw = ["Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)", "Paket Hemat Paket Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida"]
+    produk_khusus_raw = ["AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)", "Paket Hemat Paket Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida"]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
     # Konfigurasi Produk Khusus Dama
@@ -2780,7 +2769,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
                 # --- PERBAIKAN DI SINI ---
                 # Jika 0 penjualan, buat baris baru agar biaya iklan tetap muncul di Summary
                 new_row_ads = pd.DataFrame([{col: 0 for col in summary_df.columns}])
-                new_row_ads['Nama Produk'] = p_biasa
+                new_row_ads['Nama Produk'] = p_tahlil
                 new_row_ads['Iklan Klik'] = total_biaya
                 summary_df = pd.concat([summary_df, new_row_ads], ignore_index=True)
             iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(p_tahlil, case=False, na=False, regex=False)]
@@ -2840,8 +2829,40 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     summary_df['Harga Custom TLJ'] = summary_df['Harga Custom TLJ'].fillna(0)
     summary_df.drop(columns=['LOOKUP_KEY'], inplace=True, errors='ignore')
 
-    produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta"
-    kondisi_custom = summary_df['Nama Produk Original'].str.contains(produk_custom_str, na=False)
+    produk_custom_str = [
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 KORAN FAHEEM,Custom sisipan 1Lbr)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 KORAN FAHEEM,Custom cover)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 KORAN FAHEEM,Custom sisipan+cover)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 KORAN FAHEEM,Custom sisipan 2Lbr)",
+                    
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 HVS AL FIKRAH,Custom sisipan 1Lbr)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 HVS AL FIKRAH,Custom cover)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 HVS AL FIKRAH,Custom sisipan+cover)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 HVS AL FIKRAH,Custom sisipan 2Lbr)",
+                    
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 HVS AL QUDDUS,Custom sisipan 1Lbr)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 HVS AL QUDDUS,Custom cover)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 HVS AL QUDDUS,Custom sisipan+cover)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 HVS AL QUDDUS,Custom sisipan 2Lbr)",
+                    
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 HVS AL AQEEL,Custom sisipan 1Lbr)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 HVS AL AQEEL,Custom cover)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 HVS AL AQEEL,Custom sisipan+cover)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 HVS AL AQEEL,Custom sisipan 2Lbr)",
+                    
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 KORAN AL AQEEL,Custom sisipan 1Lbr)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 KORAN AL AQEEL,Custom cover)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 KORAN AL AQEEL,Custom sisipan+cover)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A5 KORAN AL AQEEL,Custom sisipan 2Lbr)",
+                    
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A6 HVS AL AQEEL,Custom sisipan 1Lbr)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A6 HVS AL AQEEL,Custom cover)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A6 HVS AL AQEEL,Custom sisipan+cover)",
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A6 HVS AL AQEEL,Custom sisipan 2Lbr)"
+                    ]
+    # kondisi_custom = summary_df['Nama Produk Original'].str.contains(produk_custom_str, na=False)
+    pattern_custom = '|'.join([re.escape(p) for p in produk_custom_str])
+    kondisi_custom = summary_df['Nama Produk'].str.contains(pattern_custom, case=False, na=False, regex=True)
     summary_df['Total Pembelian'] = np.where(
         kondisi_custom,
         (summary_df['Jumlah Terjual'] * summary_df['Harga Beli']) + (summary_df['Jumlah Terjual'] * summary_df['Harga Custom TLJ']),
@@ -2930,7 +2951,8 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
             "Juz'amma A5 kertas HVS Edisi Terbaru Lebih Lengkap Terjemahan Tajwid Asmaul Husnah (BANDUNG)": "Juz'amma kertas A5 HVS",
             "AL QURAN MUSHAF AL ALEEM A6 SAKU KERTAS QPP (BANDUNG)": "AL ALEEM A6 SAKU",
             "Al QURAN TADJWID TANPA TERJEMAHAN MUSHAF SUBHAAN A5 KERTAS QPP (BANDUNG)": "SUBHAAN TADJWID TANPA TERJEMAHAN A5 QPP",
-            "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)": "FAHEEM A5 KK"
+            "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)": "FAHEEM A5 KK",
+            "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG)": "AL QUR'AN CUSTOM COVER SISIPAN"
         }
     
         def apply_shorten_dama(nama_full):
@@ -3672,7 +3694,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
             "Juz'amma A5 kertas HVS Edisi Terbaru Lebih Lengkap Terjemahan Tajwid Asmaul Husnah (BANDUNG)": "Juz'amma A5 HVS",
             
             # Custom & Tahlilan
-            "AL QURAN CUSTOM NAMA FOTO DI COVER SISIPAN ACARA TASYAKUR TAHLIL YASIN (BANDUNG)": "Al Quran Custom Cover Sisipan",
+            "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG)": "Al Quran Custom Cover Sisipan",
             "ALQURAN A6 HVS EDISI TAHLILAN TERBARU 30 Juz Lengkap Dengan Terjemahan Dilengkapi Dengan Tahlil Dan Doa Pendek (BANDUNG)": "Al Aqeel A6 Tahlilan HVS",
             
             # Full Color & Paket
