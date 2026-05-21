@@ -394,7 +394,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
     produk_khusus_raw = [
-        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
+        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta",
         "AL QUR'AN GOLD TERMURAH",
         "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
         "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
@@ -442,7 +442,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     
                 # --- LOGIKA KHUSUS UNTUK PRODUK CUSTOM ---
                 produk_yang_ambil_full_variasi = [
-                    "CUSTOM AL QURAN MENGENANG", 
+                    "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta", 
                     "AL QUR'AN GOLD TERMURAH",
                     "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
                     "AL-QUR'AN SAKU A7 MAHEER HAFALAN AL QUR'AN",
@@ -849,7 +849,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     
     # REVISI 2: Gabungkan Nama Produk dan Variasi untuk produk spesifik
     produk_khusus_raw = [
-        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
+        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta",
         "AL QUR'AN GOLD TERMURAH",
         "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
         "TERBARU Al Quran Edisi Tahlilan Pengganti Buku Yasin Al Aqeel A6 Kertas HVS | SURABAYA | Mushaf Untuk Pengajian Kado Islami Hampers",
@@ -1367,25 +1367,6 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     else:
         # Jika file tidak ada (kosong), buat kolom 'Pengeluaran(Rp)' dan isi dengan 0
         rekap_df['Pengeluaran(Rp)'] = 0
-    # --- AKHIR BLOK KONDISIONAL ---
-
-    # produk_khusus = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "AL QUR'AN GOLD TERMURAH"]
-    # kondisi = rekap_df['Nama Produk'].isin(produk_khusus)
-    # if 'Nama Variasi' in rekap_df.columns:
-    #     rekap_df.loc[kondisi, 'Nama Produk'] = rekap_df['Nama Produk'] + ' ' + rekap_df['Nama Variasi'].fillna('').str.strip()
-    # if 'Nama Variasi' in rekap_df.columns:
-    #     # Ambil variasi, ganti NaN dengan string kosong
-    #     variasi_clean = rekap_df['Nama Variasi'].fillna('').astype(str).str.strip()
-        
-    #     # Kondisi untuk menggabungkan: Variasi tidak kosong dan tidak '0'
-    #     # (Dan jika Anda hanya ingin produk tertentu, tambahkan kondisi nama produk di sini)
-    #     kondisi_gabung = (variasi_clean != '') & (variasi_clean != '0') & (variasi_clean != 'nan')
-        
-    #     # Gabungkan Nama Produk + Variasi hanya untuk baris yang memenuhi syarat
-    #     # Gunakan .loc untuk memastikan kita tidak menimpa baris yang tidak punya variasi
-    #     rekap_df.loc[kondisi_gabung, 'Nama Produk'] = (
-    #         rekap_df.loc[kondisi_gabung, 'Nama Produk'] + ' (' + variasi_clean.loc[kondisi_gabung] + ')'
-    #     )
 
     # --- LOGIKA PERHITUNGAN BIAYA UNTUK DAMA.ID STORE ---
     rekap_df['Subtotal Pesanan'] = rekap_df.get('Subtotal Pesanan', 0).fillna(0) 
@@ -1832,7 +1813,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     
     # Daftar produk khusus yang biaya iklannya perlu didistribusikan
     produk_khusus = [
-        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI",
+        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta",
         "AL QUR'AN GOLD TERMURAH",
         "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
         "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
@@ -1885,6 +1866,12 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta",
         "Al Quran Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
         "Al Quran Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
+        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta",
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta",
+        "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers",
+        "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas",
+        "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang",
+        "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang"
         
     ]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus]
@@ -2038,6 +2025,12 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Al-Qur'an Al Aqeel A6 Pastel Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers",
         "Al-Qur'an Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers Tulisan Besar",
         "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers",
+        "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta",
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta",
+        "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers",
+        "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas",
+        "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang",
+        "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang"
     ]
     
     for p_biasa in produk_khusus_biasa:
@@ -2143,13 +2136,48 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_df.drop(columns=['LOOKUP_KEY', 'temp_lookup_key'], inplace=True, errors='ignore')
 
     # --- LOGIKA BARU UNTUK TOTAL PEMBELIAN ---
-    produk_custom_list = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta (Custom sisipan 1 hal)", 
+    produk_custom_list = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta", "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta (Custom sisipan 1 hal)", 
                          "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta (Custom sisipan 2 hal)", "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta (Custom jacket)", 
                          "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta (Custom case)", "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta (Sisipan 1hal+jaket)",
                          "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A5 Koran,Sisipan 1 Hal)", "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A5 Koran,Sisipan 2 Hal)", "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A6 Pastel,Sisipan 1 Hal)", "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A6 Pastel,Sisipan 2 Hal)",
                          "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang (Tidak Custom/Biasa)", "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang (Custom sisipan 1 hal)", "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang (Custom sisipan 2 hal)", 
                          "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas (Al Aqeel A5 Koran,Sisipan 1 halaman)", "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas (Al Aqeel A5 Koran,Sisipan 2 halaman)", "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas (Al Aqeel A6 Hvs,Sisipan 1 halaman)", "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas (Al Aqeel A6 Hvs,Sisipan 2 halaman)", 
-                         "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers (standar/tanpa custom)", "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers (sisipan 1 halaman)", "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers (sisipan 2 halaman)"]
+                         "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers (standar/tanpa custom)", "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers (sisipan 1 halaman)", "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers (sisipan 2 halaman)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL AQEEL A6 HVS,1 HALAMAN + AL QURAN)", "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL AQEEL A6 HVS,2 HALAMAN + AL QURAN)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL AQEEL A6 HVS,CUSTOM COVER)", "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL AQEEL A6 HVS,CUSTOM COVER + 1 HALAMAN)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL ALEEM A5 HVS,1 HALAMAN + AL QURAN)", "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL ALEEM A5 HVS,2 HALAMAN + AL QURAN)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL ALEEM A5 HVS,CUSTOM COVER)", "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL ALEEM A5 HVS,CUSTOM COVER + 1 HALAMAN)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL AQEEL A5 KORAN,1 HALAMAN + AL QURAN)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL AQEEL A5 KORAN,2 HALAMAN + AL QURAN)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL AQEEL A5 KORAN,CUSTOM COVER)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL AQEEL A5 KORAN,CUSTOM COVER + 1 HALAMAN)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL AQEEL A5 HVS,1 HALAMAN + AL QURAN)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL AQEEL A5 HVS,2 HALAMAN + AL QURAN)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL AQEEL A5 HVS,CUSTOM COVER)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL AQEEL A5 HVS,CUSTOM COVER + 1 HALAMAN)",                        
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL QUDDUS A5 HVS,1 HALAMAN + AL QURAN)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL QUDDUS A5 HVS,2 HALAMAN + AL QURAN)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL QUDDUS A5 HVS,CUSTOM COVER)",
+                         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta (AL QUDDUS A5 HVS,CUSTOM COVER + 1 HALAMAN)",                    
+                         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta (Custom sisipan 1 hal)",
+                         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta (Custom sisipan 2 hal)",
+                         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta (Custom jacket)",
+                         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta (Custom case)",
+                         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta (Sisipan 1hal+jaket)",
+                         "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers (standar/tanpa custom)",
+                         "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers (sisipan 1 halaman)",
+                         "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers (sisipan 2 halaman)",
+                         "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas (Al Aqeel A5 Koran,Sisipan 1 halaman)",
+                         "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas (Al Aqeel A5 Koran,Sisipan 2 halaman)",
+                         "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas (Al Aqeel A6 Hvs,Sisipan 1 halaman)",
+                         "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas (Al Aqeel A6 Hvs,Sisipan 2 halaman)",
+                         "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang (Tidak Custom/Biasa)",
+                         "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang (Custom sisipan 1 hal)",
+                         "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang (Custom sisipan 2 hal)",
+                         "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A5 Koran,Sisipan 1 Hal)",
+                         "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A5 Koran,Sisipan 2 Hal)",
+                         "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A6 Pastel,Sisipan 1 Hal)",
+                         "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A6 Pastel,Sisipan 2 Hal)"]
     
     # Ubah list menjadi satu string regex, pisahkan dengan '|' (OR)
     # Kita gunakan re.escape() untuk memastikan karakter '|' di dalam string tahlilan tidak merusak regex
@@ -2243,7 +2271,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "[KOLEKSI TERBARU] BUKU CERITA ANAK SERI BUDI PEKERTI": "Seri Budi Pekerti", 
             "AL- QUR'AN TERJEMAH TAJWID MUMTAAZ A5 KERTAS QPP": "Mumtaaz A5 QPP", 
             "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL": "Al Aqeel 6 Pastel", 
-            "Custom Al Quran Mengenang/Wafat 40/100/1000 Hari": "Alquran Custom", 
+            "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta": "Alquran Custom", 
             "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan": "A6 edisi Tahlilan", 
             "Al-Qur'an Non Terjemah Al Aqeel HVS A5": "Al Aqeel A5 HVS", 
             "Al Qur'an Terjemah Per Kata | Tajwid 2 Warna | Al Fikrah A5 Kertas HVS": "Al Fikrah A5 HVS",
@@ -2688,7 +2716,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
 
     # --- LOGIKA IKLAN (Tetap sama) ---
     summary_df['Iklan Klik'] = 0.0
-    produk_khusus_raw = ["CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)", "Paket Hemat Paket Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida"]
+    produk_khusus_raw = ["Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)", "Paket Hemat Paket Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida"]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
     # Konfigurasi Produk Khusus Dama
@@ -2812,7 +2840,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     summary_df['Harga Custom TLJ'] = summary_df['Harga Custom TLJ'].fillna(0)
     summary_df.drop(columns=['LOOKUP_KEY'], inplace=True, errors='ignore')
 
-    produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI"
+    produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta"
     kondisi_custom = summary_df['Nama Produk Original'].str.contains(produk_custom_str, na=False)
     summary_df['Total Pembelian'] = np.where(
         kondisi_custom,
@@ -3531,7 +3559,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     summary_df.drop(columns=['LOOKUP_KEY'], inplace=True, errors='ignore')
 
     # --- LOGIKA BARU UNTUK TOTAL PEMBELIAN (TIKTOK) ---
-    produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI"
+    produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta"
     kondisi_custom = summary_df['Nama Produk'].str.contains(produk_custom_str, na=False)
     
     summary_df['Total Pembelian'] = np.where(
