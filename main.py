@@ -3509,6 +3509,8 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     )    
     # 3. Isi NaN dengan 0
     summary_df['Biaya Ekspedisi'] = pd.to_numeric(summary_df['Biaya Ekspedisi'], errors='coerce').fillna(0)
+    var_count_summary = summary_df.groupby(['Nama Produk', 'Variasi'])['Nama Produk'].transform('count')
+    summary_df['Biaya Ekspedisi'] = summary_df['Biaya Ekspedisi'] / var_count_summary
 
     # Hitung Penjualan Netto
     summary_df['Penjualan Netto'] = (
