@@ -3267,6 +3267,9 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     rekap_df = pd.merge(rekap_df, shipping_map, on='ORDER ID', how='left')
     rekap_df['Biaya Ekspedisi'] = rekap_df['Biaya Ekspedisi'].fillna(0)
     
+    order_item_count = rekap_df.groupby('ORDER ID')['ORDER ID'].transform('size')
+    rekap_df['Biaya Ekspedisi'] = rekap_df['Biaya Ekspedisi'] / order_item_count
+    
     # 3. MENGHITUNG BIAYA-BIAYA BARU (setelah agregasi)
     rekap_df['Total Penjualan'] = rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'] - rekap_df['SKU SELLER DISCOUNT']
     rekap_df['Biaya Komisi Platform 8%'] = rekap_df['Total Penjualan'] * 0.08
@@ -3491,6 +3494,22 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         summary_df.loc[mask, 'Jumlah Terjual'] * 50
     )
 
+    # 3. Isi nilai yang tidak cocok (NaN) dengan 0
+    ekspedisi_cost = (
+        rekap_df.groupby(['Nama Produk', 'Variasi'], as_index=False)['Biaya Ekspedisi']
+        .sum()
+    )
+        
+    # 2. Gabungkan ke summary_df
+    summary_df = pd.merge(
+        summary_df, 
+        ekspedisi_cost,
+        on=['Nama Produk', 'Variasi'],
+        how='left'
+    )    
+    # 3. Isi NaN dengan 0
+    summary_df['Biaya Ekspedisi'] = pd.to_numeric(summary_df['Biaya Ekspedisi'], errors='coerce').fillna(0)
+
     # Hitung Penjualan Netto
     summary_df['Penjualan Netto'] = (
         summary_df['Total Penjualan'] -
@@ -3500,60 +3519,11 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         summary_df['Biaya Layanan Cashback Bonus 1,5%'] -
         summary_df['Biaya Layanan Voucher Xtra'] -
         summary_df['Biaya Proses Pesanan'] -
-        summary_df['Biaya Pre-order']
+        summary_df['Biaya Pre-order'] -
+        summary_df['Biaya Ekspedisi']
     )
     
-    # # 1. Ambil 'Nama Produk', 'Variasi', dan 'Jumlah' dari sheet EKSPEDISI
-    # ekspedisi_cost = ekspedisi_df[['Nama Produk', 'Variasi', 'Jumlah']].rename(columns={'Jumlah': 'Biaya Ekspedisi'})
     
-    # # 2. Gabungkan (merge) ke summary_df menggunakan KEDUA kolom sebagai kunci
-    # summary_df = pd.merge(
-    #     summary_df, 
-    #     ekspedisi_cost, 
-    #     on=['Nama Produk', 'Variasi'],  # <-- Kunci perubahannya di sini
-    #     how='left'
-    # )
-    
-    # # 3. Isi nilai yang tidak cocok (NaN) dengan 0
-    # summary_df['Biaya Ekspedisi'] = summary_df['Biaya Ekspedisi'].fillna(0)
-    # if store_choice == "DAMA.ID STORE":
-    #     # 1. Untuk DAMA.ID STORE, Biaya Ekspedisi selalu 0
-    #     summary_df['Biaya Ekspedisi'] = 0
-    # else:
-    #     # 1. Ambil 'Nama Produk', 'Variasi', dan 'Jumlah' dari sheet EKSPEDISI
-    #     ekspedisi_cost = ekspedisi_df[['Nama Produk', 'Variasi', 'Jumlah']].rename(columns={'Jumlah': 'Biaya Ekspedisi'})
-        
-    #     # 2. Gabungkan (merge) ke summary_df menggunakan KEDUA kolom sebagai kunci
-    #     summary_df = pd.merge(
-    #         summary_df, 
-    #         ekspedisi_cost, 
-    #         on=['Nama Produk', 'Variasi'],
-    #         how='left'
-    #     )
-        
-    #     # 3. Isi nilai yang tidak cocok (NaN) dengan 0 dan pastikan numerik
-    #     summary_df['Biaya Ekspedisi'] = pd.to_numeric(summary_df['Biaya Ekspedisi'], errors='coerce').fillna(0)
-    if store_choice == "SERAYU":
-        # 1. Untuk DAMA.ID STORE, Biaya Ekspedisi selalu 0
-        summary_df['Biaya Ekspedisi'] = 0
-    else:
-        # 1. Ambil Biaya Ekspedisi dari REKAP (group by Nama Produk & Variasi lalu di-sum)
-        ekspedisi_cost = (
-            rekap_df.groupby(['Nama Produk', 'Variasi'], as_index=False)['Biaya Ekspedisi']
-            .sum()
-        )
-        
-        # 2. Gabungkan ke summary_df
-        summary_df = pd.merge(
-            summary_df,
-            ekspedisi_cost,
-            on=['Nama Produk', 'Variasi'],
-            how='left'
-        )
-        
-        # 3. Isi NaN dengan 0
-        summary_df['Biaya Ekspedisi'] = pd.to_numeric(summary_df['Biaya Ekspedisi'], errors='coerce').fillna(0)
-
     summary_df['Biaya Packing'] = summary_df['Jumlah Terjual'] * 200
 
     # --- PERUBAHAN DI SINI: Gunakan logika harga beli yang sama dengan Shopee ---
@@ -3643,7 +3613,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     else:
         summary_df['Iklan'] = 0
         
-    cols_calc = ['Penjualan Netto', 'Biaya Packing', 'Biaya Ekspedisi', 'Total Pembelian', 'Biaya Pre-order']
+    cols_calc = ['Penjualan Netto', 'Biaya Packing', 'Total Pembelian', 'Biaya Pre-order']
     for col in cols_calc:
         if col in summary_df.columns:
             summary_df[col] = summary_df[col].fillna(0)
@@ -3651,7 +3621,6 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     summary_df['Margin'] = (
         summary_df['Penjualan Netto'] -
         summary_df['Biaya Packing'] -
-        summary_df['Biaya Ekspedisi'] -
         summary_df['Total Pembelian'] -
         summary_df['Iklan']
     )
@@ -3670,9 +3639,9 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         # 'Total Diskon Penjual': summary_df['Diskon Penjual'], 'Total Harga Sesudah Diskon': summary_df['Total Penjualan'], 
         'Komisi Affiliate': summary_df['Komisi Affiliate'], 'Biaya Komisi Platform 8%': summary_df['Biaya Komisi Platform 8%'],
         'Komisi Dinamis 5%': summary_df['Komisi Dinamis 5%'], 'Biaya Pre-order': summary_df['Biaya Pre-order'], 'Biaya Layanan Cashback Bonus 1,5%': summary_df['Biaya Layanan Cashback Bonus 1,5%'],
-        'Biaya Layanan Voucher Xtra': summary_df['Biaya Layanan Voucher Xtra'], 'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
+        'Biaya Layanan Voucher Xtra': summary_df['Biaya Layanan Voucher Xtra'], 'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'], 'Biaya Ekspedisi': summary_df['Biaya Ekspedisi'], 
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan': summary_df['Iklan'],'Biaya Packing': summary_df['Biaya Packing'],
-        'Biaya Ekspedisi': summary_df['Biaya Ekspedisi'], 'Harga Beli': summary_df['Harga Beli'],
+        'Harga Beli': summary_df['Harga Beli'],
         'Harga Custom TLJ': summary_df['Harga Custom TLJ'], 'Total Pembelian': summary_df['Total Pembelian'],
         'Margin': summary_df['Margin'], 'Persentase': summary_df['Persentase'],
         'Penjualan Per Hari': summary_df['Penjualan Per Hari'], 'Jumlah buku per pesanan': summary_df['Jumlah buku per pesanan']
@@ -3743,7 +3712,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
 
     total_row = pd.DataFrame(summary_final.sum(numeric_only=True)).T
     total_row['Nama Produk'] = 'Total'
-    total_margin = total_row['Penjualan Netto'].iloc[0] - total_row['Biaya Packing'].iloc[0] - total_row['Biaya Ekspedisi'].iloc[0] - total_row['Total Pembelian'].iloc[0] - total_row['Iklan'].iloc[0]
+    total_margin = total_row['Penjualan Netto'].iloc[0] - total_row['Biaya Packing'].iloc[0] - total_row['Total Pembelian'].iloc[0] - total_row['Iklan'].iloc[0]
     total_row['Margin'] = total_margin
     total_penjualan = total_row['Total Penjualan'].iloc[0]
     total_iklan = total_row['Biaya Pre-order'].iloc[0]
