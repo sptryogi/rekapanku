@@ -254,7 +254,7 @@ def create_offline_summary_row(offline_data, store_type, katalog_df, harga_custo
         'Voucher Ditanggung Penjual': 0,
         'Biaya Komisi AMS + PPN Shopee': 0,
         'Biaya Adm 8%': 0,
-        'Biaya Layanan 2%': 0,
+        # 'Biaya Layanan 2%': 0,
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 0,
         'Biaya Proses Pesanan': 0,
         'Penjualan Netto': penjualan_netto,
@@ -270,10 +270,10 @@ def create_offline_summary_row(offline_data, store_type, katalog_df, harga_custo
         'Jumlah buku per pesanan': jumlah_buku_per_pesanan
     }
     
-    # Handle kolom khusus Pacific Bookstore
-    if store_type == 'Pacific Bookstore':
-        row['Biaya Layanan 4,5%'] = 0
-        del row['Biaya Layanan 2%']  # Pacific pakai 4,5%
+    # # Handle kolom khusus Pacific Bookstore
+    # if store_type == 'Pacific Bookstore':
+    #     row['Biaya Layanan 4,5%'] = 0
+    #     del row['Biaya Layanan 2%']  # Pacific pakai 4,5%
     
     return row
     
@@ -569,6 +569,10 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     #    Bagi 1250 dengan jumlah produk tersebut
     # rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     basis_biaya = rekap_df['Subtotal Pesanan'] - rekap_df['Voucher dari Penjual Dibagi']
+    rekap_df['Waktu Pesanan Parsed'] = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat'], errors='coerce')
+    cutoff_date = pd.Timestamp('2026-05-10')
+    is_after_may_10_2026 = rekap_df['Waktu Pesanan Parsed'] >= cutoff_date
+    
     # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # Ambil tahun dari kolom Waktu Pesanan Dibuat    
     # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
@@ -602,10 +606,10 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         
         # Biaya Layanan Gratis Ongkir Xtra 4,5%: hanya jika Biaya Layanan di income ≠ 0
         rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
-            rekap_df['Biaya Layanan'] != 0,
-            basis_biaya * 0.045,
-            0
-        )
+                is_after_may_10_2026,
+                basis_biaya * 0.06,   # ← 6% mulai 10 Mei 2026
+                basis_biaya * 0.045    # ← 9% sebelumnya
+            )
         
         # Biaya Proses Pesanan Dibagi: hanya jika Biaya Proses Pesanan di income ≠ 0
         rekap_df['Biaya Proses Pesanan Dibagi'] = np.where(
@@ -617,7 +621,11 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         # Rumus standar untuk toko lain (Human Store, Pacific, DAMA)
         rekap_df['Biaya Adm 8%'] = basis_biaya * 0.09
         rekap_df['Biaya Layanan 2%'] = 0
-        rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
+        rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
+                is_after_may_10_2026,
+                basis_biaya * 0.06,   # ← 6% mulai 10 Mei 2026
+                basis_biaya * 0.045    # ← 9% sebelumnya
+            )
         rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
@@ -1046,6 +1054,9 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     # rekap_df['Biaya Proses Pesanan Dibagi'] = 0
 
     basis_biaya = rekap_df['Subtotal Pesanan'] - rekap_df['Voucher dari Penjual Dibagi']
+    rekap_df['Waktu Pesanan Parsed'] = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat'], errors='coerce')
+    cutoff_date = pd.Timestamp('2026-05-10')
+    is_after_may_10_2026 = rekap_df['Waktu Pesanan Parsed'] >= cutoff_date
     # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # Ambil tahun dari kolom Waktu Pesanan Dibuat
     tahun_pesanan = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat']).dt.year
@@ -1061,7 +1072,11 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     
     # 2. Bagi per produk dan hilangkan minus (.abs())
     rekap_df['Biaya Layanan 4,5%'] = (rekap_df['Biaya Layanan_Clean'] / product_count_per_order).fillna(0).abs()
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = 0
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
+        is_after_may_10_2026,
+        basis_biaya * 0.06,  # ← 6% mulai 10 Mei 2026
+        basis_biaya * 0.045
+    )
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
@@ -1393,6 +1408,9 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
 
     # Hitung biaya berdasarkan (Total Harga Produk - Voucher Dibagi)
     basis_biaya = rekap_df['Subtotal Pesanan'] - rekap_df['Voucher dari Penjual Dibagi']
+    rekap_df['Waktu Pesanan Parsed'] = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat'], errors='coerce')
+    cutoff_date = pd.Timestamp('2026-05-10')
+    is_after_may_10_2026 = rekap_df['Waktu Pesanan Parsed'] >= cutoff_date
     # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
     # Ambil tahun dari kolom Waktu Pesanan Dibuat
     tahun_pesanan = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat']).dt.year
@@ -1400,7 +1418,11 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
     rekap_df['Biaya Adm 8%'] = np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
+        is_after_may_10_2026,
+        basis_biaya * 0.06,  # ← 6% mulai 10 Mei 2026
+        basis_biaya * 0.045
+    )
     # --- AKHIR LOGIKA DAMA.ID STORE ---
     
     # Terapkan logika "hanya di baris pertama" untuk biaya per-pesanan
@@ -2224,7 +2246,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Penjualan': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
         'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], label_biaya_adm: summary_df['Biaya Adm 8%'],
-        biaya_layanan_col: summary_df[biaya_layanan_col], 'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
+        'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
         'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan Klik': summary_df['Iklan Klik'], 'Biaya Packing': summary_df['Biaya Packing'],
     }
@@ -2889,7 +2911,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Penjualan': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
         'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
-        'Biaya Layanan 2%': summary_df['Biaya Layanan 2%'], 'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
+        'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
         'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan Klik': summary_df['Iklan Klik'], 'Biaya Packing': summary_df['Biaya Packing'],
         'Biaya Ekspedisi': biaya_ekspedisi_final, # Kolom Biaya Ekspedisi
@@ -3640,8 +3662,8 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         'Total Penjualan': summary_df['Total Pemasukan'],
         # 'Total Diskon Penjual': summary_df['Diskon Penjual'], 'Total Harga Sesudah Diskon': summary_df['Total Penjualan'], 
         'Komisi Affiliate': summary_df['Komisi Affiliate'], 'Biaya Komisi Platform 8%': summary_df['Biaya Komisi Platform 8%'],
-        'Komisi Dinamis 5%': summary_df['Komisi Dinamis 5%'], 'Biaya Pre-order': summary_df['Biaya Pre-order'], 'Biaya Layanan Cashback Bonus 1,5%': summary_df['Biaya Layanan Cashback Bonus 1,5%'],
-        'Biaya Layanan Voucher Xtra': summary_df['Biaya Layanan Voucher Xtra'], 'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'], 'Biaya Ekspedisi': summary_df['Biaya Ekspedisi'], 
+        'Komisi Dinamis 5%': summary_df['Komisi Dinamis 5%'], 'Biaya Pre-order': summary_df['Biaya Pre-order'],
+        'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'], 'Biaya Ekspedisi': summary_df['Biaya Ekspedisi'], 
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan': summary_df['Iklan'],'Biaya Packing': summary_df['Biaya Packing'],
         'Harga Beli': summary_df['Harga Beli'],
         'Harga Custom TLJ': summary_df['Harga Custom TLJ'], 'Total Pembelian': summary_df['Total Pembelian'],
@@ -4664,7 +4686,7 @@ if marketplace_choice:
                             number_columns = [
                                 'Jumlah Terjual', 'Jumlah Eksemplar', 'Jumlah Pesanan',
                                 'Harga Satuan', 'Total Penjualan', 'Voucher Ditanggung Penjual',
-                                'Biaya Komisi AMS + PPN Shopee', label_adm_format, 'Biaya Layanan 2%',
+                                'Biaya Komisi AMS + PPN Shopee', label_adm_format,
                                 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 'Biaya Proses Pesanan',
                                 'Penjualan Netto', 'Iklan Klik', 'Biaya Packing', 'Biaya Ekspedisi',
                                 'Harga Beli', 'Harga Custom TLJ', 'Total Pembelian', 'Margin'
