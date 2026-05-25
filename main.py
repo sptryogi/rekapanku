@@ -3660,7 +3660,6 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'], 'Variasi': summary_df['Variasi'],
         'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Penjualan': summary_df['Total Pemasukan'],
-        # 'Total Diskon Penjual': summary_df['Diskon Penjual'], 'Total Harga Sesudah Diskon': summary_df['Total Penjualan'], 
         'Komisi Affiliate': summary_df['Komisi Affiliate'], 'Biaya Komisi Platform 8%': summary_df['Biaya Komisi Platform 8%'],
         'Komisi Dinamis 5%': summary_df['Komisi Dinamis 5%'], 'Biaya Pre-order': summary_df['Biaya Pre-order'],
         'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'], 'Biaya Ekspedisi': summary_df['Biaya Ekspedisi'], 
