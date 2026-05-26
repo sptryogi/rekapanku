@@ -940,33 +940,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
                         else:
                             part_to_append = '' # Abaikan jika cuma warna
 
-                # elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean:
-
-                #     harga = str(rekap_df['Harga Setelah Diskon']).replace('.', '').replace(',', '').strip()
-                
-                #     if harga == "19200":
-                #         part_to_append = "GROSIR 3-4"
-                #     elif harga == "18900":
-                #         part_to_append = "GROSIR 5-6"
-                #     elif harga == "18600":
-                #         part_to_append = "GROSIR > 7"
-                #     else:
-                #         part_to_append = ""
-                
-                # elif "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean:
-                
-                #     harga = str(rekap_df['Harga Setelah Diskon']).replace('.', '').replace(',', '').strip()
-                
-                #     if harga == "21550":
-                #         part_to_append = "GROSIR 3-4"
-                #     elif harga == "21300":
-                #         part_to_append = "GROSIR 5-6"
-                #     elif harga == "21000":
-                #         part_to_append = "GROSIR > 7"
-                #     else:
-                #         part_to_append = ""
                             
-                # elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean or "Al Quran Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris | SURABAYA | Alquran Hadiah Islami Hampers" in nama_produk_clean or "Al Qur'an Untuk Wakaf Al Aqeel A5 Kertas Koran 18 Baris" in nama_produk_clean:
                 elif "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers" in nama_produk_clean:
                     if harga_satuan == 19500:
                         part_to_append = "GROSIR 1-2"
@@ -1072,11 +1046,12 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     
     # 2. Bagi per produk dan hilangkan minus (.abs())
     rekap_df['Biaya Layanan 4,5%'] = (rekap_df['Biaya Layanan_Clean'] / product_count_per_order).fillna(0).abs()
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
-        is_after_may_10_2026,
-        basis_biaya * 0.06,  # ← 6% mulai 10 Mei 2026
-        basis_biaya * 0.045
-    )
+    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
+    #     is_after_may_10_2026,
+    #     basis_biaya * 0.06,  # ← 6% mulai 10 Mei 2026
+    #     basis_biaya * 0.045
+    # )
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
@@ -1991,6 +1966,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
                     summary_df['Nama Produk Clean'] = summary_df['Nama Produk'].astype(str).str.replace(r'\s+', ' ', regex=True).str.strip()
 
             # 2. Hitung Iklan Klik untuk semua baris yang mengandung produk_base ini
+            summary_df['Nama Produk'] = summary_df['Nama Produk'].fillna('').astype(str)
             mask_summary = summary_df['Nama Produk'].str.contains(produk_base, case=False, na=False, regex=False)
             indices = summary_df[mask_summary].index
             
@@ -2368,22 +2344,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "Al-Qur'an Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang": "Al Aqeel A6 Pastel"
         }
 
-        # def apply_shorten(nama_full):
-        #     if pd.isna(nama_full): return nama_full
-            
-        #     # Pisahkan nama produk dan variasi (teks di dalam kurung)
-        #     # Regex ini mencari bagian dalam kurung terakhir
-        #     match_variasi = re.search(r'(\s*\(.*\))$', nama_full)
-        #     variasi_part = match_variasi.group(1) if match_variasi else ""
-        #     nama_produk_saja = nama_full.replace(variasi_part, "").strip()
-
-        #     # Cek apakah nama produk mengandung salah satu keyword di mapping
-        #     for original_name, short_name in mapping_singkatan.items():
-        #         if original_name.lower() in nama_produk_saja.lower():
-        #             # Gabungkan Nama Singkat dengan Variasi aslinya
-        #             return f"{short_name}{variasi_part}"
-            
-        #     return nama_full
+        
     # Jika ada mapping yang terisi (Human/Pacific), jalankan fungsinya
     if mapping_singkatan:
         def apply_shorten(nama_full):
@@ -2684,22 +2645,6 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
          rekap_copy['Nama Produk Display'] = rekap_copy['Nama Produk Original']
          rekap_copy['Formatted Variation'] = ''
 
-    # grouping_key = 'Nama Produk Display'
-    # # --- AKHIR LOGIKA BARU ---
-
-    # # Agregasi data utama dari REKAP
-    # agg_dict = {
-    #     'Nama Produk Original': 'first',
-    #     'Nama Produk Display': 'first',
-    #     'Cleaned Variation': 'first', # <-- Tambahkan ini jika perlu
-    #     'Jumlah Terjual': 'sum', 'Harga Satuan': 'first', 'Total Harga Produk': 'sum',
-    #     'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
-    #     'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
-    #     'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
-    #     'Total Penghasilan': 'sum'
-    # }
-    # summary_df = rekap_copy.groupby(grouping_key, as_index=False).agg(agg_dict)
-    # summary_df.rename(columns={'Nama Produk Display': 'Nama Produk'}, inplace=True)
     
     grouping_key_list = ['Nama Produk Display', 'Harga Satuan']
     # --- ▲▲▲ AKHIR MODIFIKASI ▲▲▲ ---
@@ -3653,7 +3598,7 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     summary_df['Persentase'] = summary_df.apply(lambda row: row['Margin'] / row['Total Penjualan'] if row['Total Penjualan'] != 0 else 0, axis=1)
     summary_df['Jumlah Pesanan'] = summary_df['Biaya Proses Pesanan'] / 1250
     summary_df['Total Pemasukan'] = summary_df['Jumlah Terjual'] * summary_df['Harga Satuan']
-    summary_df['Penjualan Per Hari'] = round(summary_df['Penjualan Netto'] / 7, 1)
+    summary_df['Penjualan Per Hari'] = round(summary_df['Total Pemasukan'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = summary_df.apply(lambda row: row['Jumlah Terjual'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1)
 
     summary_final = pd.DataFrame({
