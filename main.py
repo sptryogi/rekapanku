@@ -528,6 +528,22 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
     rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
 
+    if 'Biaya Layanan' in income_df.columns:
+        income_df['Biaya Layanan Clean'] = clean_and_convert_to_numeric(income_df['Biaya Layanan'])
+        # Agregasi per No. Pesanan (sum karena bisa multiple baris per order di income)
+        biaya_layanan_map = (
+            income_df.groupby('No. Pesanan')['Biaya Layanan Clean']
+            .sum()
+            .reset_index()
+        )
+        biaya_layanan_map.rename(
+            columns={'Biaya Layanan Clean': 'Biaya Layanan Income'},
+            inplace=True
+        )
+    else:
+        st.warning("Kolom 'Biaya Layanan' tidak ditemukan di file Income.")
+        biaya_layanan_map = pd.DataFrame(columns=['No. Pesanan', 'Biaya Layanan Income'])
+        
     # 1. Pastikan Total Harga Produk ada dan numerik
     rekap_df['Subtotal Pesanan'] = rekap_df.get('Subtotal Pesanan', 0).fillna(0)
     
@@ -540,20 +556,11 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     #    Hitung dulu ada berapa produk dalam satu pesanan
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
 
-    # # 3. Siapkan data 'Biaya Layanan Promo XTRA' dari service_fee_df
-    # #    (Fungsi clean_and_convert_to_numeric sudah ada di file Anda)
-    # service_fee_subset = service_fee_df[['No. Pesanan', 'Biaya Layanan Promo XTRA']].copy()
-    # service_fee_subset['No. Pesanan'] = service_fee_subset['No. Pesanan'].astype(str)
+    rekap_df = pd.merge(rekap_df, biaya_layanan_map, on='No. Pesanan', how='left')
+    rekap_df['Biaya Layanan Income'] = rekap_df['Biaya Layanan Income'].fillna(0)
     
-    # # Gunakan fungsi clean yang ada, lalu .abs() untuk menghilangkan minus
-    # service_fee_subset['BiayaLayananPromo_Clean'] = clean_and_convert_to_numeric(service_fee_subset['Biaya Layanan Promo XTRA']).abs()
-    
-    # # Agregasi (sum) untuk jaga-jaga jika ada duplikat no. pesanan di file service fee
-    # service_fee_agg = service_fee_subset.groupby('No. Pesanan')['BiayaLayananPromo_Clean'].sum().reset_index()
-    
-    # # 4. Gabungkan (merge) data biaya layanan ini ke rekap_df
-    # rekap_df = pd.merge(rekap_df, service_fee_agg, on='No. Pesanan', how='left')
-    # rekap_df['BiayaLayananPromo_Clean'] = rekap_df['BiayaLayananPromo_Clean'].fillna(0)
+    # Bagi Biaya Layanan per jumlah produk dalam satu pesanan
+    rekap_df['Biaya Layanan Gratis Ongkir Dibagi'] = rekap_df['Biaya Layanan Income'] / product_count_per_order
 
     rekap_df['Total Penghasilan Dibagi'] = (rekap_df['Total Penghasilan'] / product_count_per_order).fillna(0)
 
@@ -606,10 +613,10 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         
         # Biaya Layanan Gratis Ongkir Xtra 4,5%: hanya jika Biaya Layanan di income ≠ 0
         rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
-                is_after_may_10_2026,
-                basis_biaya * 0.06,   # ← 6% mulai 10 Mei 2026
-                basis_biaya * 0.045    # ← 9% sebelumnya
-            )
+            rekap_df['Biaya Layanan Income'] != 0,
+            rekap_df['Biaya Layanan Gratis Ongkir Dibagi'],
+            0
+        )
         
         # Biaya Proses Pesanan Dibagi: hanya jika Biaya Proses Pesanan di income ≠ 0
         rekap_df['Biaya Proses Pesanan Dibagi'] = np.where(
@@ -621,11 +628,12 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         # Rumus standar untuk toko lain (Human Store, Pacific, DAMA)
         rekap_df['Biaya Adm 8%'] = basis_biaya * 0.09
         rekap_df['Biaya Layanan 2%'] = 0
-        rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
-                is_after_may_10_2026,
-                basis_biaya * 0.06,   # ← 6% mulai 10 Mei 2026
-                basis_biaya * 0.045    # ← 9% sebelumnya
-            )
+        # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
+        #         is_after_may_10_2026,
+        #         basis_biaya * 0.06,   # ← 6% mulai 10 Mei 2026
+        #         basis_biaya * 0.045    # ← 9% sebelumnya
+        #     )
+        rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Layanan Gratis Ongkir Dibagi']
         rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
@@ -999,21 +1007,33 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     rekap_df = pd.merge(rekap_df, iklan_per_pesanan, left_on='No. Pesanan', right_on='Kode Pesanan', how='left')
     rekap_df['Pengeluaran(Rp)'] = rekap_df['Pengeluaran(Rp)'].fillna(0)
 
+    if 'Biaya Layanan' in income_df.columns:
+        income_df['Biaya Layanan Clean'] = clean_and_convert_to_numeric(income_df['Biaya Layanan'])
+        biaya_layanan_map = (
+            income_df.groupby('No. Pesanan')['Biaya Layanan Clean']
+            .sum()
+            .reset_index()
+        )
+        biaya_layanan_map.rename(
+            columns={'Biaya Layanan Clean': 'Biaya Layanan Income'},
+            inplace=True
+        )
+    else:
+        st.warning("Kolom 'Biaya Layanan' tidak ditemukan di file Income.")
+        biaya_layanan_map = pd.DataFrame(columns=['No. Pesanan', 'Biaya Layanan Income'])
+
     # --- LOGIKA BARU UNTUK Pacifik Bookstore ---
     # 1. Pastikan Total Harga Produk ada dan numerik
     rekap_df['Subtotal Pesanan'] = rekap_df.get('Subtotal Pesanan', 0).fillna(0)
-    
-    # 2. Hitung biaya baru berdasarkan Total Harga Produk (ini berlaku per-baris/per-produk)
-    # rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
-    # rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
-    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
-    # rekap_df['Biaya Adm 8%'] = 0
-    # Hitung biaya berdasarkan (Total Harga Produk - Voucher Dibagi) 
     
     # 3. Hitung Biaya Proses Pesanan yang dibagi rata
     #    Hitung dulu ada berapa produk dalam satu pesanan
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
     rekap_df['Total Penghasilan Dibagi'] = (rekap_df['Total Penghasilan'] / product_count_per_order).fillna(0)
+
+    rekap_df = pd.merge(rekap_df, biaya_layanan_map, on='No. Pesanan', how='left')
+    rekap_df['Biaya Layanan Income'] = rekap_df['Biaya Layanan Income'].fillna(0)
+    rekap_df['Biaya Layanan Gratis Ongkir Dibagi'] = rekap_df['Biaya Layanan Income'] / product_count_per_order
 
     # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
     rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher disponsor oleh Penjual'])
@@ -1051,7 +1071,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     #     basis_biaya * 0.06,  # ← 6% mulai 10 Mei 2026
     #     basis_biaya * 0.045
     # )
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Layanan Gratis Ongkir Dibagi']
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
@@ -1358,12 +1378,31 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
         # Jika file tidak ada (kosong), buat kolom 'Pengeluaran(Rp)' dan isi dengan 0
         rekap_df['Pengeluaran(Rp)'] = 0
 
+    if 'Biaya Layanan' in income_df.columns:
+        income_df['Biaya Layanan Clean'] = clean_and_convert_to_numeric(income_df['Biaya Layanan'])
+        biaya_layanan_map = (
+            income_df.groupby('No. Pesanan')['Biaya Layanan Clean']
+            .sum()
+            .reset_index()
+        )
+        biaya_layanan_map.rename(
+            columns={'Biaya Layanan Clean': 'Biaya Layanan Income'},
+            inplace=True
+        )
+    else:
+        st.warning("Kolom 'Biaya Layanan' tidak ditemukan di file Income.")
+        biaya_layanan_map = pd.DataFrame(columns=['No. Pesanan', 'Biaya Layanan Income'])
+
     # --- LOGIKA PERHITUNGAN BIAYA UNTUK DAMA.ID STORE ---
     rekap_df['Subtotal Pesanan'] = rekap_df.get('Subtotal Pesanan', 0).fillna(0) 
     
     # Hitung Biaya Proses Pesanan yang dibagi rata
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
     rekap_df['Total Penghasilan Dibagi'] = (rekap_df['Total Penghasilan'] / product_count_per_order).fillna(0)
+
+    rekap_df = pd.merge(rekap_df, biaya_layanan_map, on='No. Pesanan', how='left')
+    rekap_df['Biaya Layanan Income'] = rekap_df['Biaya Layanan Income'].fillna(0)
+    rekap_df['Biaya Layanan Gratis Ongkir Dibagi'] = rekap_df['Biaya Layanan Income'] / product_count_per_order
 
     # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
     rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher disponsor oleh Penjual'])
@@ -1398,7 +1437,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     #     basis_biaya * 0.06,  # ← 6% mulai 10 Mei 2026
     #     basis_biaya * 0.045
     # )
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Layanan Gratis Ongkir Dibagi']
     # --- AKHIR LOGIKA DAMA.ID STORE ---
     
     # Terapkan logika "hanya di baris pertama" untuk biaya per-pesanan
