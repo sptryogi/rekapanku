@@ -1393,11 +1393,12 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
     rekap_df['Biaya Adm 8%'] = np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
-        is_after_may_10_2026,
-        basis_biaya * 0.06,  # ← 6% mulai 10 Mei 2026
-        basis_biaya * 0.045
-    )
+    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
+    #     is_after_may_10_2026,
+    #     basis_biaya * 0.06,  # ← 6% mulai 10 Mei 2026
+    #     basis_biaya * 0.045
+    # )
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     # --- AKHIR LOGIKA DAMA.ID STORE ---
     
     # Terapkan logika "hanya di baris pertama" untuk biaya per-pesanan
@@ -2672,15 +2673,15 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
 
     # --- LOGIKA IKLAN (Tetap sama) ---
     summary_df['Iklan Klik'] = 0.0
-    produk_khusus_raw = ["AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)", "Paket Hemat Paket Al Quran | AQ Al Aqeel Wakaf Kerta koran Non Terjemah", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida"]
+    produk_khusus_raw = ["AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)"]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
     # Konfigurasi Produk Khusus Dama
     force_config_dama = {
-        "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida": {
-            "variasi": ["A5 SATUAN", "B5 (Bigbos)", "A5 PAKET3", "A5 PAKET 5", "A5 PAKET 7"],
-            "denom": 17
-        },
+        # "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida": {
+        #     "variasi": ["A5 SATUAN", "B5 (Bigbos)", "A5 PAKET3", "A5 PAKET 5", "A5 PAKET 7"],
+        #     "denom": 17
+        # },
         "Al Quran Wakaf Saku A6 Al Aqeel HVS Paket Wakaf": {
             "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
             "denom": 16
@@ -2724,11 +2725,14 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
 
     # Logika Standar Dama untuk Tahlil
     if not iklan_data.empty:
-        p_tahlil = "ALQURAN SAKU A6 EDISI TAHLIL TERBARU"
-        matching_ads = iklan_data[iklan_data['Nama Iklan'].str.contains(p_tahlil, case=False, na=False, regex=False)]
+        p_tahlil = ["AL QURAN AL AQEEL A6 KERTAS HVS EDISI TAHLILAN (BANDUNG)", "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)"]
+        pola_tahlil = "|".join(re.escape(x) for x in p_tahlil)
+        matching_ads = iklan_data[
+            iklan_data['Nama Iklan'].astype(str).str.contains(pola_tahlil, case=False, na=False, regex=True)
+        ]
         if not matching_ads.empty:
             total_biaya = matching_ads['Biaya'].sum()
-            mask_summary = summary_df['Nama Produk'].str.contains(p_tahlil, case=False, na=False, regex=False)
+            mask_summary = summary_df['Nama Produk'].astype(str).str.contains(pola_tahlil, case=False, na=False, regex=True)
             num_rows = mask_summary.sum()
             if num_rows > 0:
                 summary_df.loc[mask_summary, 'Iklan Klik'] = total_biaya / num_rows
@@ -2736,10 +2740,17 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
                 # --- PERBAIKAN DI SINI ---
                 # Jika 0 penjualan, buat baris baru agar biaya iklan tetap muncul di Summary
                 new_row_ads = pd.DataFrame([{col: 0 for col in summary_df.columns}])
-                new_row_ads['Nama Produk'] = p_tahlil
+                nama_iklan_gabungan = " | ".join(
+                    matching_ads['Nama Iklan'].astype(str).unique()
+                )
+                
+                new_row_ads['Nama Produk'] = nama_iklan_gabungan
+                new_row_ads['Nama Produk Original'] = nama_iklan_gabungan
                 new_row_ads['Iklan Klik'] = total_biaya
                 summary_df = pd.concat([summary_df, new_row_ads], ignore_index=True)
-            iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains(p_tahlil, case=False, na=False, regex=False)]
+            iklan_data = iklan_data[
+                ~iklan_data['Nama Iklan'].astype(str).str.contains(pola_tahlil, case=False, na=False, regex=True)
+            ]
                 
     summary_df = pd.merge(summary_df, iklan_data, left_on='Nama Produk Original', right_on='Nama Iklan', how='left')
     summary_df['Iklan Klik'] = summary_df['Iklan Klik'] + summary_df['Biaya'].fillna(0)
