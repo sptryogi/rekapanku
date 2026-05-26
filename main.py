@@ -3456,8 +3456,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     rekap_final['Total Penjualan'] = rekap_final['Total Harga Sebelum Diskon'] - rekap_final['Diskon Penjual']
     
     # Hitung ulang biaya berbasis persentase
-    rekap_final['Biaya Komisi Platform 8%'] = rekap_final['Total Penjualan'] * 0.08
-    rekap_final['Komisi Dinamis 5%'] = rekap_final['Total Penjualan'] * 0.05
+    # rekap_final['Biaya Komisi Platform 8%'] = rekap_final['Total Penjualan'] * 0.08
+    # rekap_final['Komisi Dinamis 5%'] = rekap_final['Total Penjualan'] * 0.05
     
     # Hitung ulang Total Penghasilan
     rekap_final['Total Penghasilan'] = (
