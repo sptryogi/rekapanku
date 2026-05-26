@@ -3159,6 +3159,53 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
                              .str.replace(r'[^\d\.\-]', '', regex=True)) # Izinkan titik dan minus
             rekap_df[col] = pd.to_numeric(rekap_df[col], errors='coerce').fillna(0).abs() # .abs() sebaiknya di akhir
 
+    if 'PLATFORM COMMISSION FEE' in order_details_df.columns:
+        order_details_df['PLATFORM COMMISSION FEE CLEAN'] = (
+            order_details_df['PLATFORM COMMISSION FEE'].astype(str)
+            .str.replace(r'[^\d\.\-]', '', regex=True)
+        )
+        order_details_df['PLATFORM COMMISSION FEE NUM'] = (
+            pd.to_numeric(order_details_df['PLATFORM COMMISSION FEE CLEAN'], errors='coerce')
+            .fillna(0).abs()
+        )
+        # Agregasi per ORDER/ADJUSTMENT ID (sum karena bisa multiple baris per order)
+        platform_comm_map = (
+            order_details_df.groupby('ORDER/ADJUSTMENT ID')['PLATFORM COMMISSION FEE NUM']
+            .sum()
+            .reset_index()
+        )
+        platform_comm_map.rename(
+            columns={'ORDER/ADJUSTMENT ID': 'ORDER ID', 'PLATFORM COMMISSION FEE NUM': 'Platform Commission Fee'},
+            inplace=True
+        )
+    else:
+        st.warning("Kolom 'PLATFORM COMMISSION FEE' tidak ditemukan di file Order Details.")
+        platform_comm_map = pd.DataFrame(columns=['ORDER ID', 'Platform Commission Fee'])
+
+    # 2. Bersihkan kolom DYNAMIC COMMISSION dari order_details_df (sumber asli)
+    if 'DYNAMIC COMMISSION' in order_details_df.columns:
+        order_details_df['DYNAMIC COMMISSION CLEAN'] = (
+            order_details_df['DYNAMIC COMMISSION'].astype(str)
+            .str.replace(r'[^\d\.\-]', '', regex=True)
+        )
+        order_details_df['DYNAMIC COMMISSION NUM'] = (
+            pd.to_numeric(order_details_df['DYNAMIC COMMISSION CLEAN'], errors='coerce')
+            .fillna(0).abs()
+        )
+        # Agregasi per ORDER/ADJUSTMENT ID (sum karena bisa multiple baris per order)
+        dynamic_comm_map = (
+            order_details_df.groupby('ORDER/ADJUSTMENT ID')['DYNAMIC COMMISSION NUM']
+            .sum()
+            .reset_index()
+        )
+        dynamic_comm_map.rename(
+            columns={'ORDER/ADJUSTMENT ID': 'ORDER ID', 'DYNAMIC COMMISSION NUM': 'Dynamic Commission'},
+            inplace=True
+        )
+    else:
+        st.warning("Kolom 'DYNAMIC COMMISSION' tidak ditemukan di file Order Details.")
+        dynamic_comm_map = pd.DataFrame(columns=['ORDER ID', 'Dynamic Commission'])
+
     if 'ORDER CREATED TIME(UTC)' in rekap_df.columns:
         created_time_col = 'ORDER CREATED TIME(UTC)'
     elif 'ORDER CREATED TIME' in rekap_df.columns:
@@ -3236,11 +3283,20 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     
     order_item_count = rekap_df.groupby('ORDER ID')['ORDER ID'].transform('size')
     rekap_df['Biaya Ekspedisi'] = rekap_df['Biaya Ekspedisi'] / order_item_count
+
+    rekap_df = pd.merge(rekap_df, platform_comm_map, on='ORDER ID', how='left')
+    rekap_df['Platform Commission Fee'] = rekap_df['Platform Commission Fee'].fillna(0)
+    
+    # Merge Dynamic Commission
+    rekap_df = pd.merge(rekap_df, dynamic_comm_map, on='ORDER ID', how='left')
+    rekap_df['Dynamic Commission'] = rekap_df['Dynamic Commission'].fillna(0)
     
     # 3. MENGHITUNG BIAYA-BIAYA BARU (setelah agregasi)
     rekap_df['Total Penjualan'] = rekap_df['SKU SUBTOTAL BEFORE DISCOUNT'] - rekap_df['SKU SELLER DISCOUNT']
-    rekap_df['Biaya Komisi Platform 8%'] = rekap_df['Total Penjualan'] * 0.08
-    rekap_df['Komisi Dinamis 5%'] = rekap_df['Total Penjualan'] * 0.05
+    # rekap_df['Biaya Komisi Platform 8%'] = rekap_df['Total Penjualan'] * 0.08
+    # rekap_df['Komisi Dinamis 5%'] = rekap_df['Total Penjualan'] * 0.05
+    rekap_df['Biaya Komisi Platform 8%'] = rekap_df['Platform Commission Fee']    
+    rekap_df['Komisi Dinamis 5%'] = rekap_df['Dynamic Commission']
     
     product_count = rekap_df.groupby('ORDER ID')['ORDER ID'].transform('size')
     rekap_df['Biaya Layanan Cashback Bonus 1,5%'] = rekap_df['BONUS CASHBACK SERVICE FEE'] / product_count
