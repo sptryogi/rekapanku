@@ -3473,8 +3473,6 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     # 1. Tentukan kolom mana yang akan dijumlahkan dan mana yang akan diambil nilai pertamanya
     cols_to_sum = [
         'Komisi Affiliate',
-        'Biaya Komisi Platform 8%',   # ← TAMBAH: sudah dari order_details, tinggal di-sum
-        'Komisi Dinamis 5%'
 
     ]
     
@@ -3488,6 +3486,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Harga Satuan',
         'Komisi Iklan Affiliate',
         'Biaya Pre-order',
+        'Biaya Komisi Platform 8%',   # ← TAMBAH: sudah dari order_details, tinggal di-sum
+        'Komisi Dinamis 5%', 
         'Biaya Layanan Cashback Bonus 1,5%',
         'Biaya Layanan Voucher Xtra',
         'Biaya Proses Pesanan',
