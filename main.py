@@ -3473,6 +3473,9 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     # 1. Tentukan kolom mana yang akan dijumlahkan dan mana yang akan diambil nilai pertamanya
     cols_to_sum = [
         'Komisi Affiliate',
+        'Biaya Komisi Platform 8%',   # ← TAMBAH: sudah dari order_details, tinggal di-sum
+        'Komisi Dinamis 5%'
+
     ]
     
     # Kolom yang nilainya sama untuk semua duplikat, jadi kita ambil yang pertama
@@ -3510,7 +3513,18 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     # rekap_final['Komisi Dinamis 5%'] = rekap_final['Total Penjualan'] * 0.05
     
     # Hitung ulang Total Penghasilan
-    
+    rekap_final['Total Penghasilan'] = (
+        rekap_final['Total Penjualan'] -
+        rekap_final['Komisi Affiliate'] -
+        rekap_final['Biaya Komisi Platform 8%'] -
+        rekap_final['Komisi Dinamis 5%'] -
+        rekap_final['Biaya Layanan Cashback Bonus 1,5%'] -
+        rekap_final['Biaya Layanan Voucher Xtra'] -
+        rekap_final['Biaya Proses Pesanan'] -
+        rekap_final['Biaya Pre-order'] -
+        rekap_final['Komisi Iklan Affiliate'] -
+        rekap_final['Biaya Ekspedisi']
+    )
     
     # 4. Susun ulang kolom dan perbarui nomor baris 'No.'
     final_columns_order = [
