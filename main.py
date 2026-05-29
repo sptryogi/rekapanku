@@ -3199,7 +3199,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
 
     cols_to_clean = [
         'SKU SUBTOTAL BEFORE DISCOUNT', 'SKU SELLER DISCOUNT', 'QUANTITY', 
-        'BONUS CASHBACK SERVICE FEE', 'VOUCHER XTRA SERVICE FEE', 'TOTAL SETTLEMENT AMOUNT',
+        'TOTAL SETTLEMENT AMOUNT',
         'SKU UNIT ORIGINAL PRICE', 'PRE-ORDER SERVICE FEE', 'AFFILIATE SHOP ADS COMMISSION' # Penting untuk Harga Satuan nanti
     ]
     for col in cols_to_clean:
@@ -3314,8 +3314,6 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Biaya Pre-order': 'sum',
         'Komisi Iklan Affiliate': 'first',
         'Harga Satuan Temp': 'first', # Ambil harga satuan pertama
-        'BONUS CASHBACK SERVICE FEE': 'first', # Jumlahkan biaya ini
-        'VOUCHER XTRA SERVICE FEE': 'first',   # Jumlahkan biaya ini
         'TOTAL SETTLEMENT AMOUNT': 'first', # Ambil settlement amount pertama (biasanya sama per pesanan)
         'ORDER SOURCE': 'first'
     }
@@ -3349,8 +3347,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     rekap_df['Komisi Dinamis 5%'] = rekap_df['Dynamic Commission']
     
     product_count = rekap_df.groupby('ORDER ID')['ORDER ID'].transform('size')
-    rekap_df['Biaya Layanan Cashback Bonus 1,5%'] = rekap_df['BONUS CASHBACK SERVICE FEE'] / product_count
-    rekap_df['Biaya Layanan Voucher Xtra'] = rekap_df['VOUCHER XTRA SERVICE FEE'] / product_count
+    
     rekap_df['Biaya Proses Pesanan'] = 1250 / product_count
 
     # 4. MENGAMBIL KOMISI AFFILIATE
@@ -3435,8 +3432,6 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         rekap_df['Komisi Affiliate'] -
         rekap_df['Biaya Komisi Platform 8%'] -
         rekap_df['Komisi Dinamis 5%'] -
-        rekap_df['Biaya Layanan Cashback Bonus 1,5%'] -
-        rekap_df['Biaya Layanan Voucher Xtra'] -
         rekap_df['Biaya Proses Pesanan'] -
         rekap_df['Biaya Pre-order'] -
         rekap_df['Komisi Iklan Affiliate'] -
@@ -3462,8 +3457,6 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Komisi Dinamis 5%': rekap_df['Komisi Dinamis 5%'],
         'Komisi Iklan Affiliate': rekap_df['Komisi Iklan Affiliate'],
         'Biaya Pre-order':rekap_df['Biaya Pre-order'],
-        'Biaya Layanan Cashback Bonus 1,5%': rekap_df['Biaya Layanan Cashback Bonus 1,5%'],
-        'Biaya Layanan Voucher Xtra': rekap_df['Biaya Layanan Voucher Xtra'],
         'Biaya Proses Pesanan': rekap_df['Biaya Proses Pesanan'],
         'Biaya Ekspedisi': rekap_df['Biaya Ekspedisi'],
         'Total Penghasilan': rekap_df['Total Penghasilan'],
@@ -3518,8 +3511,6 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         rekap_final['Komisi Affiliate'] -
         rekap_final['Biaya Komisi Platform 8%'] -
         rekap_final['Komisi Dinamis 5%'] -
-        rekap_final['Biaya Layanan Cashback Bonus 1,5%'] -
-        rekap_final['Biaya Layanan Voucher Xtra'] -
         rekap_final['Biaya Proses Pesanan'] -
         rekap_final['Biaya Pre-order'] -
         rekap_final['Komisi Iklan Affiliate'] -
@@ -3531,8 +3522,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'No.', 'No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Nama Produk',
         'Variasi', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Sebelum Diskon',
         'Diskon Penjual', 'Total Penjualan', 'Komisi Affiliate',
-        'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Komisi Iklan Affiliate', 'Biaya Pre-order', 'Biaya Layanan Cashback Bonus 1,5%',
-        'Biaya Layanan Voucher Xtra', 'Biaya Proses Pesanan', 'Biaya Ekspedisi', 'Total Penghasilan', 'Sumber Pesanan'
+        'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Komisi Iklan Affiliate', 'Biaya Pre-order', 
+        'Biaya Proses Pesanan', 'Biaya Ekspedisi', 'Total Penghasilan', 'Sumber Pesanan'
     ]
     rekap_final = rekap_final.reindex(columns=final_columns_order)
     rekap_final['No.'] = np.arange(1, len(rekap_final) + 1)
@@ -3554,8 +3545,6 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         'Komisi Dinamis 5%': 'sum',
         'Komisi Iklan Affiliate': 'sum',
         'Biaya Pre-order': 'sum',
-        'Biaya Layanan Cashback Bonus 1,5%': 'sum',
-        'Biaya Layanan Voucher Xtra': 'sum',
         'Biaya Proses Pesanan': 'sum',
     }).reset_index()
 
@@ -3594,8 +3583,6 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         summary_df['Komisi Affiliate'] -
         summary_df['Biaya Komisi Platform 8%'] -
         summary_df['Komisi Dinamis 5%'] -
-        summary_df['Biaya Layanan Cashback Bonus 1,5%'] -
-        summary_df['Biaya Layanan Voucher Xtra'] -
         summary_df['Biaya Proses Pesanan'] -
         summary_df['Biaya Pre-order'] -
         summary_df['Biaya Ekspedisi']
