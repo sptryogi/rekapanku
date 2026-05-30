@@ -3481,8 +3481,6 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Biaya Pre-order',
         'Biaya Komisi Platform 8%',   # ← TAMBAH: sudah dari order_details, tinggal di-sum
         'Komisi Dinamis 5%', 
-        'Biaya Layanan Cashback Bonus 1,5%',
-        'Biaya Layanan Voucher Xtra',
         'Biaya Proses Pesanan',
         'Biaya Ekspedisi',
         'Sumber Pesanan'
