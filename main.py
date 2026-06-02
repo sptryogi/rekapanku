@@ -599,7 +599,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     # rekap_df['Biaya Layanan 2%'] = 0
     
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
-    if store_type in ['Raka Bookstore', 'Toko Kaliba']:
+    if store_type in ['Raka Bookstore', 'Toko Kaliba', 'Toko Monang', 'Toko Serayu']:
         # Cek kondisi dari kolom income asli (sebelum dibagi)
         # Biaya Adm 8%: hanya jika Biaya Administrasi di income ≠ 0
         rekap_df['Biaya Adm 8%'] = np.where(
@@ -676,25 +676,6 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     rekap_df.sort_values(by='No. Pesanan', inplace=True)
     rekap_df.reset_index(drop=True, inplace=True)
 
-    # # Terapkan logika retur: nol-kan semua kolom pendapatan/biaya dan isi Total Penghasilan (Netto)
-    # kondisi_retur_final = rekap_df['No. Pesanan'].isin(returned_orders_list)
-    
-    # if not rekap_df[kondisi_retur_final].empty:
-    #     cols_to_zero_out = [
-    #         'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
-    #         'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
-    #         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
-    #         'Biaya Proses Pesanan Dibagi', ' Dibagi'
-    #         # 'Penjualan Netto' dihapus dari daftar ini
-    #     ]
-    #     # Pastikan kolom ada sebelum mencoba meng-nol-kan
-    #     valid_cols_to_zero = [col for col in cols_to_zero_out if col in rekap_df.columns]
-        
-    #     # Set semua kolom kalkulasi ke 0 untuk baris retur
-    #     rekap_df.loc[kondisi_retur_final, valid_cols_to_zero] = 0
-        
-    #     # Atur 'Penjualan Netto' ke nilai 'Total Penghasilan Dibagi' (yang negatif)
-    #     rekap_df.loc[kondisi_retur_final, 'Penjualan Netto'] = rekap_df.loc[kondisi_retur_final, 'Total Penghasilan Dibagi']
 
     cols_to_zero_out = [
         # 'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
@@ -2251,7 +2232,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     summary_df['Penjualan Per Hari'] = round(summary_df['Total Harga Produk'] / 7, 1)
     summary_df['Jumlah buku per pesanan'] = round(summary_df.apply(lambda row: row['Jumlah Eksemplar'] / row['Jumlah Pesanan'] if row.get('Jumlah Pesanan', 0) != 0 else 0, axis=1), 1)
 
-    if store_type in ['Raka Bookstore', 'Toko Kaliba']:
+    if store_type in ['Raka Bookstore', 'Toko Kaliba', 'Toko Monang', 'Toko Serayu']:
         label_biaya_adm = 'Biaya Adm 9%'
     else:
         label_biaya_adm = 'Biaya Adm 8%'
@@ -3928,17 +3909,17 @@ store_choice = ""
 if marketplace_choice == "Shopee":
     store_choice = st.selectbox(
         "Pilih Toko Shopee:",
-        ("Human Store", "Pacific Bookstore", "DAMA.ID STORE", "Raka Bookstore", "Toko Kaliba"),
+        ("Human Store", "Pacific Bookstore", "DAMA.ID STORE", "Raka Bookstore", "Toko Kaliba", "Toko Monang", "Toko Serayu"),
         key='shopee_store'
     )
 elif marketplace_choice == "TikTok":
     # Untuk sekarang, TikTok hanya untuk Human Store
     store_choice = st.selectbox(
         "Pilih Toko TikTok:",
-        ("Human Store", "DAMA.ID STORE", "Pacific Bookstore", "Raka Bookstore", "Toko Kaliba"), # Hanya toko yang relevan untuk TikTok
+        ("Human Store", "DAMA.ID STORE", "Pacific Bookstore", "Raka Bookstore", "Toko Kaliba", "Toko Monang", "Toko Serayu"), # Hanya toko yang relevan untuk TikTok
         key='tiktok_store'
     )
-    st.info("Marketplace TikTok saat ini hanya tersedia untuk Human Store, DAMA.ID STORE, Raka Bookstore, Toko Kaliba, dan Pacific Bookstore.")
+    st.info("Marketplace TikTok saat ini tersedia untuk semua Toko.")
 
 # Hanya tampilkan uploader jika marketplace sudah dipilih
 if marketplace_choice:
@@ -4047,14 +4028,7 @@ if marketplace_choice:
             # product_data_file = st.file_uploader("3. Import file Product Data.xlsx", type="xlsx", accept_multiple_files=True)
         with col2:
             product_data_file = st.file_uploader("3. Import file Product Data.xlsx", type="xlsx", accept_multiple_files=True)
-            # --- TAMBAHKAN KONDISI DI SINI ---
-            # Hanya tampilkan uploader creator order jika BUKAN DAMA.ID STORE
-            # if store_choice != "DAMA.ID STORE":
-            #     uploaded_creator_order = st.file_uploader("3. Import file creator order-all.xlsx", type="xlsx")
-            # else:
-            #     # Jika DAMA.ID STORE, pastikan variabelnya ada tapi None
-            #     uploaded_creator_order = None
-            #     st.info("File 'creator order-all.xlsx' tidak diperlukan untuk DAMA.ID STORE.") # Opsional: beri info
+            
             label_creator = "4. Import file creator order-all.xlsx"
             if store_choice == "DAMA.ID STORE":
                 label_creator += " (Opsional)"
@@ -4081,8 +4055,8 @@ if marketplace_choice:
     # --- TAMBAHKAN BLOK INI SETELAH DEKLARASI store_choice ---
     # Konfigurasi file opsional per toko
     OPTIONAL_FILES_SHOPEE = {
-        'seller_conversion': ['Raka Bookstore', 'Toko Kaliba'],
-        'iklan': ['Raka Bookstore', 'Toko Kaliba']
+        'seller_conversion': ['Raka Bookstore', 'Toko Kaliba', 'Toko Monang', 'Toko Serayu'],
+        'iklan': ['Raka Bookstore', 'Toko Kaliba', 'Toko Monang', 'Toko Serayu']
     }
     
     def is_file_optional_shopee(file_type, store):
@@ -4091,8 +4065,8 @@ if marketplace_choice:
 
     # Konfigurasi file opsional per toko untuk TikTok
     OPTIONAL_FILES_TIKTOK = {
-        'creator_order': ['Raka Bookstore', 'Toko Kaliba', 'Human Store', 'Pacific Bookstore', 'DAMA.ID STORE'],
-        'product_data': ['Raka Bookstore', 'Toko Kaliba', 'Human Store', 'Pacific Bookstore', 'DAMA.ID STORE']
+        'creator_order': ['Raka Bookstore', 'Toko Kaliba', 'Human Store', 'Pacific Bookstore', 'DAMA.ID STORE', 'Toko Monang', 'Toko Serayu'],
+        'product_data': ['Raka Bookstore', 'Toko Kaliba', 'Human Store', 'Pacific Bookstore', 'DAMA.ID STORE', 'Toko Monang', 'Toko Serayu']
         # 'pdf_resi': ['Raka Bookstore', 'Toko Kaliba', 'Human Store']  # Jika juga ingin PDF opsional
     }
     
@@ -4195,31 +4169,7 @@ if marketplace_choice:
             
             if offline_rows:
                 st.success(f"Total {len(offline_rows)} produk offline terdeteksi")
-        # offline_rows = []  # <-- GANTI jadi LIST
-        # if marketplace_choice == "Shopee" and uploaded_offline_images:
-        #     st.info(f"Memproses {len(uploaded_offline_images)} gambar penjualan offline...")
-            
-        #     for img_file in uploaded_offline_images:
-        #         offline_data_list = parse_offline_sales_image(img_file)
-                
-        #         for offline_data in offline_data_list:
-        #             # Generate nomor urut sementara (akan di-reindex nanti)
-        #             nomor_sementara = len(offline_rows) + 1
-                    
-        #             offline_rows = create_offline_summary_row(
-        #                 offline_data, 
-        #                 store_choice, 
-        #                 katalog_df, 
-        #                 harga_custom_tlj_df,
-        #                 nomor_urut=nomor_sementara  # <-- PASS NOMOR
-        #             )
-                    
-        #             if offline_rows:
-        #                 offline_rows.append(offline_rows)
-        #                 st.success(f"✅ Terdeteksi: {offline_data['nama_produk']}, {offline_data['eksemplar']} eksemplar, Rp{offline_data['harga_satuan']:,}")
-            
-            # if offline_rows:
-            #     st.success(f"Total {len(offline_rows)} produk offline terdeteksi")
+        
         button_label = f"🚀 Mulai Proses untuk {marketplace_choice} - {store_choice}"
         if st.button(button_label):
             progress_bar = st.progress(0, text="Mempersiapkan proses...")
@@ -4288,7 +4238,7 @@ if marketplace_choice:
                 
                     # --- LOGIKA PEMROSESAN BERDASARKAN TOKO ---
                     status_text.text("Menyusun sheet 'REKAP' (Shopee)...")
-                    if store_choice in ["Human Store", "Raka Bookstore", "Toko Kaliba"]:
+                    if store_choice in ["Human Store", "Raka Bookstore", "Toko Kaliba", "Toko Monang", "Toko Serayu"]:
                         rekap_processed = process_rekap(order_all_df, income_dilepas_df, seller_conversion_df, store_choice)
                     elif store_choice == "Pacific Bookstore": # Hanya Pacific yang pakai logic ini
                         rekap_processed = process_rekap_pacific(order_all_df, income_dilepas_df, seller_conversion_df)
@@ -4716,7 +4666,7 @@ if marketplace_choice:
 
                         if sheet_name == 'SUMMARY':
                             # Daftar kolom yang pakai format angka ribuan
-                            if store_choice in ['Raka Bookstore', 'Toko Kaliba']:
+                            if store_choice in ['Raka Bookstore', 'Toko Kaliba', 'Toko Monang', 'Toko Serayu']:
                                 label_adm_format = 'Biaya Adm 10%'
                             else:
                                 label_adm_format = 'Biaya Adm 8%'
