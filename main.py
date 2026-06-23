@@ -1933,7 +1933,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus]
     
     # # Ambil data iklan yang relevan
-    iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya']].copy()
+    iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya', 'Produk Terjual', 'Omzet Penjualan']].copy()
 
     # # 1. Definisikan Nama Iklan dan target Nama Produk
     # nama_iklan_kustom = "Al Quran Saku Pastel Al Aqeel A6 Kertas HVS | SURABAYA | Alquran Untuk Wakaf Hadiah Islami Hampers"
@@ -2286,6 +2286,31 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         label_biaya_adm = 'Biaya Adm 9%'
     else:
         label_biaya_adm = 'Biaya Adm 8%'
+
+    gmv_max_ads = iklan_data[iklan_data['Nama Iklan'].str.contains('Shop GMV Max', case=False, na=False, regex=False)]
+    if not gmv_max_ads.empty:
+        # Ambil total Produk Terjual dan Omzet Penjualan dari Shop GMV Max
+        total_produk_terjual = gmv_max_ads['Produk Terjual'].sum()
+        total_omzet = gmv_max_ads['Omzet Penjualan'].sum()
+        
+        # Cek apakah sudah ada baris 'Shop GMV Max' di summary_df
+        gmv_mask = summary_df['Nama Produk'].str.contains('Shop GMV Max', case=False, na=False, regex=False)
+        
+        if gmv_mask.any():
+            # Update baris yang sudah ada
+            summary_df.loc[gmv_mask, 'Jumlah Terjual'] = total_produk_terjual
+            summary_df.loc[gmv_mask, 'Total Harga Produk'] = total_omzet
+        else:
+            # Buat baris baru untuk Shop GMV Max
+            new_row_gmv = pd.DataFrame([{col: 0 for col in summary_df.columns}])
+            new_row_gmv['Nama Produk'] = 'Shop GMV Max'
+            new_row_gmv['Jumlah Terjual'] = total_produk_terjual
+            new_row_gmv['Total Harga Produk'] = total_omzet
+            # Set kolom lain ke 0 (default sudah 0)
+            summary_df = pd.concat([summary_df, new_row_gmv], ignore_index=True)
+        
+        # Hapus Shop GMV Max dari iklan_data agar tidak diproses logika iklan standar
+        iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains('Shop GMV Max', case=False, na=False, regex=False)]
         
     summary_final_data = {
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'],
