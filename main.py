@@ -648,11 +648,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         )
         
         # Biaya Proses Pesanan Dibagi: hanya jika Biaya Proses Pesanan di income ≠ 0
-        rekap_df['Biaya Proses Pesanan Dibagi'] = np.where(
-            rekap_df['Biaya Proses Pesanan'] != 0,
-            1250 / product_count_per_order,
-            0
-        )
+        rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     else:
         # Rumus standar untuk toko lain (Human Store, Pacific, DAMA)
         rekap_df['Biaya Adm 8%'] = basis_biaya * 0.09
