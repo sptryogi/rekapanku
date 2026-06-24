@@ -425,6 +425,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         "Alquran Wakaf Al Aqeel A5 Kertas Koran Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
         "Alquran Al Aqeel A7 Gold Kertas HVS | Alquran Souvenir Metalik | Yogyakarta",
         "Alquran Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Yogyakarta",
+        "Alquran Al Aqeel Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemahan | Yogyakarta",
         "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas"
         
     ]
@@ -498,7 +499,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
                     else:
                         part_to_append = var_str # Fallback jika tidak ada koma (misal "Tidak custom")
 
-                elif "Alquran Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Yogyakarta" in nama_produk_clean:
+                elif "Alquran Al Aqeel Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemahan | Yogyakarta" in nama_produk_clean:
                     if ',' in var_str:
                         part_to_append = var_str.split(',', 1)[-1].strip() # Ambil setelah koma
                     else:
@@ -1926,6 +1927,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Alquran Wakaf Al Aqeel A5 Kertas Koran Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
         "Alquran Al Aqeel A7 Gold Kertas HVS | Alquran Souvenir Metalik | Yogyakarta",
         "Alquran Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Yogyakarta",
+        "Alquran Al Aqeel Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemahan | Yogyakarta",
         "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas"
         
         
@@ -2096,6 +2098,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Alquran Wakaf Al Aqeel A5 Kertas Koran Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
         "Alquran Al Aqeel A7 Gold Kertas HVS | Alquran Souvenir Metalik | Yogyakarta",
         "Alquran Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Yogyakarta",
+        "Alquran Al Aqeel Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemahan | Yogyakarta",
         "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas"
     ]
     
@@ -2243,6 +2246,9 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
                          "Alquran Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Yogyakarta (Tanpa Custom/Biasa)",
                          "Alquran Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Yogyakarta (Custom sisipan 1 hal)",
                          "Alquran Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Yogyakarta (Custom sisipan 2 hal)",
+                         "Alquran Al Aqeel Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemahan | Yogyakarta (Tanpa Custom/Biasa)",
+                         "Alquran Al Aqeel Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemahan | Yogyakarta (Custom sisipan 1 hal)",
+                         "Alquran Al Aqeel Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemahan | Yogyakarta (Custom sisipan 2 hal)",
                          "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A5 Koran,Sisipan 1 Hal)", "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN (Tidak custom)",
                          "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A5 Koran,Sisipan 2 Hal)", "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN (Sisipan 1 hal)",
                          "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A6 Pastel,Sisipan 1 Hal)", "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN (Sisipan 2 hal)",
@@ -2454,7 +2460,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     elif store_type == "Toko Monang":
         mapping_singkatan = {
             "Alquran Cover Metalik Gold A7 Al Aqeel kertas HVS 18 baris Murah Souvenir | MEDAN": "Al Aqeel A7 Gold",
-            "Alquran Bombay A5 kertas koran Al Aqeel Murah Wakaf | MEDAN": "Al Aqeel Bombay A5 Kertas Koran",
+            "Alquran Bombay A5 kertas koran Al Aqeel Murah Wakaf | MEDAN": "Al Aqeel A5 Kertas Koran",
             "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN": "Al-Qur'an A6 Edisi Tahlilan Custom",
             "Alquran A6 Al Aqeel kertas HVS Murah Wakaf Souvenir Hampers | MEDAN": "Al Aqeel A6 HVS"
         }
@@ -2462,10 +2468,11 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     elif store_type == "Toko Serayu":
         mapping_singkatan = {
             "Alquran Al Aqeel A7 Gold Kertas HVS | Alquran Souvenir Metalik | Yogyakarta": "Al Aqeel A7 Gold",
-            "Alquran Wakaf Al Aqeel A5 Kertas Koran Terjangkau | Rasm Utsmani Bombay | Yogjakarta": "Al Aqeel Bombay A5 Kertas Koran",
+            "Alquran Wakaf Al Aqeel A5 Kertas Koran Terjangkau | Rasm Utsmani Bombay | Yogjakarta": "Al Aqeel A5 Kertas Koran",
             "Alquran Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Yogyakarta": "Al-Qur'an A6 Edisi Tahlilan Custom",
+            "Alquran Al Aqeel Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemahan | Yogyakarta": "Al-Qur'an A6 Edisi Tahlilan Custom",
             "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas": "Custom Al-Qur'an Foto Nama dan Tahlil",
-            "Alquran Al Aqeel A6 Kertas HVS Terjangkau | Rasm Utsmani Bombay | Yogjakarta": "Al Aqeel Bombay A6 HVS"
+            "Alquran Al Aqeel A6 Kertas HVS Terjangkau | Rasm Utsmani Bombay | Yogjakarta": "Al Aqeel A6 HVS"
         }
 
         
