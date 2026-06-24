@@ -2309,8 +2309,19 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             # Set kolom lain ke 0 (default sudah 0)
             summary_df = pd.concat([summary_df, new_row_gmv], ignore_index=True)
         
-        # Hapus Shop GMV Max dari iklan_data agar tidak diproses logika iklan standar
+        # --- PENTING: Hapus Shop GMV Max dari iklan_data BIAYA saja untuk merge ---
+        # Tapi biayanya tetap kita simpan untuk ditambahkan ke Iklan Klik nanti
+        # Caranya: kita extract biayanya dulu, lalu hapus dari iklan_data
+        total_biaya_gmv = gmv_max_ads['Biaya'].sum()
+        
+        # Hapus Shop GMV Max dari iklan_data agar tidak masuk ke merge standar
+        # (karena tidak ada di REKAP, merge akan fail atau buat baris baru yang tidak diinginkan)
         iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains('Shop GMV Max', case=False, na=False, regex=False)]
+        
+        # Tambahkan biaya GMV ke baris Shop GMV Max yang sudah ada/dibuat
+        gmv_mask_final = summary_df['Nama Produk'].str.contains('Shop GMV Max', case=False, na=False, regex=False)
+        if gmv_mask_final.any():
+            summary_df.loc[gmv_mask_final, 'Iklan Klik'] = total_biaya_gmv
         
     summary_final_data = {
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'],
@@ -2989,7 +3000,14 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
             new_row_gmv['Total Harga Produk'] = total_omzet
             summary_df = pd.concat([summary_df, new_row_gmv], ignore_index=True)
         
+        # Simpan biaya GMV, lalu hapus dari iklan_data agar tidak masuk merge standar
+        total_biaya_gmv = gmv_max_ads['Biaya'].sum()
         iklan_data = iklan_data[~iklan_data['Nama Iklan'].str.contains('Shop GMV Max', case=False, na=False, regex=False)]
+        
+        # Tambahkan biaya ke baris Shop GMV Max
+        gmv_mask_final = summary_df['Nama Produk'].str.contains('Shop GMV Max', case=False, na=False, regex=False)
+        if gmv_mask_final.any():
+            summary_df.loc[gmv_mask_final, 'Iklan Klik'] = total_biaya_gmv
         
     summary_final_data = {
         'No': np.arange(1, len(summary_df) + 1),
