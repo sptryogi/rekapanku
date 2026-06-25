@@ -421,6 +421,9 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN",
         "Alquran A6 Al Aqeel kertas HVS Murah Wakaf Souvenir Hampers | MEDAN",
         "Alquran Bombay A5 kertas koran Al Aqeel Murah Wakaf | MEDAN",
+        "Al Qur'an Cover Metalik Gold A7 Al Aqeel kertas HVS 18 Baris Murah Souvenir Medan",
+        "Al Qur'an A6 Al Aqeel kertas HVS Murah Wakaf Souvenir Hampers Medan",
+        "Al Qur'an Bombay A5 Kertas Koran Al Aqeel Murah wakaf Medan",
         "Alquran Al Aqeel A6 Kertas HVS Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
         "Alquran Wakaf Al Aqeel A5 Kertas Koran Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
         "Alquran Al Aqeel A7 Gold Kertas HVS | Alquran Souvenir Metalik | Yogyakarta",
@@ -465,6 +468,9 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
                     "Alquran Cover Metalik Gold A7 Al Aqeel kertas HVS 18 baris Murah Souvenir | MEDAN",
                     "Alquran A6 Al Aqeel kertas HVS Murah Wakaf Souvenir Hampers | MEDAN",
                     "Alquran Bombay A5 kertas koran Al Aqeel Murah Wakaf | MEDAN",
+                    "Al Qur'an Cover Metalik Gold A7 Al Aqeel kertas HVS 18 Baris Murah Souvenir Medan",
+                    "Al Qur'an A6 Al Aqeel kertas HVS Murah Wakaf Souvenir Hampers Medan",
+                    "Al Qur'an Bombay A5 Kertas Koran Al Aqeel Murah wakaf Medan",
                     "Alquran Al Aqeel A6 Kertas HVS Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
                     "Alquran Wakaf Al Aqeel A5 Kertas Koran Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
                     "Alquran Al Aqeel A7 Gold Kertas HVS | Alquran Souvenir Metalik | Yogyakarta",
@@ -1313,6 +1319,20 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
         # Update Nama Produk dengan format yang diinginkan
         rekap_df.loc[idx, 'Nama Produk'] = f"{nama_produk_asli} ({variasi_baru})"
 
+    mask_medium = (
+        rekap_df['Nama Produk'] == 'Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)'
+    )
+    
+    # Hanya untuk baris yang cocok, bersihkan variasi
+    if 'Nama Variasi' in rekap_df.columns:
+        # Hapus "(medium)" dan spasi sebelumnya jika ada
+        rekap_df.loc[mask_medium, 'Nama Variasi'] = (
+            rekap_df.loc[mask_medium, 'Nama Variasi']
+            .astype(str)
+            .str.replace(r'\s*\(medium\)', '', regex=True, case=False)
+            .str.strip()
+        )
+        
     # # 1. Pastikan 'Total Penghasilan' (dari income_df) adalah numerik
     # rekap_df['Total Penghasilan'] = clean_and_convert_to_numeric(rekap_df['Total Penghasilan'])
     
@@ -1919,6 +1939,9 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN",
         "Alquran A6 Al Aqeel kertas HVS Murah Wakaf Souvenir Hampers | MEDAN",
         "Alquran Bombay A5 kertas koran Al Aqeel Murah Wakaf | MEDAN",
+        "Al Qur'an Cover Metalik Gold A7 Al Aqeel kertas HVS 18 Baris Murah Souvenir Medan",
+        "Al Qur'an A6 Al Aqeel kertas HVS Murah Wakaf Souvenir Hampers Medan",
+        "Al Qur'an Bombay A5 Kertas Koran Al Aqeel Murah wakaf Medan",
         "Alquran Al Aqeel A6 Kertas HVS Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
         "Alquran Wakaf Al Aqeel A5 Kertas Koran Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
         "Alquran Al Aqeel A7 Gold Kertas HVS | Alquran Souvenir Metalik | Yogyakarta",
@@ -2090,6 +2113,9 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN",
         "Alquran A6 Al Aqeel kertas HVS Murah Wakaf Souvenir Hampers | MEDAN",
         "Alquran Bombay A5 kertas koran Al Aqeel Murah Wakaf | MEDAN",
+        "Al Qur'an Cover Metalik Gold A7 Al Aqeel kertas HVS 18 Baris Murah Souvenir Medan",
+        "Al Qur'an A6 Al Aqeel kertas HVS Murah Wakaf Souvenir Hampers Medan",
+        "Al Qur'an Bombay A5 Kertas Koran Al Aqeel Murah wakaf Medan",
         "Alquran Al Aqeel A6 Kertas HVS Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
         "Alquran Wakaf Al Aqeel A5 Kertas Koran Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
         "Alquran Al Aqeel A7 Gold Kertas HVS | Alquran Souvenir Metalik | Yogyakarta",
@@ -2458,7 +2484,10 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "Alquran Cover Metalik Gold A7 Al Aqeel kertas HVS 18 baris Murah Souvenir | MEDAN": "Al Aqeel A7 Gold",
             "Alquran Bombay A5 kertas koran Al Aqeel Murah Wakaf | MEDAN": "Al Aqeel A5 Kertas Koran",
             "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN": "Al-Qur'an A6 Edisi Tahlilan Custom",
-            "Alquran A6 Al Aqeel kertas HVS Murah Wakaf Souvenir Hampers | MEDAN": "Al Aqeel A6 HVS"
+            "Alquran A6 Al Aqeel kertas HVS Murah Wakaf Souvenir Hampers | MEDAN": "Al Aqeel A6 HVS",
+            "Al Qur'an Cover Metalik Gold A7 Al Aqeel kertas HVS 18 Baris Murah Souvenir Medan": "Al Qur'an Al - Aqeel A7 Gold",
+            "Al Qur'an A6 Al Aqeel kertas HVS Murah Wakaf Souvenir Hampers Medan": "Al Qur'an Al Aqeel Pastel A6",
+            "Al Qur'an Bombay A5 Kertas Koran Al Aqeel Murah wakaf Medan": "Al Qur'an Al Aqeel A5 KK",
         }
 
     elif store_type == "Toko Serayu":
@@ -2804,10 +2833,6 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya', 'Produk Terjual', 'Omzet Penjualan']].copy()
     # Konfigurasi Produk Khusus Dama
     force_config_dama = {
-        # "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida": {
-        #     "variasi": ["A5 SATUAN", "B5 (Bigbos)", "A5 PAKET3", "A5 PAKET 5", "A5 PAKET 7"],
-        #     "denom": 17
-        # },
         "Al Quran Wakaf Saku A6 Al Aqeel HVS Paket Wakaf": {
             "variasi": ["SATUAN", "PAKET ISI 3", "PAKET ISI 5", "PAKET ISI 7"],
             "denom": 16
