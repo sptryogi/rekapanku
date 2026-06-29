@@ -2350,6 +2350,53 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         gmv_mask_final = summary_df['Nama Produk'].str.contains('Shop GMV Max', case=False, na=False, regex=False)
         if gmv_mask_final.any():
             summary_df.loc[gmv_mask_final, 'Iklan Klik'] = total_biaya_gmv
+            
+            gmv_idx = summary_df[gmv_mask_final].index
+            
+            for idx in gmv_idx:
+                # Penjualan Netto = Total Harga Produk - Voucher - Komisi - Biaya Adm - Biaya Layanan - Biaya Proses Pesanan
+                # Untuk GMV Max, asumsi: tidak ada voucher, komisi, adm, layanan, proses pesanan
+                # Jadi Penjualan Netto = Total Harga Produk (omzet)
+                total_harga = summary_df.at[idx, 'Total Harga Produk']
+                iklan_klik = summary_df.at[idx, 'Iklan Klik']
+                
+                summary_df.at[idx, 'Penjualan Netto'] = total_harga  # Tidak ada potongan lain untuk GMV Max
+                
+                # Biaya Packing = Jumlah Terjual * 200
+                jumlah_terjual = summary_df.at[idx, 'Jumlah Terjual']
+                summary_df.at[idx, 'Biaya Packing'] = 0
+                
+                # Biaya Ekspedisi = 0 (untuk GMV Max, atau sesuaikan)
+                summary_df.at[idx, 'Biaya Ekspedisi'] = 0
+                
+                # Harga Beli = 0 (GMV Max tidak punya harga beli produk fisik)
+                summary_df.at[idx, 'Harga Beli'] = 0
+                
+                # Harga Custom TLJ = 0
+                summary_df.at[idx, 'Harga Custom TLJ'] = 0
+                
+                # Total Pembelian = 0
+                summary_df.at[idx, 'Total Pembelian'] = 0
+                
+                # Margin = Penjualan Netto - Iklan Klik - Biaya Packing - Biaya Ekspedisi - Total Pembelian
+                margin = total_harga - iklan_klik - 0 - 0 - 0
+                summary_df.at[idx, 'Margin'] = margin
+                
+                # Persentase = Margin / Total Harga Produk
+                if total_harga != 0:
+                    summary_df.at[idx, 'Persentase'] = margin / total_harga
+                else:
+                    summary_df.at[idx, 'Persentase'] = 0
+                
+                # Jumlah Pesanan = Biaya Proses Pesanan / 1250 (tapi Biaya Proses = 0, jadi 0)
+                summary_df.at[idx, 'Jumlah Pesanan'] = 0
+                
+                # Penjualan Per Hari = Total Harga Produk / 7
+                summary_df.at[idx, 'Penjualan Per Hari'] = round(total_harga / 7, 1)
+                
+                # Jumlah buku per pesanan = 0 (karena Jumlah Pesanan = 0)
+                summary_df.at[idx, 'Jumlah buku per pesanan'] = 0
+                summary_df.at[idx, 'Jumlah Eksemplar'] = jumlah_terjual
         
     summary_final_data = {
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'],
@@ -3036,6 +3083,52 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         gmv_mask_final = summary_df['Nama Produk'].str.contains('Shop GMV Max', case=False, na=False, regex=False)
         if gmv_mask_final.any():
             summary_df.loc[gmv_mask_final, 'Iklan Klik'] = total_biaya_gmv
+            gmv_idx = summary_df[gmv_mask_final].index
+        
+            for idx in gmv_idx:
+                total_harga = summary_df.at[idx, 'Total Harga Produk']
+                iklan_klik = summary_df.at[idx, 'Iklan Klik']
+                jumlah_terjual = summary_df.at[idx, 'Jumlah Terjual']
+                
+                # Penjualan Netto = Total Harga Produk (tidak ada potongan untuk GMV Max)
+                summary_df.at[idx, 'Penjualan Netto'] = total_harga
+                
+                # Biaya Packing
+                summary_df.at[idx, 'Biaya Packing'] = 0
+                
+                # Biaya Ekspedisi = 0
+                summary_df.at[idx, 'Biaya Ekspedisi'] = 0
+                
+                # Harga Beli = 0
+                summary_df.at[idx, 'Harga Beli'] = 0
+                
+                # Harga Custom TLJ = 0
+                summary_df.at[idx, 'Harga Custom TLJ'] = 0
+                
+                # Total Pembelian = 0
+                summary_df.at[idx, 'Total Pembelian'] = 0
+                
+                # Margin
+                margin = total_harga - iklan_klik - 0 - 0 - 0
+                summary_df.at[idx, 'Margin'] = margin
+                
+                # Persentase
+                if total_harga != 0:
+                    summary_df.at[idx, 'Persentase'] = margin / total_harga
+                else:
+                    summary_df.at[idx, 'Persentase'] = 0
+                
+                # Jumlah Pesanan = 0
+                summary_df.at[idx, 'Jumlah Pesanan'] = 0
+                
+                # Penjualan Per Hari
+                summary_df.at[idx, 'Penjualan Per Hari'] = round(total_harga / 7, 1)
+                
+                # Jumlah buku per pesanan = 0
+                summary_df.at[idx, 'Jumlah buku per pesanan'] = 0
+                
+                # Jumlah Eksemplar = Jumlah Terjual (untuk GMV Max, asumsikan 1:1)
+                summary_df.at[idx, 'Jumlah Eksemplar'] = jumlah_terjual
         
     summary_final_data = {
         'No': np.arange(1, len(summary_df) + 1),
