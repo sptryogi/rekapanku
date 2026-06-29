@@ -1724,7 +1724,7 @@ def calculate_eksemplar(nama_produk, jumlah_terjual):
         paket_match = re.search(r'PAKET\s*ISI\s*(\d+)', nama_produk_upper)
         # Cari "SATUAN"
         satuan_match = 'SATUAN' in nama_produk_upper
-        paket_khusus = re.search(r'PAKET.*WAKAF.*HEMAT.*MURAH.*ISI.*50.*PCS', nama_produk_upper)
+        paket_khusus = re.search(r"PAKET.*WAKAF.*HEMAT.*MURAH.*ISI.*50.*PCS", nama_produk_upper)
         
         faktor = 1 # Default adalah 1
         
@@ -1736,8 +1736,8 @@ def calculate_eksemplar(nama_produk, jumlah_terjual):
             faktor = 1
         elif paket_khusus:
             faktor = 50
-        # else:
-            # Jika tidak ada keduanya, faktor tetap 1 (dihitung satuan)
+        else:
+            faktor = 1
             
         return jumlah_terjual * faktor
     except Exception:
@@ -2403,7 +2403,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "[KOLEKSI TERBARU] SERI CERITA RAKYAT": "Seri Cerita Rakyat", 
             "[KOLEKSI TERBARU] BUKU CERITA ANAK SERI BUDI PEKERTI": "Seri Budi Pekerti", 
             "AL- QUR'AN TERJEMAH TAJWID MUMTAAZ A5 KERTAS QPP": "Mumtaaz A5 QPP", 
-            "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL": "Al Aqeel 6 Pastel", 
+            "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL": "Al Aqeel A6 Pastel", 
             "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta": "Alquran Custom", 
             "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan": "A6 edisi Tahlilan", 
             "Al-Qur'an Non Terjemah Al Aqeel HVS A5": "Al Aqeel A5 HVS", 
@@ -2432,7 +2432,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "[KOLEKSI TERBARU] SERI CERITA RAKYAT | Jakarta": "Seri Cerita Rakyat",
             "[KOLEKSI TERBARU] BUKU CERITA ANAK SERI BUDI PEKERTI | Jakarta": "Seri Budi Pekerti",
             "AL- QUR'AN TERJEMAH TAJWID MUMTAAZ A5 KERTAS QPP | Jakarta": "Mumtaaz A5 QPP",
-            "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL | Jakarta": "Al Aqeel 6 Pastel",
+            "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL | Jakarta": "Al Aqeel A6 Pastel",
             "Custom Al Quran Mengenang/Wafat 40/100/1000 Hari | Jakarta": "Alquran Custom",
             "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta": "A6 edisi Tahlilan",
             "Al-Qur'an Non Terjemah Al Aqeel HVS A5 | Jakarta": "Al Aqeel A5 HVS",
