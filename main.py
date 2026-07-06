@@ -4262,9 +4262,39 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
                         # Extract data dari tiap file
                         shopee_data = {}
                         for toko_name, file in valid_shopee.items():
-                            df = pd.read_excel(file, sheet_name='SUMMARY')
-                            # Ambil baris TOTAL
-                            total_row = df[df['Nama Produk'] == 'Total'].iloc[0]
+                            # Baca dengan header di baris ke-4 (index 4, setelah merge 2 baris + header 2 baris)
+                            # Atau baca tanpa header lalu cari manual
+                            df = pd.read_excel(file, sheet_name='SUMMARY', header=None)
+                            
+                            # Cari baris yang mengandung 'Total' di kolom kedua (index 1)
+                            # Struktur: No | Nama Produk | Jumlah Terjual | ...
+                            # Kolom 1 = Nama Produk
+                            total_mask = df.iloc[:, 1].astype(str).str.strip() == 'Total'
+                            if not total_mask.any():
+                                st.warning(f"Tidak menemukan baris 'Total' di file {toko_name}")
+                                continue
+                            
+                            total_row_values = df[total_mask].iloc[0]
+                            
+                            # Cari header kolom di baris ke-3 (index 3)
+                            # Header ada di baris 3 (setelah judul baris 0-1, header baris 2-3)
+                            # Karena merge, header sebenarnya di baris 3
+                            header_row = df.iloc[3].astype(str).str.strip()
+                            
+                            # Buat dictionary dari header dan values
+                            total_row = {}
+                            for i, col_name in enumerate(header_row):
+                                if pd.notna(col_name) and col_name != '' and col_name != 'nan':
+                                    total_row[col_name] = total_row_values.iloc[i]
+                            
+                            # Fallback: jika tidak ketemu, coba baris 2
+                            if 'Persentase' not in total_row or pd.isna(total_row.get('Persentase')):
+                                header_row = df.iloc[2].astype(str).str.strip()
+                                total_row = {}
+                                for i, col_name in enumerate(header_row):
+                                    if pd.notna(col_name) and col_name != '' and col_name != 'nan':
+                                        total_row[col_name] = total_row_values.iloc[i]
+                                        
                             shopee_data[toko_name] = {
                                 'margin': total_row['Persentase'],
                                 'penjualan_per_hari': total_row['Penjualan Per Hari'],
@@ -4344,8 +4374,28 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
                     if valid_tiktok:
                         tiktok_data = {}
                         for toko_name, file in valid_tiktok.items():
-                            df = pd.read_excel(file, sheet_name='SUMMARY')
-                            total_row = df[df['Nama Produk'] == 'Total'].iloc[0]
+                            df = pd.read_excel(file, sheet_name='SUMMARY', header=None)
+                            
+                            total_mask = df.iloc[:, 1].astype(str).str.strip() == 'Total'
+                            if not total_mask.any():
+                                st.warning(f"Tidak menemukan baris 'Total' di file {toko_name}")
+                                continue
+                            
+                            total_row_values = df[total_mask].iloc[0]
+                            
+                            header_row = df.iloc[3].astype(str).str.strip()
+                            total_row = {}
+                            for i, col_name in enumerate(header_row):
+                                if pd.notna(col_name) and col_name != '' and col_name != 'nan':
+                                    total_row[col_name] = total_row_values.iloc[i]
+                            
+                            if 'Persentase' not in total_row or pd.isna(total_row.get('Persentase')):
+                                header_row = df.iloc[2].astype(str).str.strip()
+                                total_row = {}
+                                for i, col_name in enumerate(header_row):
+                                    if pd.notna(col_name) and col_name != '' and col_name != 'nan':
+                                        total_row[col_name] = total_row_values.iloc[i]
+                                        
                             tiktok_data[toko_name] = {
                                 'margin': total_row['Persentase'],
                                 'penjualan_per_hari': total_row['Penjualan Per Hari'],
