@@ -4191,6 +4191,7 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
     with col_s1:
         shopee_files['Raka Bookstore'] = st.file_uploader("SUMMARY Raka Bookstore Shopee", type=["xlsx"], key="comp_raka_shopee")
         shopee_files['Toko Monang'] = st.file_uploader("SUMMARY Toko Monang Shopee", type=["xlsx"], key="comp_monang_shopee")
+        shopee_files['DAMA.ID STORE'] = st.file_uploader("SUMMARY DAMA.ID STORE Shopee", type=["xlsx"], key="comp_dama_shopee")
     with col_s2:
         shopee_files['Toko Kaliba'] = st.file_uploader("SUMMARY Toko Kaliba Shopee", type=["xlsx"], key="comp_kaliba_shopee")
         shopee_files['Toko Serayu'] = st.file_uploader("SUMMARY Toko Serayu Shopee", type=["xlsx"], key="comp_serayu_shopee")
@@ -4208,6 +4209,7 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
     with col_t1:
         tiktok_files['Raka Bookstore'] = st.file_uploader("SUMMARY Raka Bookstore TikTok", type=["xlsx"], key="comp_raka_tiktok")
         tiktok_files['Toko Monang'] = st.file_uploader("SUMMARY Toko Monang TikTok", type=["xlsx"], key="comp_monang_tiktok")
+        tiktok_files['DAMA.ID STORE'] = st.file_uploader("SUMMARY DAMA.ID STORE TikTok", type=["xlsx"], key="comp_dama_tiktok")
     with col_t2:
         tiktok_files['Toko Kaliba'] = st.file_uploader("SUMMARY Toko Kaliba TikTok", type=["xlsx"], key="comp_kaliba_tiktok")
         tiktok_files['Toko Serayu'] = st.file_uploader("SUMMARY Toko Serayu TikTok", type=["xlsx"], key="comp_serayu_tiktok")
