@@ -71,6 +71,34 @@ def clean_columns(df):
     df.columns = df.columns.str.strip()
     return df
 
+def extract_date_range_from_summary(file_obj):
+    """
+    Mengekstrak rentang tanggal dari file SUMMARY yang sudah jadi.
+    Mengembalikan string tanggal atau None.
+    """
+    try:
+        # Coba baca baris judul dari sheet SUMMARY
+        # Judul biasanya di merge cell baris 0-1, kolom 0
+        df_raw = pd.read_excel(file_obj, sheet_name='SUMMARY', header=None, nrows=2)
+        judul = str(df_raw.iloc[0, 0]) if not df_raw.empty else ""
+        
+        # Pattern: "SUMMARY [TOKO] [MARKETPLACE] [TANGGAL]"
+        # Cari pattern tanggal seperti "22 - 28 Jun 2026" atau "1 - 7 Jul 2026"
+        import re
+        # Pattern untuk tanggal range
+        match = re.search(r'(\d{1,2}\s*-\s*\d{1,2}\s+[A-Za-z]+\s+\d{4})', judul)
+        if match:
+            return match.group(1)
+        
+        # Coba pattern lain: "22 - 28 Jun 2026"
+        match2 = re.search(r'(\d{1,2}\s*-\s*\d{1,2}\s+\w+\s+\d{4})', judul)
+        if match2:
+            return match2.group(1)
+            
+        return None
+    except:
+        return None
+
 def extract_relevant_variation_part(var_str):
     """Mengekstrak bagian variasi yang relevan (A5, QPP, dll.) untuk DAMA.ID STORE."""
     if pd.isna(var_str):
@@ -4090,7 +4118,7 @@ st.title("📊 Rekapanku - Sistem Otomatisasi Laporan")
 
 # --- UI PILIHAN JENIS REKAPAN ---
 st.header("1. Konfigurasi Rekapan")
-jenis_rekapan = st.radio("Pilih Jenis Rekapan:", ["Mingguan", "Bulanan"], horizontal=True)
+jenis_rekapan = st.radio("Pilih Jenis Rekapan:", ["Mingguan", "Bulanan", "Perbandingan Multi-Toko"], horizontal=True)
 
 if jenis_rekapan == "Bulanan":
     st.info("Mode Bulanan: Gabungkan 3-4 file SUMMARY mingguan menjadi satu file.")
@@ -4149,6 +4177,230 @@ if jenis_rekapan == "Bulanan":
             except Exception as e:
                 st.error(f"Error Bulanan: {e}")
     st.stop() # Hentikan eksekusi di sini agar tidak masuk ke logika mingguan di bawah
+
+elif jenis_rekapan == "Perbandingan Multi-Toko":
+    st.info("Mode Perbandingan: Bandingkan beberapa toko dalam satu periode (Shopee & TikTok).")
+    
+    # --- INPUT SUMMARY SHOPEE ---
+    st.subheader("📦 Import File SUMMARY Shopee")
+    st.caption("Upload file SUMMARY Shopee dari tiap toko (satu file per toko)")
+    
+    # Dictionary untuk menyimpan file per toko
+    shopee_files = {}
+    col_s1, col_s2, col_s3 = st.columns(3)
+    with col_s1:
+        shopee_files['Raka Bookstore'] = st.file_uploader("SUMMARY Raka Bookstore Shopee", type=["xlsx"], key="comp_raka_shopee")
+        shopee_files['Toko Monang'] = st.file_uploader("SUMMARY Toko Monang Shopee", type=["xlsx"], key="comp_monang_shopee")
+    with col_s2:
+        shopee_files['Toko Kaliba'] = st.file_uploader("SUMMARY Toko Kaliba Shopee", type=["xlsx"], key="comp_kaliba_shopee")
+        shopee_files['Toko Serayu'] = st.file_uploader("SUMMARY Toko Serayu Shopee", type=["xlsx"], key="comp_serayu_shopee")
+    with col_s3:
+        # Tambahkan toko lain jika perlu
+        shopee_files['Human Store'] = st.file_uploader("SUMMARY Human Store Shopee", type=["xlsx"], key="comp_human_shopee")
+        shopee_files['Pacific Bookstore'] = st.file_uploader("SUMMARY Pacific Bookstore Shopee", type=["xlsx"], key="comp_pacific_shopee")
+    
+    # --- INPUT SUMMARY TIKTOK ---
+    st.subheader("🎵 Import File SUMMARY TikTok")
+    st.caption("Upload file SUMMARY TikTok dari tiap toko (satu file per toko)")
+    
+    tiktok_files = {}
+    col_t1, col_t2, col_t3 = st.columns(3)
+    with col_t1:
+        tiktok_files['Raka Bookstore'] = st.file_uploader("SUMMARY Raka Bookstore TikTok", type=["xlsx"], key="comp_raka_tiktok")
+        tiktok_files['Toko Monang'] = st.file_uploader("SUMMARY Toko Monang TikTok", type=["xlsx"], key="comp_monang_tiktok")
+    with col_t2:
+        tiktok_files['Toko Kaliba'] = st.file_uploader("SUMMARY Toko Kaliba TikTok", type=["xlsx"], key="comp_kaliba_tiktok")
+        tiktok_files['Toko Serayu'] = st.file_uploader("SUMMARY Toko Serayu TikTok", type=["xlsx"], key="comp_serayu_tiktok")
+    with col_t3:
+        tiktok_files['Human Store'] = st.file_uploader("SUMMARY Human Store TikTok", type=["xlsx"], key="comp_human_tiktok")
+        tiktok_files['Pacific Bookstore'] = st.file_uploader("SUMMARY Pacific Bookstore TikTok", type=["xlsx"], key="comp_pacific_tiktok")
+    
+    # --- TOMBOL PROSES ---
+    if st.button("🚀 Proses Perbandingan Multi-Toko"):
+        # Validasi: minimal ada 1 file
+        valid_shopee = {k: v for k, v in shopee_files.items() if v is not None}
+        valid_tiktok = {k: v for k, v in tiktok_files.items() if v is not None}
+        
+        if not valid_shopee and not valid_tiktok:
+            st.error("Minimal upload 1 file SUMMARY (Shopee atau TikTok)!")
+        else:
+            try:
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    workbook = writer.book
+                    
+                    # --- FORMAT ---
+                    title_format = workbook.add_format({
+                        'bold': True, 'fg_color': '#4472C4', 'font_color': 'white',
+                        'align': 'center', 'valign': 'vcenter', 'font_size': 14
+                    })
+                    header_format = workbook.add_format({
+                        'bold': True, 'fg_color': '#DDEBF7', 'border': 1,
+                        'align': 'center', 'valign': 'vcenter'
+                    })
+                    header_name_format = workbook.add_format({
+                        'bold': True, 'fg_color': '#DDEBF7', 'border': 1,
+                        'align': 'center', 'valign': 'vcenter', 'text_wrap': True
+                    })
+                    cell_border_format = workbook.add_format({'border': 1, 'align': 'center'})
+                    number_format = workbook.add_format({
+                        'num_format': '#,##0', 'border': 1, 'align': 'right'
+                    })
+                    percent_format = workbook.add_format({
+                        'num_format': '0.0%', 'border': 1, 'align': 'right'
+                    })
+                    eks_format = workbook.add_format({
+                        'num_format': '0 "Eks"', 'border': 1, 'align': 'right'
+                    })
+                    
+                    # --- PROSES SHOPEE ---
+                    if valid_shopee:
+                        # Extract data dari tiap file
+                        shopee_data = {}
+                        for toko_name, file in valid_shopee.items():
+                            df = pd.read_excel(file, sheet_name='SUMMARY')
+                            # Ambil baris TOTAL
+                            total_row = df[df['Nama Produk'] == 'Total'].iloc[0]
+                            shopee_data[toko_name] = {
+                                'margin': total_row['Persentase'],
+                                'penjualan_per_hari': total_row['Penjualan Per Hari'],
+                                'buku_per_pesanan': total_row['Jumlah buku per pesanan'],
+                                'jumlah_eks': total_row['Jumlah Eksemplar'],
+                                'total_penjualan': total_row['Total Penjualan']
+                            }
+                        
+                        # Buat DataFrame perbandingan
+                        toko_list = list(shopee_data.keys())
+                        shopee_comp = pd.DataFrame({
+                            'No': [1, 2, 3, 4, 5],
+                            '': ['Margin', 'Penjualan Per hari', 'Jumlah Buku Per Pesanan', 
+                                 'Jumlah Eks', 'Total Penjualan']
+                        })
+                        for toko in toko_list:
+                            shopee_comp[toko] = [
+                                shopee_data[toko]['margin'],
+                                shopee_data[toko]['penjualan_per_hari'],
+                                shopee_data[toko]['buku_per_pesanan'],
+                                shopee_data[toko]['jumlah_eks'],
+                                shopee_data[toko]['total_penjualan']
+                            ]
+                        
+                        # Tulis ke Excel
+                        # Ambil tanggal dari file pertama untuk judul
+                        try:
+                            first_file = list(valid_shopee.values())[0]
+                            df_date = pd.read_excel(first_file, sheet_name='SUMMARY', header=None, nrows=5)
+                            # Cek baris judul (biasanya baris ke-4 setelah merge)
+                            # Atau ambil dari nama sheet
+                            tgl_str = "Periode Tertentu"
+                        except:
+                            tgl_str = ""
+                        
+                        sheet_name = "SUMMARY SHOPEE"
+                        start_row = 4
+                        shopee_comp.to_excel(writer, sheet_name=sheet_name, index=False, startrow=start_row, header=False)
+                        ws = writer.sheets[sheet_name]
+                        
+                        # Judul
+                        judul = f"SUMMARY SHOPEE {tgl_str}"
+                        ws.merge_range(0, 0, 1, len(shopee_comp.columns)-1, judul, title_format)
+                        
+                        # Header
+                        for col_num, val in enumerate(shopee_comp.columns.values):
+                            ws.merge_range(2, col_num, 3, col_num, val, header_name_format)
+                        
+                        # Format data
+                        for row_idx in range(len(shopee_comp)):
+                            excel_row = start_row + row_idx
+                            for col_idx in range(len(shopee_comp.columns)):
+                                val = shopee_comp.iloc[row_idx, col_idx]
+                                if col_idx == 0:  # Kolom No
+                                    ws.write(excel_row, col_idx, val, cell_border_format)
+                                elif col_idx == 1:  # Kolom indikator
+                                    ws.write(excel_row, col_idx, val, cell_border_format)
+                                else:  # Data toko
+                                    if row_idx == 0:  # Margin
+                                        ws.write(excel_row, col_idx, val, percent_format)
+                                    elif row_idx == 2:  # Jumlah Buku
+                                        ws.write(excel_row, col_idx, val, eks_format)
+                                    else:
+                                        ws.write(excel_row, col_idx, val, number_format)
+                        
+                        # Auto-width
+                        for i, col in enumerate(shopee_comp.columns):
+                            ws.set_column(i, i, 18)
+                    
+                    # --- PROSES TIKTOK (miror dari Shopee) ---
+                    if valid_tiktok:
+                        tiktok_data = {}
+                        for toko_name, file in valid_tiktok.items():
+                            df = pd.read_excel(file, sheet_name='SUMMARY')
+                            total_row = df[df['Nama Produk'] == 'Total'].iloc[0]
+                            tiktok_data[toko_name] = {
+                                'margin': total_row['Persentase'],
+                                'penjualan_per_hari': total_row['Penjualan Per Hari'],
+                                'buku_per_pesanan': total_row['Jumlah buku per pesanan'],
+                                'jumlah_terjual': total_row['Jumlah Terjual'],  # TikTok pakai Jumlah Terjual
+                                'total_penjualan': total_row['Total Penjualan']
+                            }
+                        
+                        toko_list = list(tiktok_data.keys())
+                        tiktok_comp = pd.DataFrame({
+                            'No': [1, 2, 3, 4, 5],
+                            '': ['Margin', 'Penjualan Per hari', 'Jumlah Buku Per Pesanan',
+                                 'Jumlah Terjual', 'Total Penjualan']
+                        })
+                        for toko in toko_list:
+                            tiktok_comp[toko] = [
+                                tiktok_data[toko]['margin'],
+                                tiktok_data[toko]['penjualan_per_hari'],
+                                tiktok_data[toko]['buku_per_pesanan'],
+                                tiktok_data[toko]['jumlah_terjual'],
+                                tiktok_data[toko]['total_penjualan']
+                            ]
+                        
+                        sheet_name = "SUMMARY TIKTOK"
+                        start_row = 4
+                        tiktok_comp.to_excel(writer, sheet_name=sheet_name, index=False, startrow=start_row, header=False)
+                        ws = writer.sheets[sheet_name]
+                        
+                        judul = f"SUMMARY TIKTOK {tgl_str}"
+                        ws.merge_range(0, 0, 1, len(tiktok_comp.columns)-1, judul, title_format)
+                        
+                        for col_num, val in enumerate(tiktok_comp.columns.values):
+                            ws.merge_range(2, col_num, 3, col_num, val, header_name_format)
+                        
+                        for row_idx in range(len(tiktok_comp)):
+                            excel_row = start_row + row_idx
+                            for col_idx in range(len(tiktok_comp.columns)):
+                                val = tiktok_comp.iloc[row_idx, col_idx]
+                                if col_idx <= 1:
+                                    ws.write(excel_row, col_idx, val, cell_border_format)
+                                else:
+                                    if row_idx == 0:
+                                        ws.write(excel_row, col_idx, val, percent_format)
+                                    elif row_idx == 2:
+                                        ws.write(excel_row, col_idx, val, eks_format)
+                                    else:
+                                        ws.write(excel_row, col_idx, val, number_format)
+                        
+                        for i, col in enumerate(tiktok_comp.columns):
+                            ws.set_column(i, i, 18)
+                
+                output.seek(0)
+                st.success("✅ Perbandingan Multi-Toko Berhasil!")
+                st.download_button(
+                    label="📥 Download File Perbandingan Multi-Toko",
+                    data=output,
+                    file_name=f"PERBANDINGAN_MULTI_TOKO_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                
+            except Exception as e:
+                st.error(f"Error: {e}")
+                st.exception(e)
+    
+    st.stop()
     
 marketplace_choice = st.selectbox(
     "Pilih Marketplace:",
