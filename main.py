@@ -4239,7 +4239,7 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
                         'align': 'center', 'valign': 'vcenter'
                     })
                     header_name_format = workbook.add_format({
-                        'bold': True, 'fg_color': '#DDEBF7', 'border': 1,
+                        'bold': True, 'fg_color': '#4472C4', 'font_color': 'white', 'border': 1,
                         'align': 'center', 'valign': 'vcenter', 'text_wrap': True
                     })
                     cell_border_format = workbook.add_format({'border': 1, 'align': 'center'})
@@ -4249,9 +4249,13 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
                     percent_format = workbook.add_format({
                         'num_format': '0.0%', 'border': 1, 'align': 'right'
                     })
+                    percent_format_id = workbook.add_format({
+                        'num_format': '0,0%', 'border': 1, 'align': 'right'
+                    })
                     eks_format = workbook.add_format({
                         'num_format': '0 "Eks"', 'border': 1, 'align': 'right'
                     })
+                
                     
                     # --- PROSES SHOPEE ---
                     if valid_shopee:
@@ -4302,7 +4306,8 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
                         ws = writer.sheets[sheet_name]
                         
                         # Judul
-                        judul = f"SUMMARY SHOPEE {tgl_str}"
+                        tgl_range = extract_date_range_from_summary(list(valid_shopee.values())[0])
+                        judul = f"SUMMARY SHOPEE {tgl_range}" if tgl_range else "SUMMARY SHOPEE"
                         ws.merge_range(0, 0, 1, len(shopee_comp.columns)-1, judul, title_format)
                         
                         # Header
@@ -4321,8 +4326,13 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
                                 else:  # Data toko
                                     if row_idx == 0:  # Margin
                                         ws.write(excel_row, col_idx, val, percent_format)
-                                    elif row_idx == 2:  # Jumlah Buku
-                                        ws.write(excel_row, col_idx, val, eks_format)
+                                    elif row_idx == 2:  # Jumlah Buku Per Pesanan
+                                        # Format: "4 Eks" - gabungkan angka dengan teks "Eks"
+                                        val_eks = f"{int(val)} Eks" if pd.notna(val) and val != 0 else "0 Eks"
+                                        ws.write(excel_row, col_idx, val_eks, cell_border_format)
+                                    elif row_idx == 3:  # Jumlah Eks
+                                        val_eks = f"{int(val)} Eks" if pd.notna(val) and val != 0 else "0 Eks"
+                                        ws.write(excel_row, col_idx, val_eks, cell_border_format)
                                     else:
                                         ws.write(excel_row, col_idx, val, number_format)
                         
@@ -4364,7 +4374,8 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
                         tiktok_comp.to_excel(writer, sheet_name=sheet_name, index=False, startrow=start_row, header=False)
                         ws = writer.sheets[sheet_name]
                         
-                        judul = f"SUMMARY TIKTOK {tgl_str}"
+                        tgl_range_tiktok = extract_date_range_from_summary(list(valid_tiktok.values())[0])
+                        judul = f"SUMMARY TIKTOK {tgl_range_tiktok}" if tgl_range_tiktok else "SUMMARY TIKTOK"
                         ws.merge_range(0, 0, 1, len(tiktok_comp.columns)-1, judul, title_format)
                         
                         for col_num, val in enumerate(tiktok_comp.columns.values):
@@ -4379,8 +4390,12 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
                                 else:
                                     if row_idx == 0:
                                         ws.write(excel_row, col_idx, val, percent_format)
-                                    elif row_idx == 2:
-                                        ws.write(excel_row, col_idx, val, eks_format)
+                                    elif row_idx == 2:  # Jumlah Buku Per Pesanan
+                                        val_eks = f"{int(val)} Eks" if pd.notna(val) and val != 0 else "0 Eks"
+                                        ws.write(excel_row, col_idx, val_eks, cell_border_format)
+                                    elif row_idx == 3:  # Jumlah Terjual
+                                        val_eks = f"{int(val)} Eks" if pd.notna(val) and val != 0 else "0 Eks"
+                                        ws.write(excel_row, col_idx, val_eks, cell_border_format)
                                     else:
                                         ws.write(excel_row, col_idx, val, number_format)
                         
@@ -4389,10 +4404,30 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
                 
                 output.seek(0)
                 st.success("✅ Perbandingan Multi-Toko Berhasil!")
+                tgl_range = None
+                if valid_shopee:
+                    tgl_range = extract_date_range_from_summary(list(valid_shopee.values())[0])
+                elif valid_tiktok:
+                    tgl_range = extract_date_range_from_summary(list(valid_tiktok.values())[0])
+                
+                # Format nama toko untuk filename
+                toko_names = []
+                if valid_shopee:
+                    toko_names.extend(list(valid_shopee.keys()))
+                if valid_tiktok:
+                    toko_names.extend([f"{t} TikTok" for t in valid_tiktok.keys()])
+                
+                toko_str = ", ".join(toko_names) if toko_names else "MULTI_TOKO"
+                
+                if tgl_range:
+                    file_name = f"SUMMARY SHOPEE & TIKTOK {tgl_range} ({toko_str}).xlsx"
+                else:
+                    file_name = f"SUMMARY SHOPEE & TIKTOK {datetime.now().strftime('%d %b %Y')} ({toko_str}).xlsx"
+                
                 st.download_button(
                     label="📥 Download File Perbandingan Multi-Toko",
                     data=output,
-                    file_name=f"PERBANDINGAN_MULTI_TOKO_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    file_name=file_name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
                 
