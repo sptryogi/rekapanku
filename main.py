@@ -4490,20 +4490,44 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
     st.stop()
 
 elif jenis_rekapan == "Akumulasi Order":
-    st.info("Mode Akumulasi Order: Hitung jumlah order unik per hari (Senin-Minggu) untuk 7 toko.")
+    st.info("Mode Akumulasi Order: Hitung jumlah order unik per hari (Senin-Minggu) untuk 7 toko dalam periode 1 minggu terakhir.")
     
     marketplace_akumulasi = st.selectbox("Pilih Marketplace:", ("Shopee", "TikTok"), key="akum_market")
     
+    toko_list = ["Human Store", "Pacific Bookstore", "DAMA.ID STORE", "Raka Bookstore", "Toko Kaliba", "Toko Monang", "Toko Serayu"]
+    
     st.subheader("📦 Import File SUMMARY (7 Toko)")
     st.caption("Upload file SUMMARY dari tiap toko (satu file per toko). File harus memiliki sheet 'sheet order-all' (Shopee) atau 'sheet semua pesanan' (TikTok).")
-    
-    toko_list = ["Human Store", "Pacific Bookstore", "DAMA.ID STORE", "Raka Bookstore", "Toko Kaliba", "Toko Monang", "Toko Serayu"]
     
     file_toko = {}
     cols = st.columns(3)
     for i, toko in enumerate(toko_list):
         with cols[i % 3]:
             file_toko[toko] = st.file_uploader(f"SUMMARY {toko}", type=["xlsx"], key=f"akum_{toko}")
+    
+    # --- PILIHAN TANGGAL REFERENSI (Senin minggu ini) ---
+    st.markdown("---")
+    st.subheader("📅 Pilih Tanggal Referensi")
+    st.caption("Pilih hari Senin dari minggu yang ingin Anda analisis. Sistem akan otomatis menghitung rentang Senin-Minggu (7 hari).")
+    
+    # Default: cari Senin minggu lalu dari hari ini
+    today = datetime.now().date()
+    days_since_monday = today.weekday()  # 0=Senin, 6=Minggu
+    last_monday = today - timedelta(days=days_since_monday + 7)  # Senin minggu lalu
+    
+    selected_monday = st.date_input(
+        "Pilih hari Senin (awal minggu):",
+        value=last_monday,
+        help="Pilih hari Senin, sistem akan otomatis menghitung sampai Minggu (7 hari)"
+    )
+    
+    # Hitung rentang: Senin sampai Minggu (6 hari setelah Senin)
+    start_date = pd.Timestamp(selected_monday)
+    end_date = start_date + pd.Timedelta(days=6)  # Minggu
+    
+    # Tampilkan rentang yang akan diproses
+    date_range_str = f"{start_date.strftime('%d %b %Y')} - {end_date.strftime('%d %b %Y')}"
+    st.info(f"Rentang yang akan diproses: **{date_range_str}** (Senin - Minggu)")
     
     if st.button("🚀 Proses Akumulasi Order"):
         valid_files = {k: v for k, v in file_toko.items() if v is not None}
@@ -4527,9 +4551,7 @@ elif jenis_rekapan == "Akumulasi Order":
                     status_exclude = "Canceled"
                 
                 # Dictionary untuk menyimpan hasil per toko
-                # Struktur: {nama_toko: {0: count_senin, 1: count_selasa, ..., 6: count_minggu}}
                 hasil_akumulasi = {}
-                date_range_str = ""
                 
                 for toko_name, file in valid_files.items():
                     # Baca sheet
@@ -4539,19 +4561,20 @@ elif jenis_rekapan == "Akumulasi Order":
                     # Konversi kolom waktu ke datetime
                     df[waktu_col] = pd.to_datetime(df[waktu_col], errors='coerce')
                     
+                    # === FILTER RENTANG TANGGAL: Senin - Minggu ===
+                    df = df[(df[waktu_col] >= start_date) & (df[waktu_col] <= end_date + pd.Timedelta(days=1))]
+                    
+                    if df.empty:
+                        st.warning(f"Tidak ada data untuk toko {toko_name} di rentang {date_range_str}")
+                        hasil_akumulasi[toko_name] = {}
+                        continue
+                    
                     # Filter: exclude status Batal/Canceled
                     if status_col in df.columns:
                         df = df[df[status_col].astype(str).str.strip().str.lower() != status_exclude.lower()]
                     
                     # Drop duplikat No. Pesanan / ORDER ID
                     df_unique = df.drop_duplicates(subset=[no_pesanan_col], keep='first')
-                    
-                    # Ambil rentang tanggal dari file pertama untuk judul
-                    if not date_range_str and not df_unique.empty:
-                        tgl_min = df_unique[waktu_col].min()
-                        tgl_max = df_unique[waktu_col].max()
-                        if pd.notna(tgl_min) and pd.notna(tgl_max):
-                            date_range_str = get_pretty_date_range(tgl_min, tgl_max)
                     
                     # Hitung jumlah order per hari (0=Senin, 6=Minggu)
                     df_unique['Hari'] = df_unique[waktu_col].dt.dayofweek
@@ -4571,7 +4594,6 @@ elif jenis_rekapan == "Akumulasi Order":
                         row["Total"] = sum(row[h] for h in hari_labels)
                         rows.append(row)
                     else:
-                        # Toko tidak diupload, isi 0
                         rows.append({"Toko": toko, **{h: 0 for h in hari_labels}, "Total": 0})
                 
                 # Tambah baris total
@@ -4612,8 +4634,7 @@ elif jenis_rekapan == "Akumulasi Order":
                     })
                     
                     # Judul
-                    suffix_tgl = f" {date_range_str}" if date_range_str else ""
-                    judul = f"Akumulasi Order Mingguan {marketplace_akumulasi}{suffix_tgl}"
+                    judul = f"Akumulasi Order Mingguan {marketplace_akumulasi} {date_range_str}"
                     
                     # Tulis data
                     df_output.to_excel(writer, sheet_name='AKUMULASI ORDER', index=False, startrow=4, header=False)
@@ -4653,7 +4674,7 @@ elif jenis_rekapan == "Akumulasi Order":
                 output.seek(0)
                 st.success("✅ Akumulasi Order Berhasil!")
                 
-                file_name = f"Akumulasi_Order_{marketplace_akumulasi}{suffix_tgl.replace(' ', '_')}.xlsx"
+                file_name = f"Akumulasi_Order_{marketplace_akumulasi}_{start_date.strftime('%d%b%Y')}_{end_date.strftime('%d%b%Y')}.xlsx"
                 st.download_button(
                     label=f"📥 Download Akumulasi Order {marketplace_akumulasi}",
                     data=output,
