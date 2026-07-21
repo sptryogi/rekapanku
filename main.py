@@ -4118,7 +4118,7 @@ st.title("📊 Rekapanku - Sistem Otomatisasi Laporan")
 
 # --- UI PILIHAN JENIS REKAPAN ---
 st.header("1. Konfigurasi Rekapan")
-jenis_rekapan = st.radio("Pilih Jenis Rekapan:", ["Mingguan", "Bulanan", "Perbandingan Multi-Toko"], horizontal=True)
+jenis_rekapan = st.radio("Pilih Jenis Rekapan:", ["Mingguan", "Bulanan", "Perbandingan Multi-Toko", "Akumulasi Order"], horizontal=True)
 
 if jenis_rekapan == "Bulanan":
     st.info("Mode Bulanan: Gabungkan 3-4 file SUMMARY mingguan menjadi satu file.")
@@ -4478,6 +4478,184 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
                 
                 st.download_button(
                     label="📥 Download File Perbandingan Multi-Toko",
+                    data=output,
+                    file_name=file_name,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                
+            except Exception as e:
+                st.error(f"Error: {e}")
+                st.exception(e)
+    
+    st.stop()
+
+elif jenis_rekapan == "Akumulasi Order":
+    st.info("Mode Akumulasi Order: Hitung jumlah order unik per hari (Senin-Minggu) untuk 7 toko.")
+    
+    marketplace_akumulasi = st.selectbox("Pilih Marketplace:", ("Shopee", "TikTok"), key="akum_market")
+    
+    st.subheader("📦 Import File SUMMARY (7 Toko)")
+    st.caption("Upload file SUMMARY dari tiap toko (satu file per toko). File harus memiliki sheet 'sheet order-all' (Shopee) atau 'sheet semua pesanan' (TikTok).")
+    
+    toko_list = ["Human Store", "Pacific Bookstore", "DAMA.ID STORE", "Raka Bookstore", "Toko Kaliba", "Toko Monang", "Toko Serayu"]
+    
+    file_toko = {}
+    cols = st.columns(3)
+    for i, toko in enumerate(toko_list):
+        with cols[i % 3]:
+            file_toko[toko] = st.file_uploader(f"SUMMARY {toko}", type=["xlsx"], key=f"akum_{toko}")
+    
+    if st.button("🚀 Proses Akumulasi Order"):
+        valid_files = {k: v for k, v in file_toko.items() if v is not None}
+        
+        if len(valid_files) == 0:
+            st.error("Minimal upload 1 file SUMMARY!")
+        else:
+            try:
+                # Tentukan sheet dan kolom berdasarkan marketplace
+                if marketplace_akumulasi == "Shopee":
+                    sheet_name = "sheet order-all"
+                    waktu_col = "Waktu Pesanan Dibuat"
+                    status_col = "Status Pesanan"
+                    no_pesanan_col = "No. Pesanan"
+                    status_exclude = "Batal"
+                else:  # TikTok
+                    sheet_name = "sheet semua pesanan"
+                    waktu_col = "CREATED TIME"
+                    status_col = "ORDER STATUS"
+                    no_pesanan_col = "ORDER ID"
+                    status_exclude = "Canceled"
+                
+                # Dictionary untuk menyimpan hasil per toko
+                # Struktur: {nama_toko: {0: count_senin, 1: count_selasa, ..., 6: count_minggu}}
+                hasil_akumulasi = {}
+                date_range_str = ""
+                
+                for toko_name, file in valid_files.items():
+                    # Baca sheet
+                    df = pd.read_excel(file, sheet_name=sheet_name)
+                    df.columns = [str(c).strip() for c in df.columns]
+                    
+                    # Konversi kolom waktu ke datetime
+                    df[waktu_col] = pd.to_datetime(df[waktu_col], errors='coerce')
+                    
+                    # Filter: exclude status Batal/Canceled
+                    if status_col in df.columns:
+                        df = df[df[status_col].astype(str).str.strip().str.lower() != status_exclude.lower()]
+                    
+                    # Drop duplikat No. Pesanan / ORDER ID
+                    df_unique = df.drop_duplicates(subset=[no_pesanan_col], keep='first')
+                    
+                    # Ambil rentang tanggal dari file pertama untuk judul
+                    if not date_range_str and not df_unique.empty:
+                        tgl_min = df_unique[waktu_col].min()
+                        tgl_max = df_unique[waktu_col].max()
+                        if pd.notna(tgl_min) and pd.notna(tgl_max):
+                            date_range_str = get_pretty_date_range(tgl_min, tgl_max)
+                    
+                    # Hitung jumlah order per hari (0=Senin, 6=Minggu)
+                    df_unique['Hari'] = df_unique[waktu_col].dt.dayofweek
+                    daily_counts = df_unique.groupby('Hari').size().to_dict()
+                    
+                    hasil_akumulasi[toko_name] = daily_counts
+                
+                # Buat DataFrame output
+                hari_labels = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+                
+                rows = []
+                for toko in toko_list:
+                    if toko in hasil_akumulasi:
+                        row = {"Toko": toko}
+                        for i, hari in enumerate(hari_labels):
+                            row[hari] = hasil_akumulasi[toko].get(i, 0)
+                        row["Total"] = sum(row[h] for h in hari_labels)
+                        rows.append(row)
+                    else:
+                        # Toko tidak diupload, isi 0
+                        rows.append({"Toko": toko, **{h: 0 for h in hari_labels}, "Total": 0})
+                
+                # Tambah baris total
+                total_row = {"Toko": "Total"}
+                for hari in hari_labels:
+                    total_row[hari] = sum(r.get(hari, 0) for r in rows)
+                total_row["Total"] = sum(total_row[h] for h in hari_labels)
+                rows.append(total_row)
+                
+                df_output = pd.DataFrame(rows)
+                
+                # Buat file Excel dengan formatting
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    workbook = writer.book
+                    
+                    # Format
+                    title_format = workbook.add_format({
+                        'bold': True, 'fg_color': '#4472C4', 'font_color': 'white',
+                        'align': 'center', 'valign': 'vcenter', 'font_size': 14
+                    })
+                    header_format = workbook.add_format({
+                        'bold': True, 'fg_color': '#DDEBF7', 'border': 1,
+                        'align': 'center', 'valign': 'vcenter'
+                    })
+                    cell_format = workbook.add_format({
+                        'border': 1, 'align': 'center'
+                    })
+                    number_format = workbook.add_format({
+                        'num_format': '#,##0', 'border': 1, 'align': 'center'
+                    })
+                    total_format = workbook.add_format({
+                        'bold': True, 'fg_color': '#FFFF00', 'border': 1, 'align': 'center'
+                    })
+                    total_number_format = workbook.add_format({
+                        'bold': True, 'fg_color': '#FFFF00', 'num_format': '#,##0',
+                        'border': 1, 'align': 'center'
+                    })
+                    
+                    # Judul
+                    suffix_tgl = f" {date_range_str}" if date_range_str else ""
+                    judul = f"Akumulasi Order Mingguan {marketplace_akumulasi}{suffix_tgl}"
+                    
+                    # Tulis data
+                    df_output.to_excel(writer, sheet_name='AKUMULASI ORDER', index=False, startrow=4, header=False)
+                    ws = writer.sheets['AKUMULASI ORDER']
+                    
+                    # Merge judul
+                    ws.merge_range(0, 0, 1, len(df_output.columns) - 1, judul, title_format)
+                    
+                    # Header
+                    for col_num, val in enumerate(df_output.columns.values):
+                        ws.merge_range(2, col_num, 3, col_num, val, header_format)
+                    
+                    # Data
+                    for row_idx in range(len(df_output)):
+                        excel_row = 4 + row_idx
+                        is_total_row = (row_idx == len(df_output) - 1)
+                        
+                        for col_idx in range(len(df_output.columns)):
+                            val = df_output.iloc[row_idx, col_idx]
+                            
+                            if is_total_row:
+                                if col_idx == 0:
+                                    ws.write(excel_row, col_idx, val, total_format)
+                                else:
+                                    ws.write(excel_row, col_idx, val, total_number_format)
+                            else:
+                                if col_idx == 0:
+                                    ws.write(excel_row, col_idx, val, cell_format)
+                                else:
+                                    ws.write(excel_row, col_idx, val, number_format)
+                    
+                    # Auto-width
+                    ws.set_column(0, 0, 20)
+                    for i in range(1, len(df_output.columns)):
+                        ws.set_column(i, i, 12)
+                
+                output.seek(0)
+                st.success("✅ Akumulasi Order Berhasil!")
+                
+                file_name = f"Akumulasi_Order_{marketplace_akumulasi}{suffix_tgl.replace(' ', '_')}.xlsx"
+                st.download_button(
+                    label=f"📥 Download Akumulasi Order {marketplace_akumulasi}",
                     data=output,
                     file_name=file_name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
