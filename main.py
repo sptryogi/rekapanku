@@ -4,7 +4,7 @@ st.set_page_config(
     page_icon="📊",                   # emoji atau file ikon (.png/.ico)
     layout="wide"
 )
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 import io
