@@ -3712,8 +3712,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Diskon Penjual': rekap_df['SKU SELLER DISCOUNT'],
         'Total Penjualan': rekap_df['Total Penjualan'],
         'Komisi Affiliate': rekap_df['Komisi Affiliate'],
-        'Biaya Komisi Platform 8%': rekap_df['Biaya Komisi Platform 8%'],
-        'Komisi Dinamis 5%': rekap_df['Komisi Dinamis 5%'],
+        'Biaya Komisi Platform 10%': rekap_df['Biaya Komisi Platform 8%'],
+        'Komisi Dinamis 8%': rekap_df['Komisi Dinamis 5%'],
         'Komisi Iklan Affiliate': rekap_df['Komisi Iklan Affiliate'],
         'Biaya Pre-order':rekap_df['Biaya Pre-order'],
         'Biaya Proses Pesanan': rekap_df['Biaya Proses Pesanan'],
@@ -3738,8 +3738,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'Harga Satuan',
         'Komisi Iklan Affiliate',
         'Biaya Pre-order',
-        'Biaya Komisi Platform 8%',   # ← TAMBAH: sudah dari order_details, tinggal di-sum
-        'Komisi Dinamis 5%', 
+        'Biaya Komisi Platform 10%',   # ← TAMBAH: sudah dari order_details, tinggal di-sum
+        'Komisi Dinamis 8%', 
         'Biaya Proses Pesanan',
         'Biaya Ekspedisi',
         'Sumber Pesanan'
@@ -3766,8 +3766,8 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
     rekap_final['Total Penghasilan'] = (
         rekap_final['Total Penjualan'] -
         rekap_final['Komisi Affiliate'] -
-        rekap_final['Biaya Komisi Platform 8%'] -
-        rekap_final['Komisi Dinamis 5%'] -
+        rekap_final['Biaya Komisi Platform 10%'] -
+        rekap_final['Komisi Dinamis 8%'] -
         rekap_final['Biaya Proses Pesanan'] -
         rekap_final['Biaya Pre-order'] -
         rekap_final['Komisi Iklan Affiliate'] -
@@ -3779,7 +3779,7 @@ def process_rekap_tiktok(order_details_df, semua_pesanan_df, creator_order_all_d
         'No.', 'No. Pesanan', 'Waktu Pesanan Dibuat', 'Waktu Dana Dilepas', 'Nama Produk',
         'Variasi', 'Jumlah Terjual', 'Harga Satuan', 'Total Harga Sebelum Diskon',
         'Diskon Penjual', 'Total Penjualan', 'Komisi Affiliate',
-        'Biaya Komisi Platform 8%', 'Komisi Dinamis 5%', 'Komisi Iklan Affiliate', 'Biaya Pre-order', 
+        'Biaya Komisi Platform 10%', 'Komisi Dinamis 8%', 'Komisi Iklan Affiliate', 'Biaya Pre-order', 
         'Biaya Proses Pesanan', 'Biaya Ekspedisi', 'Total Penghasilan', 'Sumber Pesanan'
     ]
     rekap_final = rekap_final.reindex(columns=final_columns_order)
@@ -3798,8 +3798,8 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         'Diskon Penjual': 'sum',
         'Total Penjualan': 'sum',
         'Komisi Affiliate': 'sum',
-        'Biaya Komisi Platform 8%': 'sum',
-        'Komisi Dinamis 5%': 'sum',
+        'Biaya Komisi Platform 10%': 'sum',
+        'Komisi Dinamis 8%': 'sum',
         'Komisi Iklan Affiliate': 'sum',
         'Biaya Pre-order': 'sum',
         'Biaya Proses Pesanan': 'sum',
@@ -3838,8 +3838,8 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     summary_df['Penjualan Netto'] = (
         summary_df['Total Penjualan'] -
         summary_df['Komisi Affiliate'] -
-        summary_df['Biaya Komisi Platform 8%'] -
-        summary_df['Komisi Dinamis 5%'] -
+        summary_df['Biaya Komisi Platform 10%'] -
+        summary_df['Komisi Dinamis 8%'] -
         summary_df['Biaya Proses Pesanan'] -
         summary_df['Biaya Pre-order'] -
         summary_df['Biaya Ekspedisi']
@@ -3958,8 +3958,8 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
         'No': np.arange(1, len(summary_df) + 1), 'Nama Produk': summary_df['Nama Produk'], 'Variasi': summary_df['Variasi'],
         'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Penjualan': summary_df['Total Pemasukan'],
-        'Komisi Affiliate': summary_df['Komisi Affiliate'], 'Biaya Komisi Platform 8%': summary_df['Biaya Komisi Platform 8%'],
-        'Komisi Dinamis 5%': summary_df['Komisi Dinamis 5%'], 'Biaya Pre-order': summary_df['Biaya Pre-order'],
+        'Komisi Affiliate': summary_df['Komisi Affiliate'], 'Biaya Komisi Platform 10%': summary_df['Biaya Komisi Platform 10%'],
+        'Komisi Dinamis 8%': summary_df['Komisi Dinamis 8%'], 'Biaya Pre-order': summary_df['Biaya Pre-order'],
         'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'], 'Biaya Ekspedisi': summary_df['Biaya Ekspedisi'], 
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan': summary_df['Iklan'],'Biaya Packing': summary_df['Biaya Packing'],
         'Harga Beli': summary_df['Harga Beli'],
