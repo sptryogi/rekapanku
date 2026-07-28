@@ -4515,7 +4515,7 @@ elif jenis_rekapan == "Perbandingan Multi-Toko":
     st.stop()
 
 elif jenis_rekapan == "Akumulasi Order":
-    st.info("Mode Akumulasi Order: Hitung jumlah order unik per hari (Senin-Minggu) untuk 7 toko dalam periode 1 minggu terakhir.")
+    st.info("Mode Akumulasi Order: Hitung total Subtotal Pesanan per hari (Senin-Minggu) untuk 7 toko dalam periode 1 minggu terakhir.")
     
     marketplace_akumulasi = st.selectbox("Pilih Marketplace:", ("Shopee", "TikTok"), key="akum_market")
     
@@ -4598,12 +4598,18 @@ elif jenis_rekapan == "Akumulasi Order":
                     if status_col in df.columns:
                         df = df[df[status_col].astype(str).str.strip().str.lower() != status_exclude.lower()]
                     
-                    # Drop duplikat No. Pesanan / ORDER ID
-                    df_unique = df.drop_duplicates(subset=[no_pesanan_col], keep='first')
+                    # --- PERUBAHAN: Bersihkan dan jumlahkan kolom Subtotal Pesanan ---
+                    subtotal_col = "Subtotal Pesanan"
+                    if subtotal_col in df.columns:
+                        df[subtotal_col] = df[subtotal_col].astype(str).str.replace(r'[^\d,\-]', '', regex=True)
+                        df[subtotal_col] = df[subtotal_col].str.replace(',', '.', regex=False)
+                        df[subtotal_col] = pd.to_numeric(df[subtotal_col], errors='coerce').fillna(0)
+                    else:
+                        df[subtotal_col] = 0
                     
-                    # Hitung jumlah order per hari (0=Senin, 6=Minggu)
-                    df_unique['Hari'] = df_unique[waktu_col].dt.dayofweek
-                    daily_counts = df_unique.groupby('Hari').size().to_dict()
+                    # Hitung TOTAL SUBTOTAL per hari (0=Senin, 6=Minggu)
+                    df['Hari'] = df[waktu_col].dt.dayofweek
+                    daily_counts = df.groupby('Hari')[subtotal_col].sum().to_dict()
                     
                     hasil_akumulasi[toko_name] = daily_counts
                 
@@ -4694,7 +4700,7 @@ elif jenis_rekapan == "Akumulasi Order":
                     # Auto-width
                     ws.set_column(0, 0, 20)
                     for i in range(1, len(df_output.columns)):
-                        ws.set_column(i, i, 12)
+                        ws.set_column(i, i, 18)
                 
                 output.seek(0)
                 st.success("✅ Akumulasi Order Berhasil!")
