@@ -281,7 +281,7 @@ def create_offline_summary_row(offline_data, store_type, katalog_df, harga_custo
         'Total Penjualan': offline_data['total_penjualan'],
         'Voucher Ditanggung Penjual': 0,
         'Biaya Komisi AMS + PPN Shopee': 0,
-        'Biaya Adm 8%': 0,
+        'Biaya Adm 9%': 0,
         # 'Biaya Layanan 2%': 0,
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 0,
         'Biaya Proses Pesanan': 0,
@@ -611,7 +611,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     rekap_df['Subtotal Pesanan'] = rekap_df.get('Subtotal Pesanan', 0).fillna(0)
     
     # 2. Hitung biaya baru berdasarkan Total Harga Produk (ini berlaku per-baris/per-produk)
-    # rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
+    # rekap_df['Biaya Adm 9%'] = rekap_df['Total Harga Produk'] * 0.08
     # rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
     
@@ -643,10 +643,10 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     cutoff_date = pd.Timestamp('2026-05-10')
     is_after_may_10_2026 = rekap_df['Waktu Pesanan Parsed'] >= cutoff_date
     
-    # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # rekap_df['Biaya Adm 9%'] = basis_biaya * 0.08
     # Ambil tahun dari kolom Waktu Pesanan Dibuat    
     # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
-    # rekap_df['Biaya Adm 8%'] = np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
+    # rekap_df['Biaya Adm 9%'] = np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
     # # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     # rekap_df['Biaya Layanan 2%'] = 0
@@ -656,16 +656,16 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
 
     
     # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
-    # Jika Raka Bookstore, Biaya Adm 8% = 0
-    # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.09
+    # Jika Raka Bookstore, Biaya Adm 9% = 0
+    # rekap_df['Biaya Adm 9%'] = basis_biaya * 0.09
     
     # rekap_df['Biaya Layanan 2%'] = 0
     
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     if store_type in ['Raka Bookstore', 'Toko Kaliba', 'Toko Monang', 'Toko Serayu']:
         # Cek kondisi dari kolom income asli (sebelum dibagi)
-        # Biaya Adm 8%: hanya jika Biaya Administrasi di income ≠ 0
-        rekap_df['Biaya Adm 8%'] = np.where(
+        # Biaya Adm 9%: hanya jika Biaya Administrasi di income ≠ 0
+        rekap_df['Biaya Adm 9%'] = np.where(
             rekap_df['Biaya Administrasi'] != 0,
             basis_biaya * 0.09,
             0
@@ -685,7 +685,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     else:
         # Rumus standar untuk toko lain (Human Store, Pacific, DAMA)
-        rekap_df['Biaya Adm 8%'] = basis_biaya * 0.09
+        rekap_df['Biaya Adm 9%'] = basis_biaya * 0.09
         rekap_df['Biaya Layanan 2%'] = 0
         # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
         #         is_after_may_10_2026,
@@ -724,7 +724,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         rekap_df.get('Subtotal Pesanan', 0) -
         rekap_df.get('Voucher dari Penjual Dibagi', 0) -     # <-- DIUBAH
         rekap_df.get('Pengeluaran(Rp)', 0) -
-        rekap_df.get('Biaya Adm 8%', 0) -
+        rekap_df.get('Biaya Adm 9%', 0) -
         rekap_df.get('Biaya Layanan 2%', 0) -
         rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
         rekap_df.get('Biaya Proses Pesanan Dibagi', 0) -
@@ -738,7 +738,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
 
     cols_to_zero_out = [
         # 'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
-        'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+        'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 9%', 
         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
         'Biaya Proses Pesanan Dibagi', ' Dibagi'
     ]
@@ -806,7 +806,7 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         'Total Harga Produk': rekap_df['Subtotal Pesanan'],
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
-        'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
+        'Biaya Adm 9%': rekap_df.get('Biaya Adm 9%', 0),
         'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
         'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan Dibagi', 0),
@@ -1093,12 +1093,12 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     rekap_df['Waktu Pesanan Parsed'] = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat'], errors='coerce')
     cutoff_date = pd.Timestamp('2026-05-10')
     is_after_may_10_2026 = rekap_df['Waktu Pesanan Parsed'] >= cutoff_date
-    # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # rekap_df['Biaya Adm 9%'] = basis_biaya * 0.08
     # Ambil tahun dari kolom Waktu Pesanan Dibuat
     tahun_pesanan = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat']).dt.year
     
     # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
-    rekap_df['Biaya Adm 8%'] = np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
+    rekap_df['Biaya Adm 9%'] = np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = basis_biaya * 0.045
     # rekap_df['Biaya Layanan 4,5%'] = basis_biaya * 0.045
@@ -1144,7 +1144,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         rekap_df.get('Subtotal Pesanan', 0) -
         rekap_df.get('Voucher dari Penjual Dibagi', 0) -     # <-- DIUBAH
         rekap_df.get('Pengeluaran(Rp)', 0) -
-        rekap_df.get('Biaya Adm 8%', 0) -
+        rekap_df.get('Biaya Adm 9%', 0) -
         rekap_df.get('Biaya Layanan 2%', 0) -
         rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
         rekap_df.get('Biaya Proses Pesanan Dibagi', 0) -
@@ -1161,7 +1161,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     # if not rekap_df[kondisi_retur_final].empty:
     #     cols_to_zero_out = [
     #         'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
-    #         'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+    #         'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 9%', 
     #         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
     #         'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
     #         # 'Penjualan Netto' dihapus dari daftar ini
@@ -1176,7 +1176,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     #     rekap_df.loc[kondisi_retur_final, 'Penjualan Netto'] = rekap_df.loc[kondisi_retur_final, 'Total Penghasilan Dibagi']
     cols_to_zero_out = [
         # 'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
-        'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+        'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 9%', 
         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
         'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
     ]
@@ -1243,7 +1243,7 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
         'Total Harga Produk': rekap_df['Subtotal Pesanan'],
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
-        'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
+        'Biaya Adm 9%': rekap_df.get('Biaya Adm 9%', 0),
         'Biaya Layanan 4,5%': rekap_df.get('Biaya Layanan 4,5%', 0),
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
         'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan Dibagi', 0), # <-- Gunakan kolom yang sudah dibagi
@@ -1471,7 +1471,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
 
     # Hitung biaya berdasarkan Total Harga Produk
-    # rekap_df['Biaya Adm 8%'] = rekap_df['Total Harga Produk'] * 0.08
+    # rekap_df['Biaya Adm 9%'] = rekap_df['Total Harga Produk'] * 0.08
     # rekap_df['Biaya Layanan 2%'] = rekap_df['Total Harga Produk'] * 0.02
     rekap_df['Biaya Layanan 2%'] = 0
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Total Harga Produk'] * 0.045
@@ -1481,12 +1481,12 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     rekap_df['Waktu Pesanan Parsed'] = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat'], errors='coerce')
     cutoff_date = pd.Timestamp('2026-05-10')
     is_after_may_10_2026 = rekap_df['Waktu Pesanan Parsed'] >= cutoff_date
-    # rekap_df['Biaya Adm 8%'] = basis_biaya * 0.08
+    # rekap_df['Biaya Adm 9%'] = basis_biaya * 0.08
     # Ambil tahun dari kolom Waktu Pesanan Dibuat
     tahun_pesanan = pd.to_datetime(rekap_df['Waktu Pesanan Dibuat']).dt.year
     
     # Rumus dinamis: 2026 (9%), selain itu/2025 (8%)
-    rekap_df['Biaya Adm 8%'] = np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
+    rekap_df['Biaya Adm 9%'] = np.where(tahun_pesanan == 2026, basis_biaya * 0.09, basis_biaya * 0.08)
     # rekap_df['Biaya Layanan 2%'] = basis_biaya * 0.02
     # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
     #     is_after_may_10_2026,
@@ -1512,7 +1512,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
 
     # Pastikan semua biaya bernilai positif
     cost_columns_to_abs = [
-        'Voucher dari Penjual', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+        'Voucher dari Penjual', 'Pengeluaran(Rp)', 'Biaya Adm 9%', 
         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
         # 'Biaya Proses Pesanan' tidak perlu di-abs karena sudah dibagi
     ]
@@ -1527,7 +1527,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
         rekap_df.get('Subtotal Pesanan', 0) -
         rekap_df.get('Voucher dari Penjual Dibagi', 0) -     # <-- DIUBAH
         rekap_df.get('Pengeluaran(Rp)', 0) -
-        rekap_df.get('Biaya Adm 8%', 0) -
+        rekap_df.get('Biaya Adm 9%', 0) -
         rekap_df.get('Biaya Layanan 2%', 0) -
         rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0) -
         rekap_df.get('Biaya Proses Pesanan Dibagi', 0) -
@@ -1544,7 +1544,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     # if not rekap_df[kondisi_retur_final].empty:
     #     cols_to_zero_out = [
     #         'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
-    #         'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+    #         'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 9%', 
     #         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
     #         'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
     #         # 'Penjualan Netto' dihapus dari daftar ini
@@ -1559,7 +1559,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     #     rekap_df.loc[kondisi_retur_final, 'Penjualan Netto'] = rekap_df.loc[kondisi_retur_final, 'Total Penghasilan Dibagi']
     cols_to_zero_out = [
         # 'Jumlah Terjual', 'Harga Setelah Diskon', 'Total Harga Produk',
-        'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 8%', 
+        'Voucher dari Penjual Dibagi', 'Pengeluaran(Rp)', 'Biaya Adm 9%', 
         'Biaya Layanan 2%', 'Biaya Layanan Gratis Ongkir Xtra 4,5%', 
         'Biaya Proses Pesanan Dibagi', 'Gratis Ongkir dari Penjual Dibagi'
     ]
@@ -1627,7 +1627,7 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
         'Total Harga Produk': rekap_df['Subtotal Pesanan'],
         'Voucher Ditanggung Penjual': rekap_df.get('Voucher dari Penjual Dibagi', 0),
         'Biaya Komisi AMS + PPN Shopee': rekap_df.get('Pengeluaran(Rp)', 0),
-        'Biaya Adm 8%': rekap_df.get('Biaya Adm 8%', 0),
+        'Biaya Adm 9%': rekap_df.get('Biaya Adm 9%', 0),
         'Biaya Layanan 2%': rekap_df.get('Biaya Layanan 2%', 0),
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': rekap_df.get('Biaya Layanan Gratis Ongkir Xtra 4,5%', 0),
         'Biaya Proses Pesanan': rekap_df.get('Biaya Proses Pesanan Dibagi', 0),
@@ -1824,7 +1824,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     #     # 'Harga Satuan': 'first', <-- Dihapus karena sudah jadi bagian key
     #     'Total Harga Produk': 'sum',
     #     'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
-    #     'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
+    #     'Biaya Adm 9%': 'sum', 'Biaya Layanan 2%': 'sum',
     #     'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
     #     'Total Penghasilan': 'sum'
     # })
@@ -1893,7 +1893,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         # 'Harga Satuan': 'first', <-- Dihapus karena sudah jadi bagian key
         'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
-        'Biaya Adm 8%': 'sum', biaya_layanan_col: 'sum',
+        'Biaya Adm 9%': 'sum', biaya_layanan_col: 'sum',
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
         'Total Penghasilan': 'sum' # Ini akan menjumlahkan (Penjualan Positif + Penjualan Negatif)
     })
@@ -2194,7 +2194,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # Sisa fungsi sama seperti sebelumnya, dengan penyesuaian pada pemanggilan `get_harga_beli_fuzzy`
     # summary_df['Penjualan Netto'] = (
     #     summary_df['Total Harga Produk'] - summary_df['Voucher Ditanggung Penjual'] -
-    #     summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 8%'] -
+    #     summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 9%'] -
     #     summary_df['Biaya Layanan 2%'] - summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] -
     #     summary_df['Biaya Proses Pesanan']
     # )
@@ -2203,7 +2203,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     if store_type in ['Pacific Bookstore']:
         summary_df['Penjualan Netto'] = (
             summary_df['Total Harga Produk'] - summary_df['Voucher Ditanggung Penjual'] -
-            summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 8%'] -
+            summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 9%'] -
             summary_df['Biaya Layanan 4,5%'] - summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] -
             summary_df['Biaya Proses Pesanan']
         )
@@ -2343,7 +2343,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     if store_type in ['Raka Bookstore', 'Toko Kaliba', 'Toko Monang', 'Toko Serayu']:
         label_biaya_adm = 'Biaya Adm 9%'
     else:
-        label_biaya_adm = 'Biaya Adm 8%'
+        label_biaya_adm = 'Biaya Adm 9%'
 
     # gmv_max_ads = iklan_data[iklan_data['Nama Iklan'].str.contains('Shop GMV Max', case=False, na=False, regex=False)]
     # if not gmv_max_ads.empty:
@@ -2433,7 +2433,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Eksemplar': summary_df['Jumlah Eksemplar'], 
         'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Penjualan': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
-        'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], label_biaya_adm: summary_df['Biaya Adm 8%'],
+        'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], label_biaya_adm: summary_df['Biaya Adm 9%'],
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
         'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan Klik': summary_df['Iklan Klik'], 'Biaya Packing': summary_df['Biaya Packing'],
@@ -2892,7 +2892,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         'Jumlah Terjual': 'sum', 
         'Total Harga Produk': 'sum',
         'Voucher Ditanggung Penjual': 'sum', 'Biaya Komisi AMS + PPN Shopee': 'sum',
-        'Biaya Adm 8%': 'sum', 'Biaya Layanan 2%': 'sum',
+        'Biaya Adm 9%': 'sum', 'Biaya Layanan 2%': 'sum',
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': 'sum', 'Biaya Proses Pesanan': 'sum',
         'Total Penghasilan': 'sum'
     }
@@ -2996,7 +2996,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
     # Hitungan selanjutnya
     summary_df['Penjualan Netto'] = (
         summary_df['Total Harga Produk'] - summary_df['Voucher Ditanggung Penjual'] -
-        summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 8%'] -
+        summary_df['Biaya Komisi AMS + PPN Shopee'] - summary_df['Biaya Adm 9%'] -
         summary_df['Biaya Layanan 2%'] - summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] -
         summary_df['Biaya Proses Pesanan']
     )
@@ -3166,7 +3166,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
         'Jumlah Terjual': summary_df['Jumlah Terjual'], 'Jumlah Eksemplar': summary_df['Jumlah Eksemplar'], 
         'Jumlah Pesanan': summary_df['Jumlah Pesanan'], 'Harga Satuan': summary_df['Harga Satuan'],
         'Total Penjualan': summary_df['Total Harga Produk'], 'Voucher Ditanggung Penjual': summary_df['Voucher Ditanggung Penjual'],
-        'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 8%': summary_df['Biaya Adm 8%'],
+        'Biaya Komisi AMS + PPN Shopee': summary_df['Biaya Komisi AMS + PPN Shopee'], 'Biaya Adm 9%': summary_df['Biaya Adm 9%'],
         'Biaya Layanan Gratis Ongkir Xtra 4,5%': summary_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'],
         'Biaya Proses Pesanan': summary_df['Biaya Proses Pesanan'],
         'Penjualan Netto': summary_df['Penjualan Netto'], 'Iklan Klik': summary_df['Iklan Klik'], 'Biaya Packing': summary_df['Biaya Packing'],
@@ -5070,20 +5070,7 @@ if marketplace_choice:
                     reports_df = pd.read_excel(uploaded_income_tiktok, sheet_name='Reports', header=0)
                     reports_df = clean_columns(reports_df)
                     reports_df.columns = [col.upper() for col in reports_df.columns]
-                    # if product_data_file:
-                    #     # Load file product data
-                    #     product_data_df = pd.read_excel(product_data_file)
-                    #     # Pastikan nama kolom konsisten
-                    #     product_data_df.columns = [col.upper().strip() for col in product_data_df.columns]
-                    # else:
-                    #     product_data_df = pd.DataFrame()
-                    # if product_data_file:
-                    #     product_data_df = pd.read_excel(product_data_file)
-                    #     product_data_df.columns = [col.upper().strip() for col in product_data_df.columns]
-                    # else:
-                    #     product_data_df = pd.DataFrame()
-                    #     if is_file_optional_tiktok('product_data', store_choice):
-                    #         st.info("File Product Data tidak diupload (opsional untuk toko ini), menggunakan data kosong.")
+
                     if product_data_file:
                         all_product_data = []
                         for prod_file in product_data_file:
@@ -5457,9 +5444,9 @@ if marketplace_choice:
                         if sheet_name == 'SUMMARY':
                             # Daftar kolom yang pakai format angka ribuan
                             if store_choice in ['Raka Bookstore', 'Toko Kaliba', 'Toko Monang', 'Toko Serayu']:
-                                label_adm_format = 'Biaya Adm 10%'
+                                label_adm_format = 'Biaya Adm 9%'
                             else:
-                                label_adm_format = 'Biaya Adm 8%'
+                                label_adm_format = 'Biaya Adm 9%'
                                 
                             number_columns = [
                                 'Jumlah Terjual', 'Jumlah Eksemplar', 'Jumlah Pesanan',
@@ -5579,26 +5566,6 @@ if marketplace_choice:
                                 if row_idx == len(df) - 1 and df.iloc[row_idx]['Nama Produk'] == 'Total':
                                     continue
                                 
-                                # Jika baris offline, terapkan format pink
-                                # if offline_mask.iloc[row_idx]:
-                                #     for col_num in range(len(df.columns)):
-                                #         col_name = df.columns[col_num]
-                                #         cell_value = df.iloc[row_idx, col_num]
-                                        
-                                #         # Pilih format sesuai tipe kolom
-                                #         if col_name == 'Persentase':
-                                #             fmt = offline_percent_format
-                                #         elif col_name in number_columns:
-                                #             fmt = offline_number_format
-                                #         elif col_name == 'Nama Produk':
-                                #             fmt = offline_names_format
-                                #         else:
-                                #             fmt = offline_row_format
-                                        
-                                #         if pd.notna(cell_value):
-                                #             worksheet.write(excel_row, col_num, cell_value, fmt)
-                                #         else:
-                                #             worksheet.write_blank(excel_row, col_num, None, fmt)
                                 if offline_mask.iloc[row_idx]:
                                     for col_num in range(len(df.columns)):
                                         col_name = df.columns[col_num]
