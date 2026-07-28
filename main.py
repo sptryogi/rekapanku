@@ -1362,6 +1362,19 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
             .str.replace(r'\s*\(medium\)', '', regex=True, case=False)
             .str.strip()
         )
+
+    mask_tahlilan_dama = (
+        rekap_df['Nama Produk'] == 
+        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | BANDUNG"
+    )
+    if 'Nama Variasi' in rekap_df.columns and mask_tahlilan_dama.any():
+        rekap_df.loc[mask_tahlilan_dama, 'Nama Variasi'] = (
+            rekap_df.loc[mask_tahlilan_dama, 'Nama Variasi']
+            .astype(str)
+            .str.split(',', n=1)
+            .str[-1]
+            .str.strip()
+        )
         
     # # 1. Pastikan 'Total Penghasilan' (dari income_df) adalah numerik
     # rekap_df['Total Penghasilan'] = clean_and_convert_to_numeric(rekap_df['Total Penghasilan'])
@@ -3070,7 +3083,10 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
                         "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A6 HVS AL AQEEL,Custom sisipan 1Lbr)",
                         "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A6 HVS AL AQEEL,Custom cover)",
                         "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A6 HVS AL AQEEL,Custom sisipan+cover)",
-                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A6 HVS AL AQEEL,Custom sisipan 2Lbr)"
+                        "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG) (A6 HVS AL AQEEL,Custom sisipan 2Lbr)",
+                        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | BANDUNG (Tidak custom)",
+                        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | BANDUNG (Custom sisipan 1 hal)",
+                        "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | BANDUNG (Custom sisipan 2 hal)"
                     ]
     # kondisi_custom = summary_df['Nama Produk Original'].str.contains(produk_custom_str, na=False)
     pattern_custom = '|'.join([re.escape(p) for p in produk_custom_str])
@@ -3190,6 +3206,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
             "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida": "Al Aqeel A5 Kertas Koran",
             "AL QUR'AN CUSTOM NAMA FOTO DI COVER SISIPAN ACARA TASYAKUR TAHLIL YASIN": "AL QUR'AN CUSTOM COVER SISIPAN",
             "PAKET MURAH Alquran Al-Aqeel Tanpa Terjemahan | BANDUNG | Alquran Wakaf Hadiah Hampers Islami": "PAKET MURAH Al-Aqeel Tanpa Terjemahan",
+            "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | BANDUNG": "Al Aqeel A6 Pastel HVS Edisi Tahlilan",
             "Al Quran Gold Silver Al Aqeel Besar Sedang Kecil": "Al Aqeel Gold Silver",
             "ALQURAN A6 HVS EDISI TAHLIL TERBARU": "al aqeel A6 edisi tahlilan",
             "Al Quran Wakaf Saku A6 Al Aqeel HVS Paket Wakaf": "Al Aqeel A6 HVS",
