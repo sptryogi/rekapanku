@@ -1908,6 +1908,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     produk_khusus = [
         "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta",
         "AL QUR'AN GOLD TERMURAH",
+        "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami",
         "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
         "Alquran Cover Emas Kertas HVS Al Aqeel Gold Murah",
         "Alquran Cover Emas Kertas HVS Al Aqeel A5 Gold Murah",
@@ -2096,6 +2097,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
     # LOGIKA STANDAR UNTUK PRODUK KHUSUS LAINNYA (TANPA GENERATE VARIASI)
     produk_khusus_biasa = [
         "Paket Alquran Khusus Wakaf Al Aqeel A5 Kertas Koran",
+        "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami",
         "AL QUR'AN A6 NON TERJEMAH HVS WARNA PASTEL",
         "AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | Jakarta"
         "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa",
