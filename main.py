@@ -2306,7 +2306,11 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
                          "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A5 Koran,Sisipan 1 Hal)", "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN (Tidak custom)",
                          "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A5 Koran,Sisipan 2 Hal)", "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN (Sisipan 1 hal)",
                          "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A6 Pastel,Sisipan 1 Hal)", "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN (Sisipan 2 hal)",
-                         "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A6 Pastel,Sisipan 2 Hal)", "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN (Jacket)"]
+                         "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang (A6 Pastel,Sisipan 2 Hal)", "Alquran Edisi Tahlilan A6 Pengganti Buku Yasin Terjemah | MEDAN (Jacket)",
+                         "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami (AL AQEEL A5 KORAN,SISIPAN 1 HAL+QURAN)", "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami (AL AQEEL A5 KORAN,SISIPAN 2 HAL+QURAN)",
+                         "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami (AL AQEEL A6 HVS,SISIPAN 1 HAL+QURAN)", "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami (AL AQEEL A6 HVS,SISIPAN 2 HAL+QURAN)",
+                         "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami (AL AQEEL GOLD A5 HVS,SISIPAN 1 HAL+QURAN)", "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami (AL AQEEL GOLD A5 HVS,SISIPAN 2 HAL+QURAN)",
+                         "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA | (standar/tanpa custom)", "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA | (sisipan 1 halaman)", "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA | (sisipan 2 halaman)"]
     
     # Ubah list menjadi satu string regex, pisahkan dengan '|' (OR)
     # Kita gunakan re.escape() untuk memastikan karakter '|' di dalam string tahlilan tidak merusak regex
@@ -2907,7 +2911,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
 
     # --- LOGIKA IKLAN (Tetap sama) ---
     summary_df['Iklan Klik'] = 0.0
-    produk_khusus_raw = ["AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)"]
+    produk_khusus_raw = ["AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | BANDUNG", "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)"]
     produk_khusus = [re.sub(r'\s+', ' ', name.replace('\xa0', ' ')).strip() for name in produk_khusus_raw]
     iklan_data = iklan_final_df[iklan_final_df['Nama Iklan'] != 'TOTAL'][['Nama Iklan', 'Biaya', 'Produk Terjual', 'Omzet Penjualan']].copy()
     # Konfigurasi Produk Khusus Dama
@@ -2955,7 +2959,7 @@ def process_summary_dama(rekap_df, iklan_final_df, katalog_dama_df, harga_custom
 
     # Logika Standar Dama untuk Tahlil
     if not iklan_data.empty:
-        p_tahlil = ["AL QURAN AL AQEEL A6 KERTAS HVS EDISI TAHLILAN (BANDUNG)", "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)"]
+        p_tahlil = ["AL QUR'AN EDISI TAHLILAN 30 Juz + Doa Tahlil | Pengganti Buku Yasin | Al Aqeel A6 Pastel HVS Edisi Tahlilan | BANDUNG", "AL QURAN AL AQEEL A6 KERTAS HVS EDISI TAHLILAN (BANDUNG)", "AL QURAN CUSTOM NAMA FOTO SISIPAN COVER ACARA TASYAKUR TAHLIL YASIN (BANDUNG)", "Alquran Al Aqeel A5 Kertas Koran Tanpa Terjemahan Wakaf Ibtida (BANDUNG)", "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers (BANDUNG)"]
         pola_tahlil = "|".join(re.escape(x) for x in p_tahlil)
         matching_ads = iklan_data[
             iklan_data['Nama Iklan'].astype(str).str.contains(pola_tahlil, case=False, na=False, regex=True)
