@@ -5000,10 +5000,78 @@ if marketplace_choice:
                     # --- ALUR PROSES SHOPEE (KODE LAMA ANDA) ---
                     status_text.text("Membaca file Shopee...")
                     order_all_df = pd.read_excel(uploaded_order, dtype={'Harga Setelah Diskon': str, 'Subtotal Pesanan': str})
-                    income_dilepas_df = pd.read_excel(uploaded_income, sheet_name='Income', skiprows=5)
+                    # income_dilepas_df = pd.read_excel(uploaded_income, sheet_name='Income', skiprows=5)
+                    income_dilepas_df = pd.read_excel(uploaded_income, sheet_name='Penghasilan', skiprows=2)
+                    
+                    # 2. Filter hanya baris 'Order'
+                    if 'Lihat berdasarkan' in income_dilepas_df.columns:
+                        income_dilepas_df = income_dilepas_df[
+                            income_dilepas_df['Lihat berdasarkan'].astype(str).str.strip() == 'Order'
+                        ].copy()
+                    
+                    # 3. Mapping kolom baru → nama lama (supaya fungsi lama tetap jalan)
+                    
+                    # --- a) Total Penghasilan ---
+                    if 'Jumlah Dibayar Pembeli' in income_dilepas_df.columns:
+                        income_dilepas_df.rename(
+                            columns={'Jumlah Dibayar Pembeli': 'Total Penghasilan'}, 
+                            inplace=True
+                        )
+                    
+                    # --- b) Voucher disponsor oleh Penjual (gabungan 2 kolom) ---
+                    penyesuaian_cols = ['Penyesuaian Penjual - 1', 'Penyesuaian Penjual - 2']
+                    available_penyesuaian = [c for c in penyesuaian_cols if c in income_dilepas_df.columns]
+                    
+                    if available_penyesuaian:
+                        for c in available_penyesuaian:
+                            income_dilepas_df[c] = clean_and_convert_to_numeric(income_dilepas_df[c])
+                        income_dilepas_df['Voucher disponsor oleh Penjual'] = (
+                            income_dilepas_df[available_penyesuaian].sum(axis=1)
+                        )
+                    else:
+                        income_dilepas_df['Voucher disponsor oleh Penjual'] = 0
+                    
+                    # --- c) Biaya Layanan (ambil dari sheet Seller Fee, merge ke paling kanan) ---
+                    try:
+                        seller_fee_df = pd.read_excel(uploaded_income, sheet_name='Seller Fee', skiprows=2)
+                        
+                        # Deteksi otomatis kolom biaya layanan (sesuaikan nama jika berbeda)
+                        layanan_col = None
+                        for c in seller_fee_df.columns:
+                            col_lower = str(c).lower()
+                            if any(x in col_lower for x in ['layanan', 'service', 'fee']):
+                                layanan_col = c
+                                break
+                        
+                        if 'No. Pesanan' in seller_fee_df.columns and layanan_col:
+                            # Bersihkan & agregasi per No. Pesanan
+                            seller_fee_df['No. Pesanan'] = seller_fee_df['No. Pesanan'].astype(str).str.strip()
+                            seller_fee_df[layanan_col] = clean_and_convert_to_numeric(seller_fee_df[layanan_col])
+                            
+                            sf_agg = seller_fee_df.groupby('No. Pesanan')[layanan_col].sum().reset_index()
+                            sf_agg.rename(columns={layanan_col: 'Biaya Layanan'}, inplace=True)
+                            
+                            # Merge ke income (taruh di paling kanan)
+                            income_dilepas_df['No. Pesanan'] = income_dilepas_df['No. Pesanan'].astype(str).str.strip()
+                            income_dilepas_df = pd.merge(
+                                income_dilepas_df, sf_agg, 
+                                on='No. Pesanan', how='left'
+                            )
+                            income_dilepas_df['Biaya Layanan'] = income_dilepas_df['Biaya Layanan'].fillna(0)
+                        else:
+                            st.warning("Kolom Biaya Layanan/No. Pesanan tidak ditemukan di sheet Seller Fee. Di-set 0.")
+                            income_dilepas_df['Biaya Layanan'] = 0
+                    except Exception as e:
+                        st.warning(f"Gagal membaca sheet Seller Fee: {e}. Biaya Layanan di-set 0.")
+                        income_dilepas_df['Biaya Layanan'] = 0
+                    
+                    # Fallback safety: kalau kolom lama ini tidak ada di format baru, buatkan 0
+                    if 'Promo Gratis Ongkir dari Penjual' not in income_dilepas_df.columns:
+                        income_dilepas_df['Promo Gratis Ongkir dari Penjual'] = 0
                     # if store_choice == "Human Store":
                     #     service_fee_df = pd.read_excel(uploaded_income, sheet_name='Service Fee Details', skiprows=1)
                     # iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
+                    
                     if uploaded_iklan:
                         iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
                     else:
@@ -5034,8 +5102,13 @@ if marketplace_choice:
                           order_all_df[col] = clean_order_all_numeric(order_all_df[col])
     
                     # --- Langkah 2: Bersihkan file-file lainnya dengan fungsi lama ---
+                    # other_financial_data_to_clean = [
+                    #     (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan', 'Total Penghasilan']),
+                    #     (iklan_produk_df, ['Biaya', 'Omzet Penjualan']),
+                    #     (seller_conversion_df, ['Pengeluaran(Rp)'])
+                    # ]
                     other_financial_data_to_clean = [
-                        (income_dilepas_df, ['Voucher dari Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan', 'Total Penghasilan']),
+                        (income_dilepas_df, ['Voucher disponsor oleh Penjual', 'Biaya Administrasi', 'Biaya Proses Pesanan', 'Total Penghasilan', 'Biaya Layanan']),
                         (iklan_produk_df, ['Biaya', 'Omzet Penjualan']),
                         (seller_conversion_df, ['Pengeluaran(Rp)'])
                     ]
