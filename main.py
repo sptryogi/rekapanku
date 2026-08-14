@@ -457,7 +457,10 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         "Alquran Al Aqeel A7 Gold Kertas HVS | Alquran Souvenir Metalik | Yogyakarta",
         "Alquran Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Yogyakarta",
         "Alquran Al Aqeel Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemahan | Yogyakarta",
-        "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas"
+        "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas",
+        "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Yogyakarta",
+        "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Garut",
+        "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang"
         
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
@@ -502,7 +505,9 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
                     "Alquran Al Aqeel A6 Kertas HVS Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
                     "Alquran Wakaf Al Aqeel A5 Kertas Koran Terjangkau | Rasm Utsmani Bombay | Yogjakarta",
                     "Alquran Al Aqeel A7 Gold Kertas HVS | Alquran Souvenir Metalik | Yogyakarta",
-                    "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas"
+                    "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas",
+                    "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Yogyakarta",
+                    "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Garut"
                 ]
                 if any(produk in nama_produk_clean for produk in produk_yang_ambil_full_variasi):
                     # REVISI: Ambil seluruh string variasi, jangan di-split
@@ -1767,7 +1772,7 @@ def calculate_eksemplar(nama_produk, jumlah_terjual):
         paket_match = re.search(r'PAKET\s*ISI\s*(\d+)', nama_produk_upper)
         # Cari "SATUAN"
         satuan_match = 'SATUAN' in nama_produk_upper
-        paket_khusus = re.search(r"PAKET.*WAKAF.*HEMAT.*MURAH.*ISI.*50.*PCS", nama_produk_upper)
+        paket_khusus = re.search(r"PAKET.*WAKAF.*HEMAT.*ISI.*50.", nama_produk_upper)
         
         faktor = 1 # Default adalah 1
         
@@ -1991,7 +1996,10 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Alquran Al Aqeel A7 Gold Kertas HVS | Alquran Souvenir Metalik | Yogyakarta",
         "Alquran Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Yogyakarta",
         "Alquran Al Aqeel Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemahan | Yogyakarta",
-        "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas"
+        "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas",
+        "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Yogyakarta",
+        "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Garut",
+        "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang"
         
         
     ]
@@ -2166,7 +2174,10 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Alquran Al Aqeel A7 Gold Kertas HVS | Alquran Souvenir Metalik | Yogyakarta",
         "Alquran Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Yogyakarta",
         "Alquran Al Aqeel Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemahan | Yogyakarta",
-        "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas"
+        "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas",
+        "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Yogyakarta",
+        "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Garut",
+        "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang"
     ]
     
     for p_biasa in produk_khusus_biasa:
@@ -2562,7 +2573,9 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers": "Al Aqeel A6 Edisi Tahlilan",
             "Al-Qur'an Al Aqeel A5 Kertas Koran 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Hampers Tebal dan Jelas": "Al Aqeel A5 Kertas Koran",
             "Al-Qur'an Al Aqeel A7 GOLD Kertas HVS 18 Baris | GARUT | Alquran untuk Pengajian Wakaf Hadiah Hampers Tulisan Besar": "Al Aqeel A7 GOLD",
-            "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas": "Al-Qur'an Custom"
+            "Al-Qur'an Custom Foto Nama | GARUT | Alquran Untuk Wakaf Tasyakuran Tahlilan A5 & A6 Tebal dan Jelas": "Al-Qur'an Custom",
+            "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Garut": "Paket Wakaf Al Aqeel Isi 50"
+
         }
         
     elif store_type == "Raka Bookstore":
@@ -2572,7 +2585,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "Al-Qur'an Edisi Tahlilan A6 | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Semarang": "Al-Qur'an A6 Edisi Tahlilan Custom",
             "Custom Al-Qur'an Mengenang Wafat Ukuran A5 A6 | Semarang": "Custom Al-Qur'an Mengenang Wafat",
             "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Semarang": "Paket Wakaf Hemat Isi 50",
-            "Al-Qur'an Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang": "Al Aqeel A6 Pastel"
+            "Al-Qur'an Al Aqeel A6 Pastel HVS | Alquran Souvenir Cantik Hampers | Semarang": "Al Aqeel A6 Pastel",
+            "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang": "Faheem A5 KK"
         }
 
     elif store_type == "Toko Monang":
@@ -2593,7 +2607,9 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
             "Alquran Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemah | Yogyakarta": "Al-Qur'an A6 Edisi Tahlilan Custom",
             "Alquran Al Aqeel Edisi Tahlilan A6 HVS | Custom Pengganti Yasin | 30 Juz Dengan Yasin Tahlil Terjemahan | Yogyakarta": "Al-Qur'an A6 Edisi Tahlilan Custom",
             "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas": "Custom Al-Qur'an Foto Nama dan Tahlil",
-            "Alquran Al Aqeel A6 Kertas HVS Terjangkau | Rasm Utsmani Bombay | Yogjakarta": "Al Aqeel A6 HVS"
+            "Alquran Al Aqeel A6 Kertas HVS Terjangkau | Rasm Utsmani Bombay | Yogjakarta": "Al Aqeel A6 HVS",
+            "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Yogyakarta": "Paket Wakaf Al Aqeel isi 50"
+
         }
 
         
