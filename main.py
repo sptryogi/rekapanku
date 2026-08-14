@@ -624,11 +624,26 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     #    Hitung dulu ada berapa produk dalam satu pesanan
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
 
+    # rekap_df = pd.merge(rekap_df, biaya_layanan_map, on='No. Pesanan', how='left')
+    # rekap_df['Biaya Layanan Income'] = rekap_df['Biaya Layanan Income'].fillna(0)
+    
+    # # Bagi Biaya Layanan per jumlah produk dalam satu pesanan
+    # rekap_df['Biaya Layanan Gratis Ongkir Dibagi'] = rekap_df['Biaya Layanan Income'] / product_count_per_order
     rekap_df = pd.merge(rekap_df, biaya_layanan_map, on='No. Pesanan', how='left')
     rekap_df['Biaya Layanan Income'] = rekap_df['Biaya Layanan Income'].fillna(0)
     
     # Bagi Biaya Layanan per jumlah produk dalam satu pesanan
     rekap_df['Biaya Layanan Gratis Ongkir Dibagi'] = rekap_df['Biaya Layanan Income'] / product_count_per_order
+    
+    # --- TAMBAHAN: Merge Biaya Gratis Ongkir XTRA dari income ---
+    if 'Biaya Gratis Ongkir XTRA' in income_df.columns:
+        ongkir_map = income_df.groupby('No. Pesanan')['Biaya Gratis Ongkir XTRA'].sum().reset_index()
+        rekap_df = pd.merge(rekap_df, ongkir_map, on='No. Pesanan', how='left')
+    else:
+        rekap_df['Biaya Gratis Ongkir XTRA'] = 0
+    rekap_df['Biaya Gratis Ongkir XTRA'] = rekap_df['Biaya Gratis Ongkir XTRA'].fillna(0)
+    rekap_df['Biaya Gratis Ongkir XTRA Dibagi'] = rekap_df['Biaya Gratis Ongkir XTRA'] / product_count_per_order
+    
 
     rekap_df['Total Penghasilan Dibagi'] = (rekap_df['Total Penghasilan'] / product_count_per_order).fillna(0)
 
@@ -680,11 +695,12 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         rekap_df['Biaya Layanan 2%'] = 0
         
         # Biaya Layanan Gratis Ongkir Xtra 4,5%: hanya jika Biaya Layanan di income ≠ 0
-        rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
-            rekap_df['Biaya Layanan Income'] != 0,
-            rekap_df['Biaya Layanan Gratis Ongkir Dibagi'],
-            0
-        )
+        # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = np.where(
+        #     rekap_df['Biaya Layanan Income'] != 0,
+        #     rekap_df['Biaya Layanan Gratis Ongkir Dibagi'],
+        #     0
+        # )
+        rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Gratis Ongkir XTRA Dibagi']
         
         # Biaya Proses Pesanan Dibagi: hanya jika Biaya Proses Pesanan di income ≠ 0
         rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
@@ -697,7 +713,8 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         #         basis_biaya * 0.06,   # ← 6% mulai 10 Mei 2026
         #         basis_biaya * 0.045    # ← 9% sebelumnya
         #     )
-        rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Layanan Gratis Ongkir Dibagi']
+        # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Layanan Gratis Ongkir Dibagi']
+        rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Gratis Ongkir XTRA Dibagi']
         rekap_df['Biaya Proses Pesanan Dibagi'] = 1250 / product_count_per_order
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
@@ -1078,9 +1095,21 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
     rekap_df['Total Penghasilan Dibagi'] = (rekap_df['Total Penghasilan'] / product_count_per_order).fillna(0)
 
+    # rekap_df = pd.merge(rekap_df, biaya_layanan_map, on='No. Pesanan', how='left')
+    # rekap_df['Biaya Layanan Income'] = rekap_df['Biaya Layanan Income'].fillna(0)
+    # rekap_df['Biaya Layanan Gratis Ongkir Dibagi'] = rekap_df['Biaya Layanan Income'] / product_count_per_order
     rekap_df = pd.merge(rekap_df, biaya_layanan_map, on='No. Pesanan', how='left')
     rekap_df['Biaya Layanan Income'] = rekap_df['Biaya Layanan Income'].fillna(0)
     rekap_df['Biaya Layanan Gratis Ongkir Dibagi'] = rekap_df['Biaya Layanan Income'] / product_count_per_order
+    
+    # --- TAMBAHAN: Merge Biaya Gratis Ongkir XTRA dari income ---
+    if 'Biaya Gratis Ongkir XTRA' in income_df.columns:
+        ongkir_map = income_df.groupby('No. Pesanan')['Biaya Gratis Ongkir XTRA'].sum().reset_index()
+        rekap_df = pd.merge(rekap_df, ongkir_map, on='No. Pesanan', how='left')
+    else:
+        rekap_df['Biaya Gratis Ongkir XTRA'] = 0
+    rekap_df['Biaya Gratis Ongkir XTRA'] = rekap_df['Biaya Gratis Ongkir XTRA'].fillna(0)
+    rekap_df['Biaya Gratis Ongkir XTRA Dibagi'] = rekap_df['Biaya Gratis Ongkir XTRA'] / product_count_per_order
 
     # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
     rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher disponsor oleh Penjual'])
@@ -1118,7 +1147,8 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     #     basis_biaya * 0.06,  # ← 6% mulai 10 Mei 2026
     #     basis_biaya * 0.045
     # )
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Layanan Gratis Ongkir Dibagi']
+    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Layanan Gratis Ongkir Dibagi']
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Gratis Ongkir XTRA Dibagi']
     
     # 4. Terapkan logika "hanya di baris pertama" HANYA untuk biaya yang benar-benar per-pesanan
     order_level_costs = [
@@ -1474,9 +1504,21 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     product_count_per_order = rekap_df.groupby('No. Pesanan')['No. Pesanan'].transform('size')
     rekap_df['Total Penghasilan Dibagi'] = (rekap_df['Total Penghasilan'] / product_count_per_order).fillna(0)
 
+    # rekap_df = pd.merge(rekap_df, biaya_layanan_map, on='No. Pesanan', how='left')
+    # rekap_df['Biaya Layanan Income'] = rekap_df['Biaya Layanan Income'].fillna(0)
+    # rekap_df['Biaya Layanan Gratis Ongkir Dibagi'] = rekap_df['Biaya Layanan Income'] / product_count_per_order
     rekap_df = pd.merge(rekap_df, biaya_layanan_map, on='No. Pesanan', how='left')
     rekap_df['Biaya Layanan Income'] = rekap_df['Biaya Layanan Income'].fillna(0)
     rekap_df['Biaya Layanan Gratis Ongkir Dibagi'] = rekap_df['Biaya Layanan Income'] / product_count_per_order
+    
+    # --- TAMBAHAN: Merge Biaya Gratis Ongkir XTRA dari income ---
+    if 'Biaya Gratis Ongkir XTRA' in income_df.columns:
+        ongkir_map = income_df.groupby('No. Pesanan')['Biaya Gratis Ongkir XTRA'].sum().reset_index()
+        rekap_df = pd.merge(rekap_df, ongkir_map, on='No. Pesanan', how='left')
+    else:
+        rekap_df['Biaya Gratis Ongkir XTRA'] = 0
+    rekap_df['Biaya Gratis Ongkir XTRA'] = rekap_df['Biaya Gratis Ongkir XTRA'].fillna(0)
+    rekap_df['Biaya Gratis Ongkir XTRA Dibagi'] = rekap_df['Biaya Gratis Ongkir XTRA'] / product_count_per_order
 
     # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
     rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher disponsor oleh Penjual'])
@@ -1511,7 +1553,8 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     #     basis_biaya * 0.06,  # ← 6% mulai 10 Mei 2026
     #     basis_biaya * 0.045
     # )
-    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Layanan Gratis Ongkir Dibagi']
+    # rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Layanan Gratis Ongkir Dibagi']
+    rekap_df['Biaya Layanan Gratis Ongkir Xtra 4,5%'] = rekap_df['Biaya Gratis Ongkir XTRA Dibagi']
     # --- AKHIR LOGIKA DAMA.ID STORE ---
     
     # Terapkan logika "hanya di baris pertama" untuk biaya per-pesanan
@@ -5112,7 +5155,19 @@ if marketplace_choice:
                     for col in bentrok_cols:
                         if col in income_dilepas_df.columns:
                             income_dilepas_df.drop(columns=[col], inplace=True)
+                            
+                    # --- d) Biaya Gratis Ongkir XTRA (dari sheet Penghasilan) ---
+                    # Ambil semua kolom yang mengandung 'Biaya Gratis Ongkir XTRA'
+                    ongkir_xtra_cols = [c for c in income_dilepas_df.columns if 'Biaya Gratis Ongkir XTRA' in c]
                     
+                    if ongkir_xtra_cols:
+                        for c in ongkir_xtra_cols:
+                            income_dilepas_df[c] = clean_and_convert_to_numeric(income_dilepas_df[c])
+                        # Jumlahkan semua kolom ongkir XTRA, hilangkan tanda minus
+                        income_dilepas_df['Biaya Gratis Ongkir XTRA'] = income_dilepas_df[ongkir_xtra_cols].sum(axis=1).abs()
+                    else:
+                        income_dilepas_df['Biaya Gratis Ongkir XTRA'] = 0
+                        
                     # Fallback: kolom lama yang mungkin tidak ada di format baru
                     if 'Promo Gratis Ongkir dari Penjual' not in income_dilepas_df.columns:
                         income_dilepas_df['Promo Gratis Ongkir dari Penjual'] = 0
