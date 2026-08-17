@@ -598,7 +598,6 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
 
     if 'Biaya Layanan' in income_df.columns:
         income_df['Biaya Layanan Clean'] = clean_and_convert_to_numeric(income_df['Biaya Layanan'])
-        # Agregasi per No. Pesanan (sum karena bisa multiple baris per order di income)
         biaya_layanan_map = (
             income_df.groupby('No. Pesanan')['Biaya Layanan Clean']
             .sum()
@@ -611,6 +610,21 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     else:
         st.warning("Kolom 'Biaya Layanan' tidak ditemukan di file Income.")
         biaya_layanan_map = pd.DataFrame(columns=['No. Pesanan', 'Biaya Layanan Income'])
+    
+    # --- TAMBAHAN: Agregasi Biaya Gratis Ongkir XTRA dari income ---
+    if 'Biaya Gratis Ongkir XTRA' in income_df.columns:
+        income_df['Biaya Gratis Ongkir XTRA Clean'] = clean_and_convert_to_numeric(income_df['Biaya Gratis Ongkir XTRA'])
+        ongkir_xtra_map = (
+            income_df.groupby('No. Pesanan')['Biaya Gratis Ongkir XTRA Clean']
+            .sum()
+            .reset_index()
+        )
+        ongkir_xtra_map.rename(
+            columns={'Biaya Gratis Ongkir XTRA Clean': 'Biaya Gratis Ongkir XTRA Income'},
+            inplace=True
+        )
+    else:
+        ongkir_xtra_map = pd.DataFrame(columns=['No. Pesanan', 'Biaya Gratis Ongkir XTRA Income'])
         
     # 1. Pastikan Total Harga Produk ada dan numerik
     rekap_df['Subtotal Pesanan'] = rekap_df.get('Subtotal Pesanan', 0).fillna(0)
@@ -635,14 +649,9 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
     # Bagi Biaya Layanan per jumlah produk dalam satu pesanan
     rekap_df['Biaya Layanan Gratis Ongkir Dibagi'] = rekap_df['Biaya Layanan Income'] / product_count_per_order
     
-    # --- TAMBAHAN: Merge Biaya Gratis Ongkir XTRA dari income ---
-    if 'Biaya Gratis Ongkir XTRA' in income_df.columns:
-        ongkir_map = income_df.groupby('No. Pesanan')['Biaya Gratis Ongkir XTRA'].sum().reset_index()
-        rekap_df = pd.merge(rekap_df, ongkir_map, on='No. Pesanan', how='left')
-    else:
-        rekap_df['Biaya Gratis Ongkir XTRA'] = 0
-    rekap_df['Biaya Gratis Ongkir XTRA'] = rekap_df['Biaya Gratis Ongkir XTRA'].fillna(0)
-    rekap_df['Biaya Gratis Ongkir XTRA Dibagi'] = rekap_df['Biaya Gratis Ongkir XTRA'] / product_count_per_order
+    rekap_df = pd.merge(rekap_df, ongkir_xtra_map, on='No. Pesanan', how='left')
+    rekap_df['Biaya Gratis Ongkir XTRA Income'] = rekap_df['Biaya Gratis Ongkir XTRA Income'].fillna(0)
+    rekap_df['Biaya Gratis Ongkir XTRA Dibagi'] = rekap_df['Biaya Gratis Ongkir XTRA Income'] / product_count_per_order
     
 
     rekap_df['Total Penghasilan Dibagi'] = (rekap_df['Total Penghasilan'] / product_count_per_order).fillna(0)
@@ -1085,6 +1094,21 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     else:
         st.warning("Kolom 'Biaya Layanan' tidak ditemukan di file Income.")
         biaya_layanan_map = pd.DataFrame(columns=['No. Pesanan', 'Biaya Layanan Income'])
+    
+    # --- TAMBAHAN: Agregasi Biaya Gratis Ongkir XTRA dari income ---
+    if 'Biaya Gratis Ongkir XTRA' in income_df.columns:
+        income_df['Biaya Gratis Ongkir XTRA Clean'] = clean_and_convert_to_numeric(income_df['Biaya Gratis Ongkir XTRA'])
+        ongkir_xtra_map = (
+            income_df.groupby('No. Pesanan')['Biaya Gratis Ongkir XTRA Clean']
+            .sum()
+            .reset_index()
+        )
+        ongkir_xtra_map.rename(
+            columns={'Biaya Gratis Ongkir XTRA Clean': 'Biaya Gratis Ongkir XTRA Income'},
+            inplace=True
+        )
+    else:
+        ongkir_xtra_map = pd.DataFrame(columns=['No. Pesanan', 'Biaya Gratis Ongkir XTRA Income'])
 
     # --- LOGIKA BARU UNTUK Pacifik Bookstore ---
     # 1. Pastikan Total Harga Produk ada dan numerik
@@ -1101,15 +1125,10 @@ def process_rekap_pacific(order_df, income_df, seller_conv_df):
     rekap_df = pd.merge(rekap_df, biaya_layanan_map, on='No. Pesanan', how='left')
     rekap_df['Biaya Layanan Income'] = rekap_df['Biaya Layanan Income'].fillna(0)
     rekap_df['Biaya Layanan Gratis Ongkir Dibagi'] = rekap_df['Biaya Layanan Income'] / product_count_per_order
-    
-    # --- TAMBAHAN: Merge Biaya Gratis Ongkir XTRA dari income ---
-    if 'Biaya Gratis Ongkir XTRA' in income_df.columns:
-        ongkir_map = income_df.groupby('No. Pesanan')['Biaya Gratis Ongkir XTRA'].sum().reset_index()
-        rekap_df = pd.merge(rekap_df, ongkir_map, on='No. Pesanan', how='left')
-    else:
-        rekap_df['Biaya Gratis Ongkir XTRA'] = 0
-    rekap_df['Biaya Gratis Ongkir XTRA'] = rekap_df['Biaya Gratis Ongkir XTRA'].fillna(0)
-    rekap_df['Biaya Gratis Ongkir XTRA Dibagi'] = rekap_df['Biaya Gratis Ongkir XTRA'] / product_count_per_order
+
+    rekap_df = pd.merge(rekap_df, ongkir_xtra_map, on='No. Pesanan', how='left')
+    rekap_df['Biaya Gratis Ongkir XTRA Income'] = rekap_df['Biaya Gratis Ongkir XTRA Income'].fillna(0)
+    rekap_df['Biaya Gratis Ongkir XTRA Dibagi'] = rekap_df['Biaya Gratis Ongkir XTRA Income'] / product_count_per_order
 
     # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
     rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher disponsor oleh Penjual'])
@@ -1496,6 +1515,21 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     else:
         st.warning("Kolom 'Biaya Layanan' tidak ditemukan di file Income.")
         biaya_layanan_map = pd.DataFrame(columns=['No. Pesanan', 'Biaya Layanan Income'])
+    
+    # --- TAMBAHAN: Agregasi Biaya Gratis Ongkir XTRA dari income ---
+    if 'Biaya Gratis Ongkir XTRA' in income_df.columns:
+        income_df['Biaya Gratis Ongkir XTRA Clean'] = clean_and_convert_to_numeric(income_df['Biaya Gratis Ongkir XTRA'])
+        ongkir_xtra_map = (
+            income_df.groupby('No. Pesanan')['Biaya Gratis Ongkir XTRA Clean']
+            .sum()
+            .reset_index()
+        )
+        ongkir_xtra_map.rename(
+            columns={'Biaya Gratis Ongkir XTRA Clean': 'Biaya Gratis Ongkir XTRA Income'},
+            inplace=True
+        )
+    else:
+        ongkir_xtra_map = pd.DataFrame(columns=['No. Pesanan', 'Biaya Gratis Ongkir XTRA Income'])
 
     # --- LOGIKA PERHITUNGAN BIAYA UNTUK DAMA.ID STORE ---
     rekap_df['Subtotal Pesanan'] = rekap_df.get('Subtotal Pesanan', 0).fillna(0) 
@@ -1511,14 +1545,9 @@ def process_rekap_dama(order_df, income_df, seller_conv_df):
     rekap_df['Biaya Layanan Income'] = rekap_df['Biaya Layanan Income'].fillna(0)
     rekap_df['Biaya Layanan Gratis Ongkir Dibagi'] = rekap_df['Biaya Layanan Income'] / product_count_per_order
     
-    # --- TAMBAHAN: Merge Biaya Gratis Ongkir XTRA dari income ---
-    if 'Biaya Gratis Ongkir XTRA' in income_df.columns:
-        ongkir_map = income_df.groupby('No. Pesanan')['Biaya Gratis Ongkir XTRA'].sum().reset_index()
-        rekap_df = pd.merge(rekap_df, ongkir_map, on='No. Pesanan', how='left')
-    else:
-        rekap_df['Biaya Gratis Ongkir XTRA'] = 0
-    rekap_df['Biaya Gratis Ongkir XTRA'] = rekap_df['Biaya Gratis Ongkir XTRA'].fillna(0)
-    rekap_df['Biaya Gratis Ongkir XTRA Dibagi'] = rekap_df['Biaya Gratis Ongkir XTRA'] / product_count_per_order
+    rekap_df = pd.merge(rekap_df, ongkir_xtra_map, on='No. Pesanan', how='left')
+    rekap_df['Biaya Gratis Ongkir XTRA Income'] = rekap_df['Biaya Gratis Ongkir XTRA Income'].fillna(0)
+    rekap_df['Biaya Gratis Ongkir XTRA Dibagi'] = rekap_df['Biaya Gratis Ongkir XTRA Income'] / product_count_per_order
 
     # Bersihkan kolom keuangan yang akan kita gunakan (aman jika sudah numerik)
     rekap_df['Voucher dari Penjual'] = clean_and_convert_to_numeric(rekap_df['Voucher disponsor oleh Penjual'])
@@ -5095,58 +5124,79 @@ if marketplace_choice:
                     
                     # --- c) Biaya Layanan (ambil dari sheet Seller Fee) ---
                     try:
-                        seller_fee_df = pd.read_excel(uploaded_income, sheet_name='Seller Fee', skiprows=2)
+                        seller_fee_df = pd.read_excel(uploaded_income, sheet_name='Seller Fee', skiprows=1)
                         seller_fee_df.columns = [str(c).strip() for c in seller_fee_df.columns]
                         
-                        # Cari kolom No. Pesanan di Seller Fee (bisa beda nama)
-                        no_pesanan_candidates = ['No. Pesanan', 'No.Pesanan', 'Order ID', 'ID Pesanan', 'Nomor Pesanan']
+                        # Cari kolom No. Pesanan (flexible)
                         no_pesanan_col_sf = None
-                        for c in no_pesanan_candidates:
-                            if c in seller_fee_df.columns:
+                        for c in seller_fee_df.columns:
+                            if 'No.' in c and 'Pesanan' in c:
                                 no_pesanan_col_sf = c
                                 break
+                        if not no_pesanan_col_sf and 'No. Pesanan' in seller_fee_df.columns:
+                            no_pesanan_col_sf = 'No. Pesanan'
                         
-                        # Cari kolom Biaya Layanan (bisa beda nama)
-                        layanan_candidates = ['Biaya Layanan', 'Layanan', 'Service Fee', 'Fee Layanan', 
-                                              'Biaya Layanan (Rp)', 'Layanan (Rp)', 'Service Fee (Rp)']
-                        layanan_col_sf = None
-                        for c in layanan_candidates:
-                            if c in seller_fee_df.columns:
-                                layanan_col_sf = c
-                                break
+                        # Cari kolom Biaya Layanan
+                        layanan_col_sf = 'Biaya Layanan' if 'Biaya Layanan' in seller_fee_df.columns else None
                         
-                        # Kalau tidak ketemu pakai auto-scan
-                        if not layanan_col_sf:
+                        # Cari kolom Biaya Gratis Ongkir XTRA (exact dulu, lalu partial)
+                        ongkir_col_sf = None
+                        if 'Biaya Gratis Ongkir XTRA' in seller_fee_df.columns:
+                            ongkir_col_sf = 'Biaya Gratis Ongkir XTRA'
+                        else:
                             for c in seller_fee_df.columns:
-                                cl = str(c).lower()
-                                if any(x in cl for x in ['layanan', 'service', 'fee']) and 'total' not in cl:
-                                    layanan_col_sf = c
+                                if 'Gratis Ongkir XTRA' in c:
+                                    ongkir_col_sf = c
                                     break
                         
-                        if no_pesanan_col_sf and layanan_col_sf:
-                            # Bersihkan & agregasi per No. Pesanan
-                            seller_fee_df[no_pesanan_col_sf] = seller_fee_df[no_pesanan_col_sf].astype(str).str.strip()
-                            seller_fee_df[layanan_col_sf] = clean_and_convert_to_numeric(seller_fee_df[layanan_col_sf])
+                        if no_pesanan_col_sf:
+                            # Bersihkan kolom numerik
+                            if layanan_col_sf:
+                                seller_fee_df[layanan_col_sf] = clean_and_convert_to_numeric(seller_fee_df[layanan_col_sf])
+                            if ongkir_col_sf:
+                                seller_fee_df[ongkir_col_sf] = clean_and_convert_to_numeric(seller_fee_df[ongkir_col_sf])
                             
-                            sf_agg = seller_fee_df.groupby(no_pesanan_col_sf)[layanan_col_sf].sum().reset_index()
-                            sf_agg.rename(columns={no_pesanan_col_sf: 'No. Pesanan', layanan_col_sf: 'Biaya Layanan'}, inplace=True)
+                            # Agregasi per No. Pesanan
+                            agg_dict = {}
+                            if layanan_col_sf:
+                                agg_dict[layanan_col_sf] = 'sum'
+                            if ongkir_col_sf:
+                                agg_dict[ongkir_col_sf] = 'sum'
                             
-                            # Merge ke income (paling kanan)
+                            sf_agg = seller_fee_df.groupby(no_pesanan_col_sf).agg(agg_dict).reset_index()
+                            sf_agg.rename(columns={no_pesanan_col_sf: 'No. Pesanan'}, inplace=True)
+                            
+                            # Rename ke nama standar yang dipakai fungsi lama
+                            if layanan_col_sf:
+                                sf_agg.rename(columns={layanan_col_sf: 'Biaya Layanan'}, inplace=True)
+                            if ongkir_col_sf:
+                                sf_agg.rename(columns={ongkir_col_sf: 'Biaya Gratis Ongkir XTRA'}, inplace=True)
+                            
+                            # Merge ke income_dilepas_df
                             income_dilepas_df['No. Pesanan'] = income_dilepas_df['No. Pesanan'].astype(str).str.strip()
+                            sf_agg['No. Pesanan'] = sf_agg['No. Pesanan'].astype(str).str.strip()
                             income_dilepas_df = pd.merge(
                                 income_dilepas_df, sf_agg, 
                                 on='No. Pesanan', how='left'
                             )
-                            income_dilepas_df['Biaya Layanan'] = income_dilepas_df['Biaya Layanan'].fillna(0)
+                            
+                            if 'Biaya Layanan' not in income_dilepas_df.columns:
+                                income_dilepas_df['Biaya Layanan'] = 0
+                            else:
+                                income_dilepas_df['Biaya Layanan'] = income_dilepas_df['Biaya Layanan'].fillna(0)
+                            
+                            if 'Biaya Gratis Ongkir XTRA' not in income_dilepas_df.columns:
+                                income_dilepas_df['Biaya Gratis Ongkir XTRA'] = 0
+                            else:
+                                income_dilepas_df['Biaya Gratis Ongkir XTRA'] = income_dilepas_df['Biaya Gratis Ongkir XTRA'].fillna(0)
                         else:
-                            missing = []
-                            if not no_pesanan_col_sf: missing.append('No. Pesanan')
-                            if not layanan_col_sf: missing.append('Biaya Layanan')
-                            st.warning(f"Kolom {', '.join(missing)} tidak ditemukan di Seller Fee. Biaya Layanan = 0. Kolom tersedia: {list(seller_fee_df.columns)}")
+                            st.warning(f"Kolom No. Pesanan tidak ditemukan di Seller Fee. Kolom tersedia: {list(seller_fee_df.columns)}")
                             income_dilepas_df['Biaya Layanan'] = 0
+                            income_dilepas_df['Biaya Gratis Ongkir XTRA'] = 0
                     except Exception as e:
-                        st.warning(f"Gagal membaca sheet Seller Fee: {e}. Biaya Layanan di-set 0.")
+                        st.warning(f"Gagal membaca sheet Seller Fee: {e}. Biaya Layanan & Ongkir XTRA di-set 0.")
                         income_dilepas_df['Biaya Layanan'] = 0
+                        income_dilepas_df['Biaya Gratis Ongkir XTRA'] = 0
                     
                     # --- d) HAPUS kolom dari income yang bisa bentrok dengan order-all ---
                     # Ini PENTING: supaya merge tidak bikin suffix _x / _y
@@ -5156,17 +5206,6 @@ if marketplace_choice:
                         if col in income_dilepas_df.columns:
                             income_dilepas_df.drop(columns=[col], inplace=True)
                             
-                    # --- d) Biaya Gratis Ongkir XTRA (dari sheet Penghasilan) ---
-                    # Ambil semua kolom yang mengandung 'Biaya Gratis Ongkir XTRA'
-                    ongkir_xtra_cols = [c for c in income_dilepas_df.columns if 'Biaya Gratis Ongkir XTRA' in c]
-                    
-                    if ongkir_xtra_cols:
-                        for c in ongkir_xtra_cols:
-                            income_dilepas_df[c] = clean_and_convert_to_numeric(income_dilepas_df[c])
-                        # Jumlahkan semua kolom ongkir XTRA, hilangkan tanda minus
-                        income_dilepas_df['Biaya Gratis Ongkir XTRA'] = income_dilepas_df[ongkir_xtra_cols].sum(axis=1).abs()
-                    else:
-                        income_dilepas_df['Biaya Gratis Ongkir XTRA'] = 0
                         
                     # Fallback: kolom lama yang mungkin tidak ada di format baru
                     if 'Promo Gratis Ongkir dari Penjual' not in income_dilepas_df.columns:
