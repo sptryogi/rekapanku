@@ -47,6 +47,9 @@ def get_pretty_date_range(start_date, end_date):
 
 def clean_and_convert_to_numeric(column):
     """Menghapus semua karakter non-digit (kecuali titik dan minus) dan mengubah kolom menjadi numerik."""
+    # Safety: kalau karena duplikat kolom, input jadi DataFrame, ambil Series pertama
+    if isinstance(column, pd.DataFrame):
+        column = column.iloc[:, 0]
     if column.dtype == 'object':
         column = column.astype(str).str.replace(r'[^\d,\-]', '', regex=True)
         column = column.str.replace(',', '.', regex=False)
@@ -5214,6 +5217,8 @@ if marketplace_choice:
                         income_dilepas_df['Biaya Administrasi'] = 0
                     if 'Biaya Proses Pesanan' not in income_dilepas_df.columns:
                         income_dilepas_df['Biaya Proses Pesanan'] = 0
+
+                    income_dilepas_df = income_dilepas_df.loc[:, ~income_dilepas_df.columns.duplicated()]
                     # if store_choice == "Human Store":
                     #     service_fee_df = pd.read_excel(uploaded_income, sheet_name='Service Fee Details', skiprows=1)
                     # iklan_produk_df = pd.read_csv(uploaded_iklan, skiprows=7)
