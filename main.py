@@ -4984,32 +4984,10 @@ if marketplace_choice:
         """Cek apakah file tertentu opsional untuk toko tertentu di TikTok"""
         return store in OPTIONAL_FILES_TIKTOK.get(file_type, [])
     
-    # Kondisi untuk menampilkan tombol proses
-    # show_shopee_button = marketplace_choice == "Shopee" and uploaded_order and uploaded_income and uploaded_iklan and uploaded_seller
-    # shopee_base_files = marketplace_choice == "Shopee" and uploaded_order and uploaded_income and uploaded_iklan
-    # # Tentukan status tombol berdasarkan toko
-    # if shopee_base_files and store_choice == "DAMA.ID STORE":
-    #     show_shopee_button = True # DAMA.ID STORE siap, seller conversion opsional
-    # elif shopee_base_files: # Toko Shopee lain (Human/Pacific)
-    #     show_shopee_button = uploaded_seller # Wajib untuk Human/Pacific
-    # else:
-    #     show_shopee_button = False
     if marketplace_choice == "Shopee":
-        # File wajib untuk semua toko Shopee
-        required_files = uploaded_order and uploaded_income
-        
-        if required_files:
-            # Cek file opsional
-            seller_optional = is_file_optional_shopee('seller_conversion', store_choice)
-            iklan_optional = is_file_optional_shopee('iklan', store_choice)
-            
-            # Cek apakah file opsional di-upload atau memang opsional
-            seller_ok = uploaded_seller or seller_optional
-            iklan_ok = uploaded_iklan or iklan_optional
-            
-            show_shopee_button = seller_ok and iklan_ok
-        else:
-            show_shopee_button = False
+        # File WAJIB: hanya order-all dan income dilepas
+        # File OPSIONAL: seller conversion, iklan
+        show_shopee_button = uploaded_order and uploaded_income
     else:
         show_shopee_button = False
         
@@ -5024,31 +5002,9 @@ if marketplace_choice:
     #     # Human Store: creator_order & pdfs wajib
     #     show_tiktok_button = uploaded_creator_order
     if marketplace_choice == "TikTok":
-        # File wajib untuk semua toko TikTok
-        required_files = uploaded_income_tiktok and uploaded_semua_pesanan
-        
-        if required_files:
-            # Cek file opsional
-            # creator_optional = is_file_optional_tiktok('creator_order', store_choice)
-            # product_optional = is_file_optional_tiktok('product_data', store_choice)
-            # pdf_optional = is_file_optional_tiktok('pdf_resi', store_choice)
-            
-            # # Cek apakah file opsional di-upload atau memang opsional
-            # creator_ok = uploaded_creator_order or creator_optional
-            # product_ok = product_data_file or product_optional
-            # pdf_ok = uploaded_pdfs or pdf_optional  # Hapus baris ini jika PDF tetap wajib
-            
-            # show_tiktok_button = creator_ok and product_ok  # Tambahkan 'and pdf_ok' jika PDF ikut dicek
-            creator_optional = is_file_optional_tiktok('creator_order', store_choice)
-            product_optional = is_file_optional_tiktok('product_data', store_choice)
-            
-            # Cek apakah file opsional di-upload atau memang opsional
-            creator_ok = uploaded_creator_order or creator_optional
-            product_ok = product_data_file or product_optional
-            
-            show_tiktok_button = creator_ok and product_ok
-        else:
-            show_tiktok_button = False
+        # File WAJIB: hanya income tiktok dan semua pesanan
+        # File OPSIONAL: creator order, product data, pdf resi
+        show_tiktok_button = uploaded_income_tiktok and uploaded_semua_pesanan
     else:
         show_tiktok_button = False
 
