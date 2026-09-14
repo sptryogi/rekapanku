@@ -463,7 +463,8 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
         "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas",
         "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Yogyakarta",
         "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Garut",
-        "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang"
+        "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang",
+        "Custom Al Quran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang"
         
     ]
     # Kondisi dimana Nama Produk ada dalam daftar produk_khusus
@@ -524,6 +525,12 @@ def process_rekap(order_df, income_df, seller_conv_df, store_type):
                         part_to_append = var_str # Fallback jika tidak ada koma (misal "Tidak custom")
 
                 elif "Al-Qur'an Edisi Tahlilan Al Aqeel A6 Kertas HVS 18 Baris | GARUT | Alquran Untuk Wakaf Hadiah Souvenir Hampers" in nama_produk_clean:
+                    if ',' in var_str:
+                        part_to_append = var_str.split(',', 1)[-1].strip() # Ambil setelah koma
+                    else:
+                        part_to_append = var_str # Fallback jika tidak ada koma (misal "Tidak custom")
+
+                elif "Custom Al Quran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang" in nama_produk_clean:
                     if ',' in var_str:
                         part_to_append = var_str.split(',', 1)[-1].strip() # Ambil setelah koma
                     else:
@@ -2075,6 +2082,7 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Yogyakarta",
         "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Garut",
         "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang"
+        "Custom Al Quran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang"
         
         
     ]
@@ -2252,7 +2260,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
         "Al-Qur'an Custom Foto Nama | Yogyakarta | Alquran Untuk Tahlilan A5 & A6 Tebal dan Jelas",
         "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Yogyakarta",
         "Paket Wakaf Hemat Isi 50 Alquran Al Aqeel Murah Kertas Koran / HVS | Garut",
-        "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang"
+        "Alquran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang",
+        "Custom Al Quran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang"
     ]
     
     for p_biasa in produk_khusus_biasa:
@@ -2409,7 +2418,8 @@ def process_summary(rekap_df, iklan_final_df, katalog_df, harga_custom_tlj_df, s
                          "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami (AL AQEEL A5 KORAN,SISIPAN 1 HAL+QURAN)", "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami (AL AQEEL A5 KORAN,SISIPAN 2 HAL+QURAN)",
                          "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami (AL AQEEL A6 HVS,SISIPAN 1 HAL+QURAN)", "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami (AL AQEEL A6 HVS,SISIPAN 2 HAL+QURAN)",
                          "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami (AL AQEEL GOLD A5 HVS,SISIPAN 1 HAL+QURAN)", "Alquran Custom Nama Foto | SURABAYA | Al-Quran untuk Wakaf Tasyakuran Tahlil Yasin Hadiah Hampers Islami (AL AQEEL GOLD A5 HVS,SISIPAN 2 HAL+QURAN)",
-                         "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA | (standar/tanpa custom)", "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA | (sisipan 1 halaman)", "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA | (sisipan 2 halaman)"]
+                         "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA | (standar/tanpa custom)", "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA | (sisipan 1 halaman)", "Alquran Edisi Tahlilan Lebih Mulia Daripada Buku Yasin Biasa | Al Aqeel A6 Kertas HVS | SURABAYA | (sisipan 2 halaman)",
+                         "Custom Al Quran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang (1 sisipan)", "Custom Al Quran Terjemah Faheem A5 Kertas Koran | Alquran Wakaf Hadiah Hampers | Semarang (2 sisipan)"]
     
     # Ubah list menjadi satu string regex, pisahkan dengan '|' (OR)
     # Kita gunakan re.escape() untuk memastikan karakter '|' di dalam string tahlilan tidak merusak regex
