@@ -3985,28 +3985,60 @@ def process_summary_tiktok(rekap_df, katalog_df, harga_custom_tlj_df, ekspedisi_
     
     # --- LOGIKA BARU UNTUK HARGA CUSTOM TLJ (TIKTOK) ---
     # 1. Buat kolom kunci di summary_df untuk pencocokan
-    summary_df['LOOKUP_KEY'] = summary_df['Nama Produk'].astype(str).str.strip() + ' ' + summary_df['Variasi'].astype(str).str.strip()
+    # summary_df['LOOKUP_KEY'] = summary_df['Nama Produk'].astype(str).str.strip() + ' ' + summary_df['Variasi'].astype(str).str.strip()
     
-    # 2. Gabungkan dengan data harga custom
+    # # 2. Gabungkan dengan data harga custom
+    # summary_df = pd.merge(
+    #     summary_df,
+    #     harga_custom_tlj_df[['LOOKUP_KEY', 'HARGA CUSTOM TLJ']],
+    #     on='LOOKUP_KEY',
+    #     how='left'
+    # )
+    # summary_df.rename(columns={'HARGA CUSTOM TLJ': 'Harga Custom TLJ'}, inplace=True)
+    # summary_df['Harga Custom TLJ'] = summary_df['Harga Custom TLJ'].fillna(0)
+    # summary_df.drop(columns=['LOOKUP_KEY'], inplace=True, errors='ignore')
+    def _norm_tlj(s):
+        return re.sub(r'\s+', ' ', str(s)).strip().upper()
+
+    harga_tlj = harga_custom_tlj_df.copy()
+    harga_tlj.columns = [str(c).strip() for c in harga_tlj.columns]
+    harga_tlj.rename(columns={
+        c: ('Nama Produk' if c.upper() == 'NAMA PRODUK'
+            else 'Variasi' if c.upper() == 'VARIASI'
+            else 'Harga Custom TLJ' if c.upper() == 'HARGA CUSTOM TLJ'
+            else c)
+        for c in harga_tlj.columns
+    }, inplace=True)
+
+    harga_tlj['KEY_PRODUK'] = harga_tlj['Nama Produk'].apply(_norm_tlj)
+    harga_tlj['KEY_VARIASI'] = harga_tlj['Variasi'].apply(_norm_tlj)
+    harga_tlj['Harga Custom TLJ'] = pd.to_numeric(harga_tlj['Harga Custom TLJ'], errors='coerce').fillna(0)
+    harga_tlj = harga_tlj.drop_duplicates(subset=['KEY_PRODUK', 'KEY_VARIASI'], keep='first')
+
+    summary_df['KEY_PRODUK'] = summary_df['Nama Produk'].apply(_norm_tlj)
+    summary_df['KEY_VARIASI'] = summary_df['Variasi'].apply(_norm_tlj)
+
     summary_df = pd.merge(
         summary_df,
-        harga_custom_tlj_df[['LOOKUP_KEY', 'HARGA CUSTOM TLJ']],
-        on='LOOKUP_KEY',
+        harga_tlj[['KEY_PRODUK', 'KEY_VARIASI', 'Harga Custom TLJ']],
+        on=['KEY_PRODUK', 'KEY_VARIASI'],
         how='left'
     )
-    summary_df.rename(columns={'HARGA CUSTOM TLJ': 'Harga Custom TLJ'}, inplace=True)
-    summary_df['Harga Custom TLJ'] = summary_df['Harga Custom TLJ'].fillna(0)
-    summary_df.drop(columns=['LOOKUP_KEY'], inplace=True, errors='ignore')
+    summary_df['Harga Custom TLJ'] = pd.to_numeric(summary_df['Harga Custom TLJ'], errors='coerce').fillna(0)
 
     # --- LOGIKA BARU UNTUK TOTAL PEMBELIAN (TIKTOK) ---
-    produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta"
-    kondisi_custom = summary_df['Nama Produk'].str.contains(produk_custom_str, na=False)
+    # produk_custom_str = "CUSTOM AL QURAN MENGENANG/WAFAT 40/100/1000 HARI | Jakarta"
+    # kondisi_custom = summary_df['Nama Produk'].str.contains(produk_custom_str, na=False)
+    daftar_produk_custom = set(harga_tlj['KEY_PRODUK'].unique())
+    kondisi_custom = summary_df['KEY_PRODUK'].isin(daftar_produk_custom)
     
     summary_df['Total Pembelian'] = np.where(
         kondisi_custom,
         (summary_df['Jumlah Terjual'] * summary_df['Harga Beli']) + (summary_df['Jumlah Terjual'] * summary_df['Harga Custom TLJ']),
         summary_df['Jumlah Terjual'] * summary_df['Harga Beli']
     )
+
+    summary_df.drop(columns=['KEY_PRODUK', 'KEY_VARIASI'], inplace=True, errors='ignore')
 
     # 2. Logika Distribusi Iklan (MODIFIKASI: Menambahkan produk iklan tanpa penjualan)
     if not product_data_df.empty:
